@@ -48,6 +48,10 @@ const (
 	// up an appropriate target node using the kubernetes API, then using the port forward
 	// endpoint of the Kubernetes API to forward the gRPC connection to the service listener (see gadgettracermgr).
 	ConnectionModeKubernetesProxy
+
+	// ConnectionModeKubernetesDirect will discover gadget pod IPs by resolving the headless service
+	// DNS name (gadget.<namespace>.svc.cluster.local), then connect directly via TCP.
+	ConnectionModeKubernetesDirect
 )
 
 const (
@@ -79,6 +83,9 @@ const (
 
 	ParamGadgetNamespace   string = "gadget-namespace"
 	DefaultGadgetNamespace string = "gadget"
+
+	ParamGadgetServiceDNSName   string = "service-dns-name"
+	DefaultGadgetServiceDNSName string = ""
 )
 
 type Runtime struct {
@@ -190,6 +197,8 @@ func (r *Runtime) ParamDescs() params.ParamDescs {
 			},
 		}...)
 		return p
+	case ConnectionModeKubernetesDirect:
+		return p
 	}
 	panic("invalid connection mode set for grpc-runtime")
 }
@@ -250,6 +259,28 @@ func (r *Runtime) GlobalParamDescs() params.ParamDescs {
 			},
 		}...)
 		return p
+	case ConnectionModeKubernetesDirect:
+		p.Add(params.ParamDescs{
+			{
+				Key:          ParamGadgetServiceTCPPort,
+				Description:  "Port used to connect to the gadget service",
+				DefaultValue: fmt.Sprintf("%d", api.GadgetServicePort),
+				TypeHint:     params.TypeUint16,
+			},
+			{
+				Key:          ParamGadgetNamespace,
+				Description:  "Namespace where the Inspektor Gadget is deployed",
+				DefaultValue: DefaultGadgetNamespace,
+				TypeHint:     params.TypeString,
+			},
+			{
+				Key:          ParamGadgetServiceDNSName,
+				Description:  "DNS name of the headless gadget service; if empty, derived from gadget-namespace as gadget.<namespace>.svc.cluster.local",
+				DefaultValue: DefaultGadgetServiceDNSName,
+				TypeHint:     params.TypeString,
+			},
+		}...)
+		return p
 	}
 	panic("invalid connection mode set for grpc-runtime")
 }
@@ -300,6 +331,39 @@ nodesLoop:
 	return res, nil
 }
 
+// gadgetServiceDNSName returns the DNS name for the headless gadget service.
+func gadgetServiceDNSName(gadgetNamespace string) string {
+	return fmt.Sprintf("gadget.%s.svc.cluster.local", gadgetNamespace)
+}
+
+// getGadgetTargetsFromDNS resolves the headless service DNS name to discover gadget pod IPs.
+// This avoids any calls to the Kubernetes API server. The resolved IP addresses are used
+// both as the dial address and the target identifier (node field).
+// If serviceDNSName is empty, the DNS name is derived from gadgetNamespace.
+func getGadgetTargetsFromDNS(ctx context.Context, gadgetNamespace, serviceDNSName string, port uint16) ([]target, error) {
+	dnsName := serviceDNSName
+	if dnsName == "" {
+		dnsName = gadgetServiceDNSName(gadgetNamespace)
+	}
+	ips, err := net.DefaultResolver.LookupHost(ctx, dnsName)
+	if err != nil {
+		return nil, fmt.Errorf("DNS lookup for headless service %q: %w", dnsName, err)
+	}
+	if len(ips) == 0 {
+		return nil, fmt.Errorf("no addresses found for headless service %q. Is Inspektor Gadget deployed?", dnsName)
+	}
+
+	portStr := fmt.Sprintf("%d", port)
+	res := make([]target, 0, len(ips))
+	for _, ip := range ips {
+		res = append(res, target{
+			addressOrPod: net.JoinHostPort(ip, portStr),
+			node:         ip,
+		})
+	}
+	return res, nil
+}
+
 // getTargets returns targets depending on the params given and the environment. The returned
 // bool is true, if the user explicitly selected the nodes using params.
 func (r *Runtime) getTargets(ctx context.Context, params *params.Params) ([]target, error) {
@@ -316,6 +380,19 @@ func (r *Runtime) getTargets(ctx context.Context, params *params.Params) ([]targ
 			return nil, fmt.Errorf("get gadget pods: Inspektor Gadget is not running on the requested node(s): %v", nodes)
 		}
 		return pods, nil
+	case ConnectionModeKubernetesDirect:
+		gadgetNamespace := r.globalParams.Get(ParamGadgetNamespace).AsString()
+		port := r.globalParams.Get(ParamGadgetServiceTCPPort).AsUint16()
+		serviceDNSName := r.globalParams.Get(ParamGadgetServiceDNSName).AsString()
+
+		targets, err := getGadgetTargetsFromDNS(ctx, gadgetNamespace, serviceDNSName, port)
+		if err != nil {
+			return nil, fmt.Errorf("get gadget targets: %w", err)
+		}
+		if len(targets) == 0 {
+			return nil, fmt.Errorf("get gadget targets: no Inspektor Gadget endpoints found")
+		}
+		return targets, nil
 	case ConnectionModeDirect:
 		inTargets := r.globalParams.Get(ParamRemoteAddress).AsStringSlice()
 		targets := make([]target, 0)
