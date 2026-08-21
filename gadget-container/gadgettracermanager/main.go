@@ -31,6 +31,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 
 	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 	// Import this early to set the environment variable before any other package is imported
@@ -232,11 +234,31 @@ func main() {
 		if err != nil {
 			log.Fatalf("invalid service host: %v", err)
 		}
+
+		runConfig := gadgetservice.RunConfig{
+			SocketType: socketType,
+			SocketPath: socketPath,
+		}
+		if config.Config.GetBool(gadgettracermanagerconfig.MultiTenancy) {
+			log.Infof("Config: %s=%t", gadgettracermanagerconfig.MultiTenancy, true)
+			restCfg, err := rest.InClusterConfig()
+			if err != nil {
+				log.Fatalf("building in-cluster config for multi-tenancy: %v", err)
+			}
+			restCfg.UserAgent = version.UserAgent()
+			kc, err := kubernetes.NewForConfig(restCfg)
+			if err != nil {
+				log.Fatalf("building Kubernetes client for multi-tenancy: %v", err)
+			}
+			runConfig.MultiTenancy = true
+			runConfig.KubernetesClient = kc
+			runConfig.MultiTenancyScope.APIGroup = config.Config.GetString(gadgettracermanagerconfig.MultiTenancyScopeAPIGroup)
+			runConfig.MultiTenancyScope.Resource = config.Config.GetString(gadgettracermanagerconfig.MultiTenancyScopeResource)
+			runConfig.MultiTenancyScope.Verb = config.Config.GetString(gadgettracermanagerconfig.MultiTenancyScopeVerb)
+		}
+
 		go func() {
-			err := service.Run(gadgetservice.RunConfig{
-				SocketType: socketType,
-				SocketPath: socketPath,
-			})
+			err := service.Run(runConfig)
 			if err != nil {
 				log.Fatalf("starting gadget service: %v", err)
 			}

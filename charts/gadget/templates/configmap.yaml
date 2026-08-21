@@ -18,5 +18,9 @@ data:
       podman-socketpath: {{ .Values.config.podmanSocketPath }}
       gadget-namespace: {{ include "gadget.namespace" . }}
       daemon-log-level: {{ .Values.config.daemonLogLevel }}
+      multi-tenancy: {{ default false (dig "multiTenancy" "enabled" false .Values.experimental) }}
+      multi-tenancy-scope-api-group: {{ default "" (dig "multiTenancy" "scope" "apiGroup" "" .Values.experimental) | quote }}
+      multi-tenancy-scope-resource: {{ default "pods" (dig "multiTenancy" "scope" "resource" "pods" .Values.experimental) }}
+      multi-tenancy-scope-verb: {{ default "create" (dig "multiTenancy" "scope" "verb" "create" .Values.experimental) }}
       operator:
         {{- include "gadget.operatorConfig" . | nindent 8 -}}

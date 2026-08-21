@@ -62,6 +62,17 @@ config:
     #   paramValues: {}
     #     # operator.filter.filter: "fname~/proc.*"
 
+# -- Experimental features (off by default, no compatibility guarantees).
+experimental:
+  # -- Authenticate clients through Kubernetes and enforce namespace access.
+  multiTenancy:
+    enabled: false
+    # -- Kubernetes authorization question used to resolve namespace access.
+    scope:
+      apiGroup: ""
+      resource: pods
+      verb: create
+
 # -- All configurations below are specific to Kubernetes resources created by the gadget chart.
 image:
   # -- Container repository for the container image
