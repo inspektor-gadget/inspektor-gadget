@@ -91,6 +91,7 @@ int main() {
 	var ns string
 	containerOpts := []containers.ContainerOption{
 		containers.WithContainerImage(containerImage),
+		containers.WithStartAndStop(),
 	}
 
 	if utils.CurrentTestComponent == utils.KubectlGadgetTestComponent {
@@ -109,33 +110,36 @@ int main() {
 		"gcc -Wall -o /bin/mychroot8 -Wl,--build-id -static -fPIE -pie chroot.c && "+
 		"true",
 		progBase64)
-	innerCmd := "while true; do " +
-		"/bin/mychroot1 ; /bin/mychroot2 ; /bin/mychroot3 ; " +
+	workloadCmd := "/bin/mychroot1 ; /bin/mychroot2 ; /bin/mychroot3 ; " +
 		"/bin/mychroot4 ; /bin/mychroot5 ; /bin/mychroot6 ; " +
 		"/bin/mychroot7 ; /bin/mychroot8 ; " +
-		"nice -n -20 echo; sleep 0.05; " +
-		"done"
+		"nice -n -20 echo; sleep infinity"
 	testContainer := containerFactory.NewContainer(
 		containerName,
-		fmt.Sprintf("%s ; %s", buildCmd, innerCmd),
+		fmt.Sprintf("%s ; %s", buildCmd, workloadCmd),
 		containerOpts...,
 	)
 
-	testContainer.Start(t)
-	t.Cleanup(func() {
-		testContainer.Stop(t)
-	})
-
 	var runnerOpts []igrunner.Option
 	var testingOpts []igtesting.Option
-	commonDataOpts := []utils.CommonDataOption{utils.WithContainerImageName(containerImage), utils.WithContainerID(testContainer.ID())}
+	commonDataOpts := []utils.CommonDataOption{
+		utils.WithContainerImageName(containerImage),
+		utils.WithContainerID(utils.NormalizedStr),
+	}
 
-	ustackFlag := "--collect-ustack=true"
 	switch utils.CurrentTestComponent {
 	case utils.IgLocalTestComponent:
-		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-r=%s", utils.Runtime), ustackFlag))
+		runnerOpts = append(runnerOpts, igrunner.WithFlags(
+			fmt.Sprintf("-r=%s", utils.Runtime),
+			"--collect-ustack=true",
+			"--audit-only=true",
+		))
 	case utils.KubectlGadgetTestComponent:
-		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-n=%s", ns), ustackFlag))
+		runnerOpts = append(runnerOpts, igrunner.WithFlags(
+			fmt.Sprintf("-n=%s", ns),
+			"--collect-ustack=true",
+			"--audit-only=true",
+		))
 		testingOpts = append(testingOpts, igtesting.WithCbBeforeCleanup(utils.PrintLogsFn(ns)))
 		commonDataOpts = append(commonDataOpts, utils.WithK8sNamespace(ns))
 	}
@@ -191,6 +195,7 @@ int main() {
 
 			normalize := func(e *traceCapabilitiesEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
+				utils.NormalizeString(&e.Runtime.ContainerID)
 				utils.NormalizeString(&e.Timestamp)
 				utils.NormalizeProc(&e.Proc)
 				utils.NormalizeString(&e.Kstack)
@@ -232,6 +237,7 @@ int main() {
 
 	steps := []igtesting.TestStep{
 		traceCapabilitiesCmd,
+		testContainer,
 	}
 	igtesting.RunTestSteps(steps, t, testingOpts...)
 }
