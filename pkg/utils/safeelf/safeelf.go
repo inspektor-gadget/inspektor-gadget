@@ -196,7 +196,7 @@ func (f *File) newSymbolIterator(typ elf.SectionType) (_ *symbolIterator, err er
 		}
 	}()
 
-	symtabSection := f.File.SectionByType(typ)
+	symtabSection := f.SectionByType(typ)
 	if symtabSection == nil {
 		return nil, nil
 	}
@@ -206,13 +206,13 @@ func (f *File) newSymbolIterator(typ elf.SectionType) (_ *symbolIterator, err er
 	}
 
 	var entrySize int
-	switch f.File.Class {
+	switch f.Class {
 	case elf.ELFCLASS64:
 		entrySize = int(elf.Sym64Size) // 24
 	case elf.ELFCLASS32:
 		entrySize = int(elf.Sym32Size) // 16
 	default:
-		return nil, fmt.Errorf("unsupported ELF class: %v", f.File.Class)
+		return nil, fmt.Errorf("unsupported ELF class: %v", f.Class)
 	}
 
 	if symtabSection.Size > uint64(maxSymtabSectionSize) {
@@ -231,12 +231,12 @@ func (f *File) newSymbolIterator(typ elf.SectionType) (_ *symbolIterator, err er
 
 	// Validate the linked string table section.
 	link := symtabSection.Link
-	if int(link) >= len(f.File.Sections) {
+	if int(link) >= len(f.Sections) {
 		return nil, fmt.Errorf("symbol table link %d out of range (have %d sections)",
-			link, len(f.File.Sections))
+			link, len(f.Sections))
 	}
 
-	strtabSection := f.File.Sections[link]
+	strtabSection := f.Sections[link]
 	if strtabSection.Type != elf.SHT_STRTAB {
 		return nil, fmt.Errorf("linked section %d has type %v, expected SHT_STRTAB",
 			link, strtabSection.Type)
@@ -264,7 +264,7 @@ func (f *File) newSymbolIterator(typ elf.SectionType) (_ *symbolIterator, err er
 		return nil, fmt.Errorf("reading string table: %w", err)
 	}
 
-	bo := f.File.ByteOrder
+	bo := f.ByteOrder
 
 	// Skip the first entry, which is all zeros per the ELF spec.
 	symtabReader := io.NewSectionReader(symtabSection.ReaderAt,
@@ -279,7 +279,7 @@ func (f *File) newSymbolIterator(typ elf.SectionType) (_ *symbolIterator, err er
 			return bo.Uint64(b)
 		},
 		entrySize: entrySize,
-		class:     f.File.Class,
+		class:     f.Class,
 	}, nil
 }
 
