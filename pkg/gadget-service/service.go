@@ -40,6 +40,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 type RunConfig struct {
@@ -122,7 +123,22 @@ func (s *Service) GetInfo(ctx context.Context, request *api.InfoRequest) (*api.I
 		Version:       "1.0", // TODO
 		Experimental:  experimental.Enabled(),
 		ServerVersion: version.Version().String(),
+
+		ServerIsHostPidNs: s.optionalCheck("the host PID namespace", host.IsHostPidNs),
+		ServerIsInitPidNs: s.optionalCheck("the initial PID namespace", host.IsInitPidNs),
 	}, nil
+}
+
+// optionalCheck runs an informative check about the process running this
+// service. A check that fails is reported as unset instead of making GetInfo()
+// fail, so that clients can tell "no" apart from "could not be determined".
+func (s *Service) optionalCheck(what string, check func() (bool, error)) *bool {
+	value, err := check()
+	if err != nil {
+		s.logger.Debugf("checking if running in %s: %v", what, err)
+		return nil
+	}
+	return &value
 }
 
 func newUnixListener(address string, gid int) (net.Listener, error) {
