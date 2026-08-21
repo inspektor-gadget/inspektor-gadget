@@ -8,7 +8,7 @@ require (
 	github.com/cloudflare/cbpfc v0.0.0-20240920015331-ff978e94500b
 	github.com/containerd/containerd v1.7.33
 	github.com/containerd/errdefs v1.0.0
-	github.com/containerd/nri v0.9.0
+	github.com/containerd/nri v0.12.1
 	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/cyphar/filepath-securejoin v0.7.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
@@ -31,7 +31,7 @@ require (
 	github.com/moby/moby/client v0.5.0
 	github.com/notaryproject/notation-go v1.3.2
 	github.com/opencontainers/image-spec v1.1.1
-	github.com/opencontainers/runtime-spec v1.2.1
+	github.com/opencontainers/runtime-spec v1.3.0
 	github.com/packetcap/go-pcap v0.0.0-20250723190045-d00b185f30b7
 	github.com/prometheus/client_golang v1.23.2
 	github.com/s3rj1k/go-fanotify/fanotify v0.0.0-20210917134616-9c00a300bb7a
