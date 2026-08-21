@@ -920,4 +920,93 @@ Default value: "false"
 
 ## Guide
 
-TODO
+In this example, we will use the trace_lsm gadget to observe Linux Security Module (LSM) hook calls
+triggered by processes in a container.
+
+First, we need to run an application.
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl run --restart=Never --image=busybox mypod -- sh -c 'while true; do cat /etc/hostname; sleep 2; done'
+pod/mypod created
+```
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+```bash
+$ docker run --name test-lsm -d busybox sh -c 'while true; do cat /etc/hostname; sleep 2; done'
+```
+  </TabItem>
+</Tabs>
+
+Then, let's run the gadget with a selection of LSM hooks enabled. In this example we trace
+`bprm_check_security` (program execution checks) and `file_permission` (file access permission checks):
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+
+```bash
+$ kubectl gadget run trace_lsm:%IG_TAG% --podname mypod --trace-bprm_check_security --trace-file_permission
+K8S.NODE           K8S.NAMESPACE K8S.PODNAME K8S.CONTAINE… COMM    PID     TID TRACEPOINT
+minikube-docker    default       mypod       mypod         sh    524050  524050 bprm_check_security
+minikube-docker    default       mypod       mypod         cat   524100  524100 bprm_check_security
+minikube-docker    default       mypod       mypod         cat   524100  524100 file_permission
+minikube-docker    default       mypod       mypod         cat   524100  524100 file_permission
+minikube-docker    default       mypod       mypod         sleep 524101  524101 bprm_check_security
+^C
+```
+
+The `TRACEPOINT` column shows which LSM hook was triggered:
+- `bprm_check_security` fires when a new program is about to be executed
+- `file_permission` fires on file read/write permission checks
+
+We can stop the gadget by hitting Ctrl-C.
+
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+```bash
+$ sudo ig run trace_lsm:%IG_TAG% --containername test-lsm --trace-bprm_check_security --trace-file_permission
+RUNTIME.CONTAINERNA… COMM                PID         TID         TRACEPOINT
+test-lsm             sh               524050      524050      bprm_check_security
+test-lsm             cat              524100      524100      bprm_check_security
+test-lsm             cat              524100      524100      file_permission
+test-lsm             cat              524100      524100      file_permission
+test-lsm             sleep            524101      524101      bprm_check_security
+^C
+```
+  </TabItem>
+</Tabs>
+
+To trace all available LSM hooks at once, use the `--trace-all` flag instead:
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl gadget run trace_lsm:%IG_TAG% --podname mypod --trace-all
+```
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+```bash
+$ sudo ig run trace_lsm:%IG_TAG% --containername test-lsm --trace-all
+```
+  </TabItem>
+</Tabs>
+
+Finally, clean the system:
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl delete pod mypod
+```
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+```bash
+$ docker rm -f test-lsm
+```
+  </TabItem>
+</Tabs>
