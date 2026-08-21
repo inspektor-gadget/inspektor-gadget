@@ -21,7 +21,24 @@ import (
 )
 
 func TestProfileCpu(t *testing.T) {
-	// TODO: This is a dummy test to check that the gadget runs without errors.
-	// It should be extended to check that the gadget produces correct data.
-	gadgettesting.DummyGadgetTest(t, "profile_cpu")
+	t.Run("without GPU idle filter", func(t *testing.T) {
+		gadgettesting.DummyGadgetTest(t, "profile_cpu")
+	})
+
+	t.Run("with GPU idle filter", func(t *testing.T) {
+		gadgettesting.DummyGadgetTest(t, "profile_cpu",
+			gadgettesting.WithParamValues(map[string]string{
+				"operator.oci.ebpf.gpu-idle-only": "true",
+			}))
+	})
+
+	t.Run("user stacks only", func(t *testing.T) {
+		// Exercises the kernel-stack gating: --user-stacks-only drops
+		// ig_kstack (GADGET_MAP_ONLY_IF "!params.user_stacks_only") and
+		// poisons its dead reference.
+		gadgettesting.DummyGadgetTest(t, "profile_cpu",
+			gadgettesting.WithParamValues(map[string]string{
+				"operator.oci.ebpf.user-stacks-only": "true",
+			}))
+	})
 }

@@ -10,17 +10,22 @@
 #include <gadget/types.h>
 #include <gadget/macros.h>
 #include <gadget/common.h>
+// ig_kstack is only read when kernel stacks are wanted, i.e. when
+// user_stacks_only is off; gate the map on the same condition so it is
+// dropped (and its dead reference poisoned) under --user-stacks-only.
+#define GADGET_KERNEL_STACK_MAP_ONLY_IF_EXPR "!params.user_stacks_only"
 #include <gadget/kernel_stack_map.h>
 #include <gadget/user_stack_map.h>
 
 /* Pinned gpu-ebpf-bridge maps + CO-RE helpers, shared with the other GPU
  * gadgets. Only pulled in for the optional --gpu-idle-only filter below;
- * when that filter is off the maps are declared but never read, so on a
- * host without the bridge they are simply created empty and ignored.
+ * when that filter is off the maps and their dead references are removed
+ * before the object is loaded.
  */
 #define GPU_BRIDGE_WANT_PER_PID
 #define GPU_BRIDGE_WANT_DEVICE
 #define GPU_BRIDGE_WANT_META
+#define GPU_BRIDGE_MAP_ONLY_IF_EXPR "params.gpu_idle_only"
 #include <gadget/gpu_bridge_maps.h>
 
 /* Returns true if device dev_idx exists and its SM utilization is strictly
@@ -74,6 +79,12 @@ GADGET_PARAM(kernel_stacks_only);
 
 const volatile bool user_stacks_only = false;
 GADGET_PARAM(user_stacks_only);
+
+// user_stacks_only and kernel_stacks_only are mutually exclusive: setting both
+// disables the kernel stack and zeroes the user stack, so neither is collected.
+// Reject the combination early with a clear error.
+GADGET_ASSERT(stack_mode,
+	      "!(params.user_stacks_only && params.kernel_stacks_only)");
 
 const volatile bool include_idle = false;
 GADGET_PARAM(include_idle);
