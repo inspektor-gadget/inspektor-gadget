@@ -67,6 +67,8 @@ params:
       key: collect-kstack
       defaultValue: "true"
       description: Collect kernel stack traces
+      annotations:
+        fields: "capabilities.kstack_raw"
     unique:
       key: unique
       defaultValue: "false"
