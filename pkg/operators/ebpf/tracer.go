@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -287,6 +288,23 @@ func (t *Tracer) close() {
 	}
 }
 
+func (i *ebpfInstance) resolvePerfBufferPages(ds datasource.DataSource) int {
+	if ds == nil {
+		return gadgets.PerfBufferPages
+	}
+	val, ok := ds.Annotations()[AnnotationTracerPerfBufferPages]
+	if !ok || val == "" {
+		return gadgets.PerfBufferPages
+	}
+	pages, err := strconv.Atoi(val)
+	if err != nil || pages <= 0 {
+		i.logger.Warnf("invalid value for annotation %q: %q; falling back to default %d",
+			AnnotationTracerPerfBufferPages, val, gadgets.PerfBufferPages)
+		return gadgets.PerfBufferPages
+	}
+	return pages
+}
+
 func (i *ebpfInstance) runTracer(gadgetCtx operators.GadgetContext, tracer *Tracer) error {
 	if tracer.mapName == "" {
 		return fmt.Errorf("tracer map name empty")
@@ -314,7 +332,8 @@ func (i *ebpfInstance) runTracer(gadgetCtx operators.GadgetContext, tracer *Trac
 		tracer.logger = i.logger
 	case ebpf.PerfEventArray:
 		i.logger.Debugf("creating perf reader for map %q", tracer.mapName)
-		tracer.perfReader, err = perf.NewReader(m, gadgets.PerfBufferPages*os.Getpagesize())
+		perfBufferPages := i.resolvePerfBufferPages(tracer.ds)
+		tracer.perfReader, err = perf.NewReader(m, perfBufferPages*os.Getpagesize())
 	default:
 		return fmt.Errorf("unknown type for tracer map %q", tracer.mapName)
 	}
