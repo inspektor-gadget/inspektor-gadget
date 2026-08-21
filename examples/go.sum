@@ -190,6 +190,8 @@ github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/inspektor-gadget/notation-go v1.3.3 h1:yygDXeFVU3zvYzaNWwhRkTMiJNq4iWnn7Ssayek00RI=
 github.com/inspektor-gadget/notation-go v1.3.3/go.mod h1:/1kuq5WuLF6Gaer5re0Z6HlkQRlKYO4EbWWT/L7J1Uw=
+github.com/inspektor-gadget/opentelemetry-ebpf-profiler v0.0.202611-0.20260715114040-ef6cf29492c8 h1:uAAxfhFJY2k26LvrHwdZdy7gTRo3ZFSTeSrWSPKjirk=
+github.com/inspektor-gadget/opentelemetry-ebpf-profiler v0.0.202611-0.20260715114040-ef6cf29492c8/go.mod h1:YcOGWpHl5DRZQxxSLH9P2a4MI51eexSeSWODzPY5FTc=
 github.com/jcmturner/aescts/v2 v2.0.0 h1:9YKLH6ey7H4eDBXW8khjYslgyqG2xZikXP0EQFKrle8=
 github.com/jcmturner/aescts/v2 v2.0.0/go.mod h1:AiaICIRyfYg35RUkr8yESTqvSy7csK90qZ5xfvvsoNs=
 github.com/jcmturner/dnsutils/v2 v2.0.0 h1:lltnkeZGL0wILNvrNiVCR6Ro5PGU/SeBvVO/8c/iPbo=
@@ -411,8 +413,6 @@ go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.65.0 h1:7iP2uCb
 go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.65.0/go.mod h1:c7hN3ddxs/z6q9xwvfLPk+UHlWRQyaeR1LdgfL/66l0=
 go.opentelemetry.io/contrib/instrumentation/runtime v0.67.0 h1:fM78cKITJ2r08cl+nw5i+hI9zWAu3iak8o1Os/ca2Ck=
 go.opentelemetry.io/contrib/instrumentation/runtime v0.67.0/go.mod h1:ybmlzIqGcQzwt5lAfi8TpSnHo/CI3yv1Czodmm+OJa8=
-go.opentelemetry.io/ebpf-profiler v0.0.202536 h1:RokX9rsyO9uEbdHSC5145jYZIxIXk//u9cJTSh6Vy30=
-go.opentelemetry.io/ebpf-profiler v0.0.202536/go.mod h1:oGg4sNNmbpAuXZtzBGnHp7tCSeEWRK7ij4TltZdqsAY=
 go.opentelemetry.io/otel v1.43.0 h1:mYIM03dnh5zfN7HautFE4ieIig9amkNANT+xcVxAj9I=
 go.opentelemetry.io/otel v1.43.0/go.mod h1:JuG+u74mvjvcm8vj8pI5XiHy1zDeoCS2LB1spIq7Ay0=
 go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.42.0 h1:MdKucPl/HbzckWWEisiNqMPhRrAOQX8r4jTuGr636gk=
@@ -452,8 +452,8 @@ golang.org/x/lint v0.0.0-20190227174305-5b3e6a55c961/go.mod h1:wehouNa3lNwaWXcvx
 golang.org/x/lint v0.0.0-20190313153728-d0100b6bd8b3/go.mod h1:6SW0HCj/g11FgYtHlgUYUwCkIfeOF89ocIRzGO/8vkc=
 golang.org/x/mod v0.2.0/go.mod h1:s0Qsj1ACt9ePp/hMypM3fl4fZqREWJwdYDEqhRiZZUA=
 golang.org/x/mod v0.3.0/go.mod h1:s0Qsj1ACt9ePp/hMypM3fl4fZqREWJwdYDEqhRiZZUA=
-golang.org/x/mod v0.37.0 h1:vF1DjpVEshcIqoEaauuHebaLk1O1forxjxBaVn884JQ=
-golang.org/x/mod v0.37.0/go.mod h1:m8S8VeM9r4dzDwjrKO0a1sZP3YjeMamRRlD+fmR2Q/0=
+golang.org/x/mod v0.40.0 h1:hUv+3cXcdRHz08UmSiOob7sadHig73uo5bkXxQ/tvUs=
+golang.org/x/mod v0.40.0/go.mod h1:0/weTWkPWGBikyTWAX3dkjVztMmBA5hM0DH6BElSupE=
 golang.org/x/net v0.0.0-20180724234803-3673e40ba225/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=
 golang.org/x/net v0.0.0-20180826012351-8a410e7b638d/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=
 golang.org/x/net v0.0.0-20190213061140-3a22650c66bd/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=

@@ -221,7 +221,7 @@ require (
 	go.opentelemetry.io/collector/pdata v1.53.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/arch v0.24.0 // indirect
-	golang.org/x/mod v0.37.0 // indirect
+	golang.org/x/mod v0.40.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.2 // indirect
 )
 
@@ -233,4 +233,5 @@ replace github.com/notaryproject/notation-go => github.com/inspektor-gadget/nota
 // - u32 key type for generic_params map
 // - GetStackCacheMap() accessor for userspace cleanup
 // - GetPerfEntryEbpfProgram() accessor for perf_event OTel stack correlation
+// Please keep in sync with examples/go.mod
 replace go.opentelemetry.io/ebpf-profiler => github.com/inspektor-gadget/opentelemetry-ebpf-profiler v0.0.202611-0.20260715114040-ef6cf29492c8
