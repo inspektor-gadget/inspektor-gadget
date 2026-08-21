@@ -18,6 +18,9 @@
 #include <gadget/macros.h>
 #include <gadget/types.h>
 
+#define AF_UNIX 1
+#define UNIX_PATH_MAX 108
+
 #define AF_INET 2
 #define AF_INET6 10
 
@@ -53,10 +56,10 @@ struct socket_entry {
 	__u32 state;
 	__u32 ino;
 	gadget_netns_id netns_id;
+	char path[UNIX_PATH_MAX];
 };
 
-GADGET_ITER(sockets, socket_entry, ig_snap_tcp, ig_snap_udp);
-
+GADGET_ITER(sockets, socket_entry, ig_snap_tcp, ig_snap_udp, ig_snap_unix);
 /**
  * sock_i_ino - Returns the inode identifier associated to a socket.
  * @sk: The socket whom inode identifier will be returned.
@@ -227,6 +230,39 @@ int ig_snap_udp(struct bpf_iter__udp *ctx)
 		BPF_CORE_READ(sp, __sk_common.skc_net.net, ns.inum));
 
 	return 0;
+}
+
+
+
+static int dump_unix_sock(struct seq_file *seq, __u32 netns, struct unix_sock *unix_sk)
+{
+	struct socket_entry entry = {};
+	struct sock *sk = &unix_sk->sk;
+	struct unix_address *addr;
+	entry.src.proto_raw = AF_UNIX;
+	entry.dst.proto_raw = AF_UNIX;
+	entry.state = BPF_CORE_READ(sk, __sk_common.skc_state);
+	entry.ino = sock_i_ino(sk);
+	entry.netns_id = netns;
+	// Read socket path if bound
+	addr = BPF_CORE_READ(unix_sk, addr);
+	if (addr) {
+		bpf_probe_read_kernel_str(&entry.path, sizeof(entry.path), &addr->name[0].sun_path);
+	}
+	bpf_seq_write(seq, &entry, sizeof(entry));
+	return 0;
+}
+
+SEC("iter/unix")
+int ig_snap_unix(struct bpf_iter__unix *ctx)
+{
+	struct seq_file *seq = ctx->meta->seq;
+	struct unix_sock *unix_sk = ctx->unix_sk;
+	__u32 netns;
+	if (unix_sk == (void *)0)
+		return 0;
+	BPF_CORE_READ_INTO(&netns, &unix_sk->sk, __sk_common.skc_net.net, ns.inum);
+	return dump_unix_sock(seq, netns, unix_sk);
 }
 
 char _license[] SEC("license") = "GPL";
