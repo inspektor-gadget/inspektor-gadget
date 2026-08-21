@@ -524,3 +524,81 @@ func testFiltering(t *testing.T, path string) {
 	err := runGadget(t, gadgetCtx, nil)
 	require.NoError(t, err, "running gadget")
 }
+
+func TestWasmHandleOverflow(t *testing.T) {
+	testWasmHandleOverflow(t, "testdata")
+}
+
+func testWasmHandleOverflow(t *testing.T, path string) {
+	utils.RequireRoot(t)
+
+	t.Parallel()
+
+	const (
+		inValue        = uint32(42)
+		expectedOutput = 2 * inValue
+	)
+	counter := 0
+
+	// WASM callback runs first (priority 0), Go callback verifies after (priority 2)
+	const goPriority = 2
+
+	myOperator := simple.New("myHandler",
+		simple.OnInit(func(gadgetCtx operators.GadgetContext) error {
+			datasources := gadgetCtx.GetDataSources()
+			myds, ok := datasources["myds"]
+			require.True(t, ok, "datasource not found")
+
+			outField := myds.GetField("out")
+
+			myds.SubscribeArray(func(source datasource.DataSource, dataArray datasource.DataArray) error {
+				counter++
+				require.Equal(t, 1, dataArray.Len())
+
+				data := dataArray.Get(0)
+				val, err := outField.Uint32(data)
+				require.NoError(t, err)
+				require.Equal(t, expectedOutput, val, "WASM module failed to process data array due to 16-bit handle truncation")
+
+				return nil
+			}, goPriority)
+			return nil
+		}),
+		simple.OnStart(func(gadgetCtx operators.GadgetContext) error {
+			datasources := gadgetCtx.GetDataSources()
+			myds, ok := datasources["myds"]
+			require.True(t, ok, "datasource not found")
+
+			packet, err := myds.NewPacketArray()
+			require.NoError(t, err, "creating packet")
+
+			inField := myds.GetField("in")
+
+			data := packet.New()
+			err = inField.PutUint32(data, inValue)
+			require.NoError(t, err, "putting data")
+
+			packet.Append(data)
+
+			err = myds.EmitAndRelease(packet)
+			require.NoError(t, err, "emitting data")
+
+			return nil
+		}),
+	)
+
+	gadgetCtx := createGadgetCtx(t, path, "handleoverflow", myOperator)
+
+	ds, err := gadgetCtx.RegisterDataSource(datasource.TypeArray, "myds")
+	require.NoError(t, err, "registering datasource")
+
+	_, err = ds.AddField("in", api.Kind_Uint32)
+	require.NoError(t, err)
+	_, err = ds.AddField("out", api.Kind_Uint32)
+	require.NoError(t, err)
+
+	err = runGadget(t, gadgetCtx, nil)
+	require.NoError(t, err, "running gadget")
+
+	require.Equal(t, counter, 1)
+}
