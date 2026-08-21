@@ -30,23 +30,41 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/helpers"
 )
 
+const (
+	// This is used to ensure we are dealing with a signature and not
+	// an attestation. Taken from:
+	// https://github.com/sigstore/cosign/blob/d253adffe000/pkg/types/predicate.go#L19
+	cosignSignPredicateType = "https://sigstore.dev/cosign/sign/v1"
+
+	// Inside a Bundle, there is a DSSE envelope which stores the signature
+	// as an in-toto payload. Taken from:
+	// https://github.com/sigstore/cosign/blob/d253adffe000/pkg/types/payload.go#L20
+	intotoPayloadType = "application/vnd.in-toto+json"
+)
+
 type BundleFormat struct{}
 
 func (*BundleFormat) CheckPayloadImage(payloadBytes []byte, imageDigest string) error {
 	var statement spb.Statement
-	err := json.Unmarshal(payloadBytes, &statement)
+	err := protojson.Unmarshal(payloadBytes, &statement)
 	if err != nil {
 		return fmt.Errorf("unmarshalling payload: %w", err)
+	}
+
+	if statement.PredicateType != cosignSignPredicateType {
+		return fmt.Errorf("unexpected predicate type: expected %q, got %q", cosignSignPredicateType, statement.PredicateType)
 	}
 
 	if len(statement.Subject) == 0 {
 		return fmt.Errorf("payload has no subject: %v", payloadBytes)
 	}
 
-	for algorithm, hash := range statement.Subject[0].Digest {
-		digest := fmt.Sprintf("%s:%s", algorithm, hash)
-		if digest == imageDigest {
-			return nil
+	for _, subject := range statement.Subject {
+		for algorithm, hash := range subject.Digest {
+			digest := fmt.Sprintf("%s:%s", algorithm, hash)
+			if digest == imageDigest {
+				return nil
+			}
 		}
 	}
 
@@ -102,6 +120,11 @@ func (*BundleFormat) LoadSignatureAndPayload(ctx context.Context, imageStore ora
 	envelope := bundle.GetDsseEnvelope()
 	if envelope == nil {
 		return nil, nil, nil, errors.New("DSSE envelope not found in bundle")
+	}
+
+	payloadType := envelope.GetPayloadType()
+	if payloadType != intotoPayloadType {
+		return nil, nil, nil, fmt.Errorf("unexpected payload type: expected %q, got %q", intotoPayloadType, payloadType)
 	}
 
 	signatures := envelope.GetSignatures()

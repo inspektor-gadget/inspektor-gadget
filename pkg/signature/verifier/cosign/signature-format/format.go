@@ -26,9 +26,15 @@ import (
 	"oras.land/oras-go/v2/content"
 )
 
-// Taken from:
-// https://github.com/sigstore/cosign/blob/45bda40b8ef4/pkg/types/media.go#L28
-const simpleSigningMediaType = "application/vnd.dev.cosign.simplesigning.v1+json"
+const (
+	// Taken from:
+	// https://github.com/sigstore/cosign/blob/45bda40b8ef4/pkg/types/media.go#L28
+	simpleSigningMediaType = "application/vnd.dev.cosign.simplesigning.v1+json"
+
+	// Taken from:
+	// https://github.com/sigstore/sigstore/blob/632c6fe358b6/pkg/signature/payload/payload.go#L27
+	cosignSignatureType = "cosign container image signature"
+)
 
 type SignatureFormat interface {
 	CheckPayloadImage(payloadBytes []byte, imageDigest string) error
@@ -45,8 +51,13 @@ func checkPayloadImage(payloadBytes []byte, imageDigest string) error {
 		return fmt.Errorf("unmarshalling payload: %w", err)
 	}
 
-	if payloadImage.Critical.Image.DockerManifestDigest != imageDigest {
-		return fmt.Errorf("payload digest does not correspond to image: expected %s, got %s", imageDigest, payloadImage.Critical.Image.DockerManifestDigest)
+	critical := payloadImage.Critical
+	if critical.Type != cosignSignatureType {
+		return fmt.Errorf("unexpected critical type: expected %q, got %q", cosignSignatureType, critical.Type)
+	}
+
+	if critical.Image.DockerManifestDigest != imageDigest {
+		return fmt.Errorf("payload digest does not correspond to image: expected %s, got %s", imageDigest, critical.Image.DockerManifestDigest)
 	}
 
 	return nil
