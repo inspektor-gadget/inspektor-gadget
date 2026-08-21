@@ -156,16 +156,16 @@ spec:
       labels:
         k8s-app: gadget
       annotations:
-        # We need to set gadget container as unconfined so it is able to write
-        # /sys/fs/bpf as well as /sys/kernel/debug/tracing.
-        # Otherwise, we can have error like:
-        # "failed to create server failed to create folder for pinning bpf maps: mkdir /sys/fs/bpf/gadget: permission denied"
-        # (For reference, see: https://github.com/inspektor-gadget/inspektor-gadget/runs/3966318270?check_suite_focus=true#step:20:221)
-        container.apparmor.security.beta.kubernetes.io/gadget: "unconfined"
         prometheus.io/scrape: "true"
         prometheus.io/port: "2224"
         prometheus.io/path: "/metrics"
     spec:
+      # We need to set the gadget container as unconfined so it is able to
+      # write /sys/fs/bpf as well as /sys/kernel/debug/tracing. See the
+      # annotation above (used on Kubernetes < 1.30) for more details.
+      securityContext:
+        appArmorProfile:
+          type: Unconfined
       serviceAccount: gadget
       hostPID: false
       hostNetwork: false
