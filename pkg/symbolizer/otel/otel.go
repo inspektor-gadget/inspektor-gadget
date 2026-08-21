@@ -365,7 +365,7 @@ func (o *otelResolverInstance) lookupOrWait(correlationID uint64, eventBootTimes
 }
 
 func bpfVerifierLogLevel() uint32 {
-	if log.IsLevelEnabled(log.DebugLevel) {
+	if log.IsLevelEnabled(log.TraceLevel) {
 		return 2 // full verifier log
 	}
 	return 0
@@ -436,7 +436,7 @@ func (o *otelResolverInstance) startOtelEbpfProfiler(ctx context.Context) error 
 		SamplesPerSecond:       otelSamplesPerSecond,
 		MapScaleFactor:         0,
 		KernelVersionCheck:     false,
-		VerboseMode:            log.IsLevelEnabled(log.DebugLevel),
+		VerboseMode:            log.IsLevelEnabled(log.TraceLevel),
 		BPFVerifierLogLevel:    bpfVerifierLogLevel(),
 		ProbabilisticInterval:  0,
 		ProbabilisticThreshold: 0,

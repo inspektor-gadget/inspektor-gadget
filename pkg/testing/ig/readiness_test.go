@@ -145,5 +145,6 @@ func TestReadinessWatcher_UpdatedSignal(t *testing.T) {
 func TestIsDebugLine(t *testing.T) {
 	assert.True(t, isDebugLine(bareMarker))
 	assert.True(t, isDebugLine(nodeAMarker))
+	assert.True(t, isDebugLine(`time=2026-07-08T12:00:00Z level=DEBUG msg="OTel debug output"`))
 	assert.False(t, isDebugLine(`time="2026-07-08T12:00:00Z" level=warning msg="something"`))
 }
