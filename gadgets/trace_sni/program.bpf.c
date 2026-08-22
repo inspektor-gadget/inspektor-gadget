@@ -5,6 +5,7 @@
 #include <linux/bpf.h>
 #include <linux/if_ether.h>
 #include <linux/ip.h>
+#include <linux/ipv6.h>
 #include <linux/in.h>
 #include <linux/tcp.h>
 
@@ -169,36 +170,42 @@ int ig_trace_sni(struct __sk_buff *skb)
 	struct ethhdr ethh;
 	if (bpf_skb_load_bytes(skb, 0, &ethh, sizeof ethh))
 		return 0;
-	if (bpf_ntohs(ethh.h_proto) != ETH_P_IP)
-		return 0;
 
-	int ip_off = ETH_HLEN;
-	// Read the IP header.
-	struct iphdr iph;
-	if (bpf_skb_load_bytes(skb, ip_off, &iph, sizeof iph))
-		return 0;
+	int tcp_off = 0;
+	__u16 h_proto = bpf_ntohs(ethh.h_proto);
 
-	// Skip packets with IP protocol other than TCP.
-	if (iph.protocol != IPPROTO_TCP)
+	if (h_proto == ETH_P_IP) {
+		int ip_off = ETH_HLEN;
+		struct iphdr iph;
+		if (bpf_skb_load_bytes(skb, ip_off, &iph, sizeof iph))
+			return 0;
+		if (iph.protocol != IPPROTO_TCP)
+			return 0;
+		__u8 ip_header_len = iph.ihl * 4;
+		tcp_off = ip_off + ip_header_len;
+	} else if (h_proto == ETH_P_IPV6) {
+		int ip_off = ETH_HLEN;
+		struct ipv6hdr ip6h;
+		if (bpf_skb_load_bytes(skb, ip_off, &ip6h, sizeof ip6h))
+			return 0;
+		if (ip6h.nexthdr != IPPROTO_TCP)
+			return 0;
+		tcp_off = ip_off + sizeof(struct ipv6hdr);
+	} else {
 		return 0;
-
-	// An IPv4 header doesn't have a fixed size. The IHL field of a packet
-	// represents the size of the IP header in 32-bit words, so we need to
-	// multiply this value by 4 to get the header size in bytes.
-	__u8 ip_header_len = iph.ihl * 4;
-	int tcp_off = ip_off + ip_header_len;
+	}
 
 	// Read the TCP header.
 	struct tcphdr tcph;
 	if (bpf_skb_load_bytes(skb, tcp_off, &tcph, sizeof tcph))
 		return 0;
 
-	if (!tcph.psh)
-		return 0;
-
 	// The data offset field in the header is specified in 32-bit words. We
 	// have to multiply this value by 4 to get the TCP header length in bytes.
 	__u8 tcp_header_len = tcph.doff * 4;
+	if (tcp_header_len < sizeof(struct tcphdr))
+		return 0;
+
 	// TLS data starts at this offset.
 	int payload_off = tcp_off + tcp_header_len;
 
