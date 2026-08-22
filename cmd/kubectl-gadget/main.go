@@ -160,6 +160,7 @@ func main() {
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, grpcRuntime, hiddenColumnTags, common.CommandModeAttach))
 	rootCmd.AddCommand(common.NewConfigCmd(grpcRuntime, rootFlags))
 	rootCmd.AddCommand(img.NewImageCmd(grpcRuntime, imgCommands))
+	rootCmd.AddCommand(common.NewDaemonConfigCmd(grpcRuntime, rootFlags))
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
