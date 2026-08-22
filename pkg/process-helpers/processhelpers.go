@@ -43,21 +43,21 @@ type ProcessInfo struct {
 	PID              int       `json:"pid"`
 	PPID             int       `json:"ppid"`
 	Comm             string    `json:"comm"`
-	CPUUsage         float64   `json:"cpuUsage"`         // CPU usage in percentage
-	CPUUsageRelative float64   `json:"cpuUsageRelative"` // CPU usage in percentage, relative to number of cores
-	CPUTime          uint64    `json:"cpuTime"`          // Total CPU time
-	Priority         int64     `json:"priority"`         // Process priority
-	Nice             int64     `json:"nice"`             // Nice Value
-	MemoryRSS        uint64    `json:"memoryRSS"`        // Resident Set Size in bytes
-	MemoryVirtual    uint64    `json:"memoryVirtual"`    // Virtual memory size in bytes
-	MemoryShared     uint64    `json:"memoryShared"`     // Shared memory size in bytes
-	MemoryRelative   float64   `json:"memoryRelative"`   // Percentage of memory usage of the system
-	ThreadCount      int       `json:"threadCount"`      // Number of threads
-	State            string    `json:"state"`            // Process state (R: running, S: sleeping, etc.)
-	Uid              uint32    `json:"uid"`              // UID of the process owner
-	StartTime        uint64    `json:"startTime"`        // Process start time (clock ticks since system boot)
-	StartTimeStr     time.Time `json:"startTimeStr"`     // Process start time as a formatted string
-	MountNsID        uint64    `json:"mountnsid"`        // Mount namespace ID
+	CPUUsage         float64   `json:"cpuUsage"`       // CPU usage in percentage
+	CPUUsageRelative float64   `json:"cpuRelative"`    // CPU usage in percentage, relative to number of cores
+	CPUTime          uint64    `json:"cpuTime"`        // Total CPU time
+	Priority         int64     `json:"priority"`       // Process priority
+	Nice             int64     `json:"nice"`           // Nice Value
+	MemoryRSS        uint64    `json:"memoryRSS"`      // Resident Set Size in bytes
+	MemoryVirtual    uint64    `json:"memoryVirtual"`  // Virtual memory size in bytes
+	MemoryShared     uint64    `json:"memoryShared"`   // Shared memory size in bytes
+	MemoryRelative   float64   `json:"memoryRelative"` // Percentage of memory usage of the system
+	ThreadCount      int       `json:"threadCount"`    // Number of threads
+	State            string    `json:"state"`          // Process state (R: running, S: sleeping, etc.)
+	Uid              uint32    `json:"uid"`            // UID of the process owner
+	StartTime        uint64    `json:"startTime"`      // Process start time (clock ticks since system boot)
+	StartTimeStr     time.Time `json:"startTimeStr"`   // Process start time as a formatted string
+	MountNsID        uint64    `json:"mountnsid"`      // Mount namespace ID
 }
 
 type Options interface {
