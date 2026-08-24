@@ -199,7 +199,8 @@ func (t *Tracer[Event]) Attach(pid uint32) error {
 // typically a bind mount created by "ip netns add" (/run/netns/<name>) or a
 // procfs namespace link (/proc/<pid>/ns/net).
 //
-// Calling it twice with the same path is a no-op, and a path that refers to a
+// Calling it again with the same path and namespace is a no-op. If the path is
+// rebound, its association is moved transactionally. A path that refers to a
 // namespace already attached to by a container is deduplicated as well, since
 // both are keyed by the network namespace inode.
 func (t *Tracer[Event]) AttachNetnsPath(path string) error {
@@ -215,22 +216,71 @@ func (t *Tracer[Event]) AttachNetnsPath(path string) error {
 	}
 	defer netnsHandle.Close()
 
-	if a, ok := t.attachments[netns]; ok {
-		a.users[netnsPathUser] = struct{}{}
-		t.netnsPaths[path] = netns
+	return t.attachNetnsPath(path, netns, func() (int, error) {
+		return rawsock.OpenRawSockInNetns(netnsHandle)
+	})
+}
+
+// attachNetnsPath updates path after an already-resolved namespace has been
+// acquired. It is split from AttachNetnsPath so failure and rollback behavior
+// can be tested without depending on host resource exhaustion. t.mu must be
+// held by the caller.
+func (t *Tracer[Event]) attachNetnsPath(path string, netns uint64, openSock func() (int, error)) error {
+	oldNetns, pathWasAttached := t.netnsPaths[path]
+	if pathWasAttached && oldNetns == netns {
 		return nil
 	}
 
-	a, err := t.newAttachment(netnsPathUser, netns, func() (int, error) {
-		return rawsock.OpenRawSockInNetns(netnsHandle)
-	})
-	if err != nil {
-		return fmt.Errorf("creating network tracer attachment for netns path %q: %w", path, err)
+	// Validate the old association before preparing the replacement. This
+	// keeps an inconsistent bookkeeping state from being made harder to
+	// diagnose and, importantly, leaves it unchanged on error.
+	var oldAttachment *attachment
+	if pathWasAttached {
+		var ok bool
+		oldAttachment, ok = t.attachments[oldNetns]
+		if !ok {
+			return fmt.Errorf("no attachment for netns %d (path %q)", oldNetns, path)
+		}
 	}
-	t.attachments[netns] = a
+
+	newAttachment, attachmentExists := t.attachments[netns]
+	if !attachmentExists {
+		var err error
+		newAttachment, err = t.newAttachment(netnsPathUser, netns, openSock)
+		if err != nil {
+			return fmt.Errorf("creating network tracer attachment for netns path %q: %w", path, err)
+		}
+		t.attachments[netns] = newAttachment
+	} else {
+		newAttachment.users[netnsPathUser] = struct{}{}
+	}
+
+	// Commit the path move only after the replacement attachment is ready.
+	// Map assignment cannot fail, so errors above leave the old association
+	// and attachment intact.
 	t.netnsPaths[path] = netns
 
+	if pathWasAttached {
+		t.removeNetnsPathUserIfUnused(oldNetns, oldAttachment)
+	}
+
 	return nil
+}
+
+// removeNetnsPathUserIfUnused drops the path sentinel when no path still
+// refers to netns. Container users keep the attachment alive independently.
+// t.mu must be held by the caller.
+func (t *Tracer[Event]) removeNetnsPathUserIfUnused(netns uint64, a *attachment) {
+	for _, other := range t.netnsPaths {
+		if other == netns {
+			return
+		}
+	}
+
+	delete(a.users, netnsPathUser)
+	if len(a.users) == 0 {
+		t.releaseAttachment(netns, a)
+	}
 }
 
 // DetachNetnsPath detaches from the network namespace that path referred to
@@ -255,16 +305,7 @@ func (t *Tracer[Event]) DetachNetnsPath(path string) error {
 	// Several paths can refer to the same network namespace, e.g. the bind
 	// mount and the procfs link of the same pod. Keep the attachment until the
 	// last one is detached.
-	for _, other := range t.netnsPaths {
-		if other == netns {
-			return nil
-		}
-	}
-
-	delete(a.users, netnsPathUser)
-	if len(a.users) == 0 {
-		t.releaseAttachment(netns, a)
-	}
+	t.removeNetnsPathUserIfUnused(netns, a)
 
 	return nil
 }

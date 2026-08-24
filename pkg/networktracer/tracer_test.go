@@ -287,6 +287,130 @@ func TestAttachNetnsPathDedupsWithSameNetns(t *testing.T) {
 	require.Empty(t, tracer.attachments)
 }
 
+func rebindNetns(t *testing.T, mountPath, nsPath string) {
+	t.Helper()
+	require.NoError(t, unix.Unmount(mountPath, unix.MNT_DETACH), "unmounting old namespace")
+	require.NoError(t, unix.Mount(nsPath, mountPath, "", unix.MS_BIND, ""),
+		"binding replacement namespace")
+}
+
+func TestAttachNetnsPathRebindReleasesOldNamespace(t *testing.T) {
+	utilstest.RequireRoot(t)
+
+	firstPath := createTestNetns(t)
+	secondPath := createTestNetns(t)
+	mountPath := bindMountNetns(t, firstPath)
+	firstInode := inodeOf(t, firstPath)
+	secondInode := inodeOf(t, secondPath)
+	require.NotEqual(t, firstInode, secondInode)
+
+	tracer := newTestTracer(t)
+	require.NoError(t, tracer.AttachNetnsPath(mountPath))
+
+	rebindNetns(t, mountPath, secondPath)
+	require.NoError(t, tracer.AttachNetnsPath(mountPath))
+
+	require.NotContains(t, tracer.attachments, firstInode,
+		"moving the only path user must release the old attachment")
+	require.Contains(t, tracer.attachments, secondInode)
+	require.Equal(t, secondInode, tracer.netnsPaths[mountPath])
+
+	require.NoError(t, tracer.DetachNetnsPath(mountPath))
+	require.Empty(t, tracer.attachments)
+}
+
+func TestAttachNetnsPathRebindPreservesAlias(t *testing.T) {
+	utilstest.RequireRoot(t)
+
+	firstPath := createTestNetns(t)
+	secondPath := createTestNetns(t)
+	movingPath := bindMountNetns(t, firstPath)
+	aliasPath := bindMountNetns(t, firstPath)
+	firstInode := inodeOf(t, firstPath)
+	secondInode := inodeOf(t, secondPath)
+
+	tracer := newTestTracer(t)
+	require.NoError(t, tracer.AttachNetnsPath(movingPath))
+	require.NoError(t, tracer.AttachNetnsPath(aliasPath))
+
+	rebindNetns(t, movingPath, secondPath)
+	require.NoError(t, tracer.AttachNetnsPath(movingPath))
+
+	require.Contains(t, tracer.attachments, firstInode,
+		"the old attachment must survive while an alias still refers to it")
+	require.Contains(t, tracer.attachments, secondInode)
+	require.Equal(t, firstInode, tracer.netnsPaths[aliasPath])
+	require.Equal(t, secondInode, tracer.netnsPaths[movingPath])
+
+	require.NoError(t, tracer.DetachNetnsPath(aliasPath))
+	require.NotContains(t, tracer.attachments, firstInode)
+	require.Contains(t, tracer.attachments, secondInode)
+	require.NoError(t, tracer.DetachNetnsPath(movingPath))
+	require.Empty(t, tracer.attachments)
+}
+
+func TestAttachNetnsPathRebindPreservesContainerUser(t *testing.T) {
+	utilstest.RequireRoot(t)
+
+	firstPath := createTestNetns(t)
+	secondPath := createTestNetns(t)
+	movingPath := bindMountNetns(t, firstPath)
+	firstInode := inodeOf(t, firstPath)
+	secondInode := inodeOf(t, secondPath)
+
+	tracer := newTestTracer(t)
+	require.NoError(t, tracer.AttachNetnsPath(movingPath))
+
+	// Model an attachment shared with container discovery. Attach() adds the
+	// container pid to this same users set after deduplicating by inode.
+	const containerPID = uint32(4242)
+	tracer.attachments[firstInode].users[containerPID] = struct{}{}
+
+	rebindNetns(t, movingPath, secondPath)
+	require.NoError(t, tracer.AttachNetnsPath(movingPath))
+
+	old := tracer.attachments[firstInode]
+	require.NotNil(t, old, "a container user must keep the old attachment alive")
+	require.Contains(t, old.users, containerPID)
+	require.NotContains(t, old.users, netnsPathUser)
+	require.Contains(t, tracer.attachments, secondInode)
+
+	require.NoError(t, tracer.Detach(containerPID))
+	require.NotContains(t, tracer.attachments, firstInode)
+	require.NoError(t, tracer.DetachNetnsPath(movingPath))
+	require.Empty(t, tracer.attachments)
+}
+
+func TestAttachNetnsPathRebindRollsBackOnCreateFailure(t *testing.T) {
+	utilstest.RequireRoot(t)
+
+	firstPath := createTestNetns(t)
+	secondPath := createTestNetns(t)
+	mountPath := bindMountNetns(t, firstPath)
+	firstInode := inodeOf(t, firstPath)
+	secondInode := inodeOf(t, secondPath)
+
+	tracer := newTestTracer(t)
+	require.NoError(t, tracer.AttachNetnsPath(mountPath))
+	oldAttachment := tracer.attachments[firstInode]
+
+	tracer.mu.Lock()
+	err := tracer.attachNetnsPath(mountPath, secondInode, func() (int, error) {
+		return -1, fmt.Errorf("injected socket failure")
+	})
+	tracer.mu.Unlock()
+
+	require.ErrorContains(t, err, "injected socket failure")
+	require.Equal(t, firstInode, tracer.netnsPaths[mountPath],
+		"a failed replacement must preserve the old path association")
+	require.Same(t, oldAttachment, tracer.attachments[firstInode],
+		"a failed replacement must preserve the old attachment")
+	require.NotContains(t, tracer.attachments, secondInode)
+
+	require.NoError(t, tracer.DetachNetnsPath(mountPath))
+	require.Empty(t, tracer.attachments)
+}
+
 func attachmentKeys(t *Tracer[struct{}]) []uint64 {
 	keys := make([]uint64, 0, len(t.attachments))
 	for k := range t.attachments {
