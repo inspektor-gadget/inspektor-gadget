@@ -5,7 +5,7 @@ description: Hello world gadget with Wasm module
 ---
 
 This guide explores the wasm support to implement complex logic in our gadget.
-This is a continuation of [hello world gadget](./hello-world-gadget.md), be sure
+This is a continuation of [hello world gadget](./hello-world-gadget.mdx), be sure
 you are familiar with that guide before continuing with this.
 
 ### Creating our first wasm program
