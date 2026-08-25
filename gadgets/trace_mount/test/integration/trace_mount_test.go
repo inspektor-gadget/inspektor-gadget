@@ -35,15 +35,16 @@ type traceMountEvent struct {
 	Timestamp string        `json:"timestamp"`
 	Proc      utils.Process `json:"proc"`
 
-	Delta uint64 `json:"delta_raw"`
-	Flags string `json:"flags"`
-	Error string `json:"error"`
-	Fs    string `json:"fs"`
-	Src   string `json:"src"`
-	Dest  string `json:"dest"`
-	Data  string `json:"data"`
-	Op    string `json:"op"`
-	Call  string `json:"call"`
+	Delta   uint64 `json:"delta_raw"`
+	Flags   string `json:"flags"`
+	Error   string `json:"error"`
+	Fs      string `json:"fs"`
+	Src     string `json:"src"`
+	Dest    string `json:"dest"`
+	Data    string `json:"data"`
+	NetnsID uint64 `json:"netns_id"`
+	Op      string `json:"op"`
+	Call    string `json:"call"`
 }
 
 func TestTraceMount(t *testing.T) {
@@ -107,6 +108,7 @@ func TestTraceMount(t *testing.T) {
 				Delta:     utils.NormalizedInt,
 				Fs:        utils.NormalizedStr,
 				Call:      utils.NormalizedStr,
+				NetnsID:   utils.NormalizedInt,
 			}
 
 			normalize := func(e *traceMountEvent) {
@@ -117,6 +119,7 @@ func TestTraceMount(t *testing.T) {
 				utils.NormalizeString(&e.Flags)
 				utils.NormalizeString(&e.Fs)
 				utils.NormalizeString(&e.Call)
+				utils.NormalizeInt(&e.NetnsID)
 			}
 
 			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)
