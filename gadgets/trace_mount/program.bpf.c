@@ -67,6 +67,7 @@ struct arg {
 struct event {
 	gadget_timestamp timestamp_raw;
 	struct gadget_process proc;
+	gadget_netns_id netns_id;
 
 	gadget_duration delta_raw;
 	enum flags_set flags_raw;
@@ -132,6 +133,8 @@ static int probe_exit(void *ctx, int ret)
 		goto cleanup;
 
 	gadget_process_populate(&eventp->proc);
+	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
+	eventp->netns_id = BPF_CORE_READ(task, nsproxy, net_ns, ns.inum);
 	eventp->timestamp_raw = bpf_ktime_get_boot_ns();
 	eventp->delta_raw = bpf_ktime_get_ns() - argp->ts;
 	eventp->flags_raw = argp->flags;
