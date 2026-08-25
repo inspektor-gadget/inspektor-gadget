@@ -126,6 +126,8 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 		skipParams = append(skipParams, "!attach")
 	}
 
+	var disabledOperators []string
+
 	initializedOperators := false
 
 	preRun := func(cmd *cobra.Command, args []string) error {
@@ -193,7 +195,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 		}
 
 		ops := make([]operators.DataOperator, 0)
-		for _, op := range operators.GetDataOperators() {
+		for _, op := range operators.GetDataOperatorsExcluding(disabledOperators) {
 			// Initialize operator
 			err := op.Init(opGlobalParams[op.Name()])
 			if err != nil {
@@ -242,6 +244,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 			context.Background(),
 			imageName,
 			gadgetcontext.WithDataOperators(ops...),
+			gadgetcontext.WithDisabledDataOperators(disabledOperators...),
 			gadgetcontext.WithUseInstance(commandMode == CommandModeAttach),
 			gadgetcontext.WithIsClient(runtime.IsClient()),
 		)
@@ -469,6 +472,8 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 	for _, operatorParams := range opGlobalParams {
 		AddOCIFlags(cmd, operatorParams, skipParams, runtime)
 	}
+
+	cmd.PersistentFlags().StringSliceVarP(&disabledOperators, "disable-operators", "d", nil, "Comma-separated list of operators to disable")
 
 	return cmd
 }

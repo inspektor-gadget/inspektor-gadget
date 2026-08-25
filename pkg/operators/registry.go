@@ -15,7 +15,6 @@
 package operators
 
 import (
-	"maps"
 	"sync"
 )
 
@@ -44,9 +43,24 @@ func RegisterDataOperator(operator DataOperator) {
 }
 
 func GetDataOperators() map[string]DataOperator {
+	return GetDataOperatorsExcluding(nil)
+}
+
+// GetDataOperatorsExcluding returns a copy of dataOperators excluding any listed in disabledOperators
+func GetDataOperatorsExcluding(disabledOperators []string) map[string]DataOperator {
 	registryLock.Lock()
 	defer registryLock.Unlock()
-	return maps.Clone(dataOperators)
+	disabledMap := make(map[string]bool, len(disabledOperators))
+	for _, name := range disabledOperators {
+		disabledMap[name] = true
+	}
+	result := make(map[string]DataOperator)
+	for name, op := range dataOperators {
+		if !disabledMap[name] {
+			result[name] = op
+		}
+	}
+	return result
 }
 
 // GetImageOperatorForMediaType returns a copy of the map of operators matching the given
