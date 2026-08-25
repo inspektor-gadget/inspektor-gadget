@@ -26,10 +26,9 @@ def burn_cpu(deadline):
 
 
 def main():
-    # Default duration is generous: the OTel eBPF profiler needs ~16s to
-    # initialize and a few more seconds to analyze this process before it can
-    # symbolize its Python frames. The test starts the gadget, waits for the
-    # profiler to initialize, then runs this workload.
+    # The test waits for the OTel eBPF profiler to initialize before starting
+    # this workload. Keep running long enough for the profiler to analyze this
+    # process and collect symbolized samples.
     duration = float(sys.argv[1]) if len(sys.argv) > 1 else 15.0
     burn_cpu(time.time() + duration)
 

@@ -175,10 +175,10 @@ func parseReadyNode(line string) (string, bool) {
 	return fields[len(fields)-1], true
 }
 
-// isDebugLine reports whether a stderr line is a logrus debug line. Such lines are the verbose
-// noise produced by "-v" and are dropped from the stored stderr to keep test reports readable.
+// isDebugLine reports whether a stderr line is a debug log. Such lines are the verbose noise
+// produced by "-v" and are dropped from the stored stderr to keep test reports readable.
 func isDebugLine(line string) bool {
-	return strings.Contains(line, "level=debug")
+	return strings.Contains(line, "level=debug") || strings.Contains(line, "level=DEBUG")
 }
 
 // enableReadinessGate configures the runner to detect the gadget readiness marker on stderr. It
