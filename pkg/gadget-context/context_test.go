@@ -490,3 +490,10 @@ params:
 		})
 	}
 }
+
+func TestWithDisabledDataOperators(t *testing.T) {
+	disabledOps := []string{"kubeipresolver", "kubenameresolver"}
+	gCtx := New(context.Background(), "test-image", WithDisabledDataOperators(disabledOps...))
+
+	assert.Equal(t, disabledOps, gCtx.DisabledDataOperators())
+}
