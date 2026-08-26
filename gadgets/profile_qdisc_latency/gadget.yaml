@@ -3,6 +3,9 @@ description: Profile network scheduler latency
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/profile_qdisc_latency
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/profile_qdisc_latency
+tags:
+  - network
+  - latency
 datasources:
   qdisc:
     annotations:

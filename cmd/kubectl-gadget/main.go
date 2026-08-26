@@ -155,6 +155,7 @@ func main() {
 	hiddenColumnTags := []string{"runtime"}
 
 	common.AddInstanceCommands(rootCmd, grpcRuntime)
+	common.AddCatalogCommands(rootCmd, grpcRuntime)
 
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, grpcRuntime, hiddenColumnTags, common.CommandModeRun))
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, grpcRuntime, hiddenColumnTags, common.CommandModeAttach))

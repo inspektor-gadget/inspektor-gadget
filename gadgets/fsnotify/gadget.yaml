@@ -3,6 +3,9 @@ description: Gadget enriching inotify or fanotify events
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/fsnotify
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/fsnotify
+tags:
+  - file
+  - filesystem
 datasources:
   fsnotify:
     fields:
