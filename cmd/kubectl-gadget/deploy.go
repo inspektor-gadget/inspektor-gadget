@@ -61,7 +61,6 @@ import (
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/config/gadgettracermanagerconfig"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
 	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
@@ -97,17 +96,10 @@ var (
 	nodeSelector          string
 	experimentalVar       bool
 	skipSELinuxOpts       bool
-	eventBufferLength     uint64
-	daemonLogLevel        string
 	appArmorprofile       string
 	verifyImage           bool
 	publicKey             string
 	strLevels             []string
-	verifyGadgets         bool
-	gadgetsPublicKeys     string
-	allowedGadgets        []string
-	insecureRegistries    []string
-	disallowGadgetsPull   bool
 	otelMetricsListen     bool
 	otelMetricsListenAddr string
 	daemonConfig          string
@@ -202,16 +194,6 @@ func init() {
 		"skip-selinux-opts", "",
 		false,
 		"skip setting SELinux options on the gadget pod")
-	deployCmd.PersistentFlags().Uint64VarP(
-		&eventBufferLength,
-		"events-buffer-length", "",
-		16384,
-		"The events buffer length. A low value could impact horizontal scaling.")
-	deployCmd.PersistentFlags().MarkDeprecated("events-buffer-length", "This flag is deprecated and will be removed in v0.43.0+ release. Use --daemon-config instead")
-	deployCmd.PersistentFlags().StringVarP(
-		&daemonLogLevel,
-		"daemon-log-level", "", "info", fmt.Sprintf("Set the ig-k8s log level, valid values are: %v", strings.Join(strLevels, ", ")))
-	deployCmd.PersistentFlags().MarkDeprecated("daemon-log-level", "This flag is deprecated and will be removed in v0.43.0+ release. Use --daemon-config instead")
 	deployCmd.PersistentFlags().StringVarP(
 		&appArmorprofile,
 		"apparmor-profile", "", "unconfined", "AppArmor profile to use")
@@ -223,40 +205,6 @@ func init() {
 	deployCmd.PersistentFlags().StringVarP(
 		&publicKey,
 		"public-key", "", resources.InspektorGadgetPublicKey, "Public key used to verify the container image")
-	deployCmd.PersistentFlags().BoolVar(
-		&verifyGadgets,
-		"verify-gadgets", true, "Verify gadgets using the provided public keys")
-	deployCmd.PersistentFlags().MarkDeprecated("verify-gadgets", "This flag is deprecated and will be removed in v0.43.0+ release. Use --daemon-config instead")
-	// WARNING For now, use StringVar() instead of StringSliceVar() as only the
-	// first line of the file will be taken when used with
-	// --gadgets-public-keys="$(cat inspektor-gadget.pub),$(cat your-key.pub)"
-	deployCmd.PersistentFlags().StringVar(
-		&gadgetsPublicKeys,
-		"gadgets-public-keys", resources.InspektorGadgetPublicKey, "Public keys used to verify the gadgets")
-	deployCmd.PersistentFlags().MarkDeprecated("gadgets-public-keys", "This flag is deprecated and will be removed in v0.43.0+ release. Use --daemon-config instead")
-	deployCmd.PersistentFlags().StringSliceVar(
-		&allowedGadgets,
-		"allowed-gadgets", []string{}, "List of allowed gadgets, if gadget is not part of it, execution will be denied. By default, all gadgets are allowed.")
-	deployCmd.PersistentFlags().MarkDeprecated("allowed-gadgets", "This flag is deprecated and will be removed in v0.43.0+ release. Use --daemon-config instead")
-	deployCmd.PersistentFlags().StringSliceVar(
-		&insecureRegistries,
-		"insecure-registries",
-		[]string{},
-		"List of registries to access over plain HTTP",
-	)
-	deployCmd.PersistentFlags().MarkDeprecated("insecure-registries", "This flag is deprecated and will be removed in v0.43.0+ release. Use --daemon-config instead")
-	deployCmd.PersistentFlags().BoolVar(
-		&disallowGadgetsPull,
-		"disallow-gadgets-pulling", false, "Disallow pulling gadgets from registries")
-	deployCmd.PersistentFlags().MarkDeprecated("disallow-gadgets-pulling", "This flag is deprecated and will be removed in v0.43.0+ release. Use --daemon-config instead")
-	deployCmd.PersistentFlags().BoolVar(
-		&otelMetricsListen,
-		"otel-metrics-listen", false, "Enable OpenTelemetry metrics listener (Prometheus compatible) endpoint")
-	deployCmd.PersistentFlags().MarkDeprecated("otel-metrics-listen", "This flag is deprecated and will be removed in v0.43.0+ release. Use --daemon-config instead")
-	deployCmd.PersistentFlags().StringVar(
-		&otelMetricsListenAddr,
-		"otel-metrics-listen-address", "0.0.0.0:2224", "Address and port to create the OpenTelemetry metrics listener (Prometheus compatible) on")
-	deployCmd.PersistentFlags().MarkDeprecated("otel-metrics-listen-address", "This flag is deprecated and will be removed in v0.43.0+ release. Use --daemon-config instead")
 	deployCmd.PersistentFlags().StringSliceVar(
 		&setDaemonConfig,
 		"set-daemon-config", []string{}, "Set a key-value pair in the daemon configuration. The format is key=value. This flag can be used multiple times to set multiple values. Only recommended for primitive values (string, int, bool). For complex values, use --daemon-config flag with a YAML file.")
@@ -475,11 +423,9 @@ func createAffinity(client *kubernetes.Clientset) (*v1.Affinity, error) {
 }
 
 // applyConfigToConfigMap overrides the ConfigMap using the following order of precedence (highest to lowest):
-// 1. Flags (--gadgets-public-keys, --disallow-gadgets-pulling, etc.) [Deprecated]
-// 2. --set-daemon-config flag
-// 3. ConfigFile passed through `daemon-config`
-// 4. Flags default values [Deprecated]
-// 5. ConfigMap default values
+// 1. --set-daemon-config flag
+// 2. ConfigFile passed through `daemon-config`
+// 3. ConfigMap default values
 func applyConfigToConfigMap(cm *v1.ConfigMap, configPath string, flags *pflag.FlagSet) error {
 	if cm == nil {
 		return fmt.Errorf("ConfigMap is nil")
@@ -497,16 +443,6 @@ func applyConfigToConfigMap(cm *v1.ConfigMap, configPath string, flags *pflag.Fl
 	if err != nil {
 		return fmt.Errorf("reading config file %q: %w", configPath, err)
 	}
-
-	// Set default value from flags
-	flags.VisitAll(func(flag *pflag.Flag) {
-		ck, ok := flagToConfigKey(flag.Name)
-		if !ok {
-			return
-		}
-		val := flagToConfigValue(ck, flag.Value)
-		v.SetDefault(ck, val)
-	})
 
 	// Set the values from a config file
 	if configPath != "" {
@@ -556,16 +492,6 @@ func applyConfigToConfigMap(cm *v1.ConfigMap, configPath string, flags *pflag.Fl
 		v.Set(key, value)
 	}
 
-	// Set values from flags if changed
-	flags.VisitAll(func(flag *pflag.Flag) {
-		fn, ok := flagToConfigKey(flag.Name)
-		if !ok || !flag.Changed {
-			return
-		}
-		val := flagToConfigValue(fn, flag.Value)
-		v.Set(fn, val)
-	})
-
 	var buf bytes.Buffer
 	err = v.WriteConfigTo(&buf)
 	if err != nil {
@@ -574,33 +500,6 @@ func applyConfigToConfigMap(cm *v1.ConfigMap, configPath string, flags *pflag.Fl
 	cm.Data[configYamlKey] = buf.String()
 
 	return nil
-}
-
-// flagToConfigKey converts a flag name to the corresponding config key
-// since some flags have different names in the config file.
-func flagToConfigKey(flagName string) (string, bool) {
-	key := flagName
-	switch flagName {
-	case "gadgets-public-keys":
-		key = gadgettracermanagerconfig.PublicKeys
-	case "disallow-gadgets-pulling":
-		key = gadgettracermanagerconfig.DisallowPulling
-	case "verify-gadgets":
-		key = gadgettracermanagerconfig.VerifyImage
-	}
-	if !gadgettracermanagerconfig.IsValidKey(key) {
-		return "", false
-	}
-
-	return gadgettracermanagerconfig.FullKeyPath(key), true
-}
-
-// flagToConfigValue converts a flag value to the corresponding config value.
-func flagToConfigValue(flagName string, value pflag.Value) any {
-	if flagName == gadgettracermanagerconfig.PublicKeys {
-		return strings.Split(value.String(), ",")
-	}
-	return value
 }
 
 func runDeploy(cmd *cobra.Command, args []string) error {
