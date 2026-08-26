@@ -23,12 +23,12 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	otelinterpreterconfig "go.opentelemetry.io/ebpf-profiler/interpreter/interpreterconfig"
 	"go.opentelemetry.io/ebpf-profiler/libpf"
 	otellog "go.opentelemetry.io/ebpf-profiler/log"
 	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
 	oteltimes "go.opentelemetry.io/ebpf-profiler/times"
 	oteltracer "go.opentelemetry.io/ebpf-profiler/tracer"
-	oteltracertypes "go.opentelemetry.io/ebpf-profiler/tracer/types"
 	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/symbolizer"
@@ -392,11 +392,6 @@ func (o *otelResolverInstance) startOtelEbpfProfiler(ctx context.Context) error 
 	// debug output.
 	otellog.SetLevel(logrusToSlogLevel(log.GetLevel()))
 
-	includeTracers, err := oteltracertypes.Parse("all")
-	if err != nil {
-		return fmt.Errorf("parsing list of OpenTelemetry tracers: %w", err)
-	}
-
 	monitorInterval := 2.0 * time.Second
 
 	var rep traceReporter
@@ -431,7 +426,7 @@ func (o *otelResolverInstance) startOtelEbpfProfiler(ctx context.Context) error 
 	intervals := oteltimes.New(0, monitorInterval, 0)
 	trc, err := oteltracer.NewTracer(ctx, &oteltracer.Config{
 		Intervals:              intervals,
-		IncludeTracers:         includeTracers,
+		InterpretersConfig:     otelinterpreterconfig.AllInterpreters(),
 		FilterErrorFrames:      true,
 		SamplesPerSecond:       otelSamplesPerSecond,
 		MapScaleFactor:         0,
@@ -442,8 +437,6 @@ func (o *otelResolverInstance) startOtelEbpfProfiler(ctx context.Context) error 
 		ProbabilisticThreshold: 0,
 		OffCPUThreshold:        0,
 		IncludeEnvVars:         nil,
-		ProbeLinks:             nil,
-		LoadProbe:              true,
 		TraceReporter:          rep,
 	})
 	if err != nil {
