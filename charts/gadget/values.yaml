@@ -16,6 +16,15 @@ config:
   # -- Enable experimental features
   experimental: false
 
+  # -- Authenticate clients through Kubernetes and enforce namespace access.
+  multiTenancy:
+    enabled: false
+    # -- Kubernetes authorization question used to resolve namespace access.
+    scope:
+      apiGroup: ""
+      resource: pods
+      verb: create
+
   # -- Events buffer length. A low value could impact horizontal scaling.
   eventsBufferLength: "16384"
 

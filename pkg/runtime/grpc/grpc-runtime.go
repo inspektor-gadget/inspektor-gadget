@@ -87,6 +87,7 @@ type Runtime struct {
 	globalParams   *params.Params
 	restConfig     *rest.Config
 	connectionMode ConnectionMode
+	authToken      string
 }
 
 type RunClient interface {
@@ -370,12 +371,23 @@ func (r *Runtime) getConnFromTarget(ctx context.Context, runtimeParams *params.P
 	return conn, nil
 }
 
+func (r *Runtime) SetAuthToken(token string) {
+	r.authToken = token
+}
+
 func (r *Runtime) dialContext(dialCtx context.Context, target target, timeout time.Duration) (*grpc.ClientConn, error) {
 	opts := []grpc.DialOption{
 		//nolint:staticcheck
 		grpc.WithBlock(),
 		//nolint:staticcheck
 		grpc.WithReturnConnectionError(),
+	}
+
+	if r.authToken != "" {
+		opts = append(opts, grpc.WithPerRPCCredentials(&bearerCreds{
+			token:         r.authToken,
+			allowInsecure: r.connectionMode == ConnectionModeKubernetesProxy,
+		}))
 	}
 
 	tlsKey := r.globalParams.Get(ParamTLSKey).String()

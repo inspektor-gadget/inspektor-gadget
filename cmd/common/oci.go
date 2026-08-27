@@ -78,7 +78,7 @@ nextName:
 		for _, tmpGadgetInstance := range gadgetInstances {
 			if idOrName == tmpGadgetInstance.Id {
 				instances = append(instances, tmpGadgetInstance)
-				break nextName
+				continue nextName
 			}
 			// match partial ID or full name
 			if tmpGadgetInstance.Name == idOrName || strings.HasPrefix(tmpGadgetInstance.Id, idOrName) {
@@ -211,15 +211,18 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 			if err != nil {
 				return fmt.Errorf("getting gadget instances: %w", err)
 			}
-			if len(notfound) > 0 || len(instances) == 0 {
-				return fmt.Errorf("gadget instance not found")
-			}
 			if len(ambiguous) > 0 {
 				return fmt.Errorf("gadget instance id or name are ambiguous")
 			}
-			imageName = instances[0].Id
+			if len(notfound) > 0 || len(instances) == 0 {
+				if !api.IsValidInstanceID(imageName) {
+					return fmt.Errorf("gadget instance not found")
+				}
+			} else {
+				imageName = instances[0].Id
+			}
 
-			if len(instances[0].Nodes) > 0 {
+			if len(instances) > 0 && len(instances[0].Nodes) > 0 {
 				// GetGadgetInfo can only be run on nodes that know about a gadget instance, so we need
 				// to make sure that the given nodes are valid
 				nodes := runtimeParams.Get(grpcruntime.ParamNode).AsStringSlice()
