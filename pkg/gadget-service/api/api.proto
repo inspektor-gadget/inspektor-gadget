@@ -77,6 +77,25 @@ message InfoResponse {
   string version = 1;
   bool experimental = 3;
   string serverVersion = 4;
+
+  // serverIsHostPidNs tells whether the process serving this request runs in
+  // the PID namespace of PID 1, as seen through the procfs of the host. It is
+  // unset when it could not be determined, which is also the case when talking
+  // to a server that is too old to report it.
+  optional bool serverIsHostPidNs = 5;
+
+  // serverIsInitPidNs tells whether the process serving this request runs in
+  // the PID namespace the kernel created at boot time. It is unset when it
+  // could not be determined, which is also the case when talking to a server
+  // that is too old to report it.
+  //
+  // This is stricter than serverIsHostPidNs: when Inspektor Gadget runs on a
+  // node that is itself containerized, for instance a minikube node started
+  // with the docker driver, serverIsHostPidNs can be true while this is false.
+  // Features handling PIDs reported by eBPF programs, such as the OTel eBPF
+  // profiler symbolizer, need this one, since those PIDs are always relative
+  // to the initial PID namespace.
+  optional bool serverIsInitPidNs = 6;
 }
 
 message DataElement {

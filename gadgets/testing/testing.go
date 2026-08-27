@@ -15,6 +15,8 @@
 package testing
 
 import (
+	"bytes"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"runtime"
@@ -28,6 +30,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/internal/testing/kernel"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 const (
@@ -45,6 +48,10 @@ const (
 	GccImage              = "ghcr.io/inspektor-gadget/ci/gcc:latest"
 	NetworkMultitoolImage = "ghcr.io/inspektor-gadget/ci/network-multitool:latest"
 	RegistryImage         = "ghcr.io/inspektor-gadget/ci/registry:2"
+	// PythonImage is pinned to 3.13 (not the floating "3" tag) because the OTel
+	// eBPF profiler only symbolizes CPython up to 3.14. See the same pin in
+	// .github/workflows/dockerhub-mirror.yml.
+	PythonImage = "ghcr.io/inspektor-gadget/ci/python:3.13-slim"
 )
 
 func SkipK8sDistros(t testing.TB, distros ...string) {
@@ -105,6 +112,58 @@ func RequireGpuEbpfBridge(t testing.TB) string {
 		t.Skipf("gpu-ebpf-bridge binary %q not available: %v", bridge, err)
 	}
 	return bridge
+}
+
+// RequireInitPidNs skips the test when Inspektor Gadget does not run in the
+// initial PID namespace.
+//
+// The OTel eBPF profiler symbolizer resolves the PIDs reported by eBPF
+// programs, which are relative to the initial PID namespace, through its own
+// /proc. When Inspektor Gadget runs elsewhere, it finds no process and
+// symbolizes nothing. This is the case in Kubernetes, where the gadget
+// DaemonSet runs with hostPID: false, and on minikube with the docker driver,
+// where even the node itself is in a nested PID namespace.
+//
+// Note that this is about the PID namespace of Inspektor Gadget itself: the
+// traced workloads can be in any PID namespace.
+func RequireInitPidNs(t testing.TB) {
+	t.Helper()
+
+	if utils.CurrentTestComponent != utils.KubectlGadgetTestComponent {
+		// ig is executed by this test, so it shares its PID namespace.
+		initPidNs, err := host.IsInitPidNs()
+		require.NoError(t, err, "checking if running in the initial PID namespace")
+		if !initPidNs {
+			t.Skip("Skipping test because ig does not run in the initial PID namespace")
+		}
+		return
+	}
+
+	// ig runs in the gadget pod, whose image is distroless: ask it instead of
+	// executing anything in the container.
+	path := os.Getenv("IG_PATH")
+	if path == "" {
+		path = "kubectl-gadget"
+	}
+	var stderr bytes.Buffer
+	cmd := exec.Command(path, "version", "--details", "-o", "json")
+	cmd.Stderr = &stderr
+	output, err := cmd.Output()
+	require.NoError(t, err, "getting gadget service info: %s", stderr.String())
+
+	var info struct {
+		ServerPidNamespace *struct {
+			IsInit *bool `json:"isInit"`
+		} `json:"serverPidNamespace"`
+	}
+	require.NoError(t, json.Unmarshal(output, &info), "parsing %q", output)
+
+	if info.ServerPidNamespace == nil || info.ServerPidNamespace.IsInit == nil {
+		t.Skip("Skipping test because the PID namespace of the gadget service could not be determined")
+	}
+	if !*info.ServerPidNamespace.IsInit {
+		t.Skip("Skipping test because the gadget service does not run in the initial PID namespace")
+	}
 }
 
 func RemoveMemlock(t testing.TB) {
