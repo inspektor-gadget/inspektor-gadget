@@ -48,7 +48,7 @@ require (
 	github.com/vishvananda/netns v0.0.5
 	go.opentelemetry.io/collector/pdata/pprofile v0.159.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.67.0
-	go.opentelemetry.io/ebpf-profiler v0.0.202536
+	go.opentelemetry.io/ebpf-profiler v0.0.202633
 	go.opentelemetry.io/otel v1.45.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.18.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.42.0
@@ -235,4 +235,4 @@ replace github.com/notaryproject/notation-go => github.com/inspektor-gadget/nota
 // - GetStackCacheMap() accessor for userspace cleanup
 // - GetPerfEntryEbpfProgram() accessor for perf_event OTel stack correlation
 // Please keep in sync with examples/go.mod
-replace go.opentelemetry.io/ebpf-profiler => github.com/alban/opentelemetry-ebpf-profiler v0.0.202633-0.20260826130604-af89924d87af
+replace go.opentelemetry.io/ebpf-profiler => github.com/alban/opentelemetry-ebpf-profiler v0.0.202633-0.20260827144410-0c05fb0a0bc6
