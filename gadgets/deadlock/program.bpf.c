@@ -52,7 +52,7 @@ GADGET_TRACER_MAP(dead_pids, 1024 * 256);
 struct edges_key {
 	__u64 mutex1;
 	__u64 mutex2;
-	gadget_pid pid;
+	gadget_pid key_pid;
 };
 
 // Value type for edges. Holds information about the edge.
@@ -123,7 +123,7 @@ static __always_inline int trace_mutex_acquire(struct pt_regs *ctx, u64 mutex)
 		struct edges_key edge_key = {};
 		edge_key.mutex1 = held_mutexes[i].mutex;
 		edge_key.mutex2 = mutex;
-		edge_key.pid = pid;
+		edge_key.key_pid = pid;
 
 		struct edges_value edge_value = {};
 		gadget_process_populate(&edge_value.proc);

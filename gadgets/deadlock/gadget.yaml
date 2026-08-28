@@ -8,6 +8,10 @@ datasources:
   mutex:
     annotations:
       description: Edges of the mutex-wait directed graph
+    fields:
+      key_pid:
+        annotations:
+          columns.hidden: "true"
   process_exit:
     annotations:
       description: Dead process IDs
