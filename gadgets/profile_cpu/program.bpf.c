@@ -246,6 +246,12 @@ int ig_prof_cpu(struct bpf_perf_event_data *ctx)
 		gadget_get_user_stack(ctx, ustack_raw);
 	else
 		__builtin_memset(ustack_raw, 0, sizeof(*ustack_raw));
+
+	if (collect_ustack && (__s32)ustack_raw->stack_id < 0)
+		return 0;
+	if (!user_stacks_only && (__s32)key->kern_stack_raw < 0)
+		return 0;
+
 	key->user_stack_id = ustack_raw->stack_id;
 
 	if (key->kern_stack_raw >= 0) {
