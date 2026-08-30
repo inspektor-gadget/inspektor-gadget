@@ -86,10 +86,15 @@ func (pv Params) AddPrefix(prefix string) Params {
 
 func (pv ParamValues) ExtractPrefixedValues(prefix string) ParamValues {
 	prefix = prefix + "."
+	lowerPrefix := strings.ToLower(prefix)
 	res := make(ParamValues)
 	for k, v := range pv {
 		if strings.HasPrefix(k, prefix) {
 			res[strings.TrimPrefix(k, prefix)] = v
+			continue
+		}
+		if strings.HasPrefix(strings.ToLower(k), lowerPrefix) {
+			res[k[len(lowerPrefix):]] = v
 		}
 	}
 	return res
