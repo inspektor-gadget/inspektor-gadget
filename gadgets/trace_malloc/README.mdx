@@ -38,4 +38,73 @@ Default value: "false"
 
 ## Guide
 
-TODO
+In this example, we will use the trace_malloc gadget to observe heap memory allocations and frees in a running container.
+
+First, we need to run an application that uses dynamic memory allocation.
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl run --restart=Never --image=redis:alpine myredis -- redis-server
+pod/myredis created
+```
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+```bash
+$ docker run --name test-malloc -d redis:alpine
+```
+  </TabItem>
+</Tabs>
+
+Then, let's run the gadget:
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+Using the trace_malloc gadget, we can observe `malloc` and `free` calls made via libc.so:
+
+```bash
+$ kubectl gadget run trace_malloc:%IG_TAG% --podname myredis
+K8S.NODE           K8S.NAMESPACE K8S.PODNAME K8S.CONTAINE… COMM         PID     TID OPERATION   ADDR                     SIZE
+minikube-docker    default       myredis     myredis       redis-server 523100  523100 malloc      0x00007f8b1c000aa0       1024
+minikube-docker    default       myredis     myredis       redis-server 523100  523100 malloc      0x00007f8b1c000ea0        512
+minikube-docker    default       myredis     myredis       redis-server 523100  523100 malloc      0x00007f8b1c0016a0       4096
+minikube-docker    default       myredis     myredis       redis-server 523100  523100 free        0x00007f8b1c000aa0          0
+minikube-docker    default       myredis     myredis       redis-server 523100  523100 malloc      0x00007f8b1c001aa0        256
+^C
+```
+
+Each row shows a `malloc` call with its returned address and requested size, or a `free` call with the freed address.
+We can stop the gadget by hitting Ctrl-C.
+
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+```bash
+$ sudo ig run trace_malloc:%IG_TAG% --containername test-malloc
+RUNTIME.CONTAINERNA… COMM                PID         TID         OPERATION    ADDR                      SIZE
+test-malloc          redis-server     523100      523100      malloc       0x00007f8b1c000aa0        1024
+test-malloc          redis-server     523100      523100      malloc       0x00007f8b1c000ea0         512
+test-malloc          redis-server     523100      523100      malloc       0x00007f8b1c0016a0        4096
+test-malloc          redis-server     523100      523100      free         0x00007f8b1c000aa0           0
+test-malloc          redis-server     523100      523100      malloc       0x00007f8b1c001aa0         256
+^C
+```
+  </TabItem>
+</Tabs>
+
+Finally, clean the system:
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl delete pod myredis
+```
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+```bash
+$ docker rm -f test-malloc
+```
+  </TabItem>
+</Tabs>
