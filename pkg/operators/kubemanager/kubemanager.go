@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/cilium/ebpf"
@@ -27,20 +28,24 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/status"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource/compat"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/auth"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/common"
 	hookservice "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager/hook-service"
 	hookserviceapi "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager/hook-service/api"
+	kubemanagerpolicy "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager/policy"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	tracercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/tracer-collection"
@@ -55,8 +60,10 @@ const (
 	ParamHookLivenessSocketFile = "hook-liveness-socketfile"
 
 	// Instance parameter keys
-	ParamAllNamespaces = "all-namespaces"
+	ParamAllNamespaces = kubemanagerpolicy.ParamAllNamespaces
 )
+
+const paramPolicyScope = kubemanagerpolicy.ParamPolicyScope
 
 type MountNsMapSetter interface {
 	SetMountNsMap(*ebpf.Map)
@@ -460,8 +467,21 @@ func (k *KubeManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext,
 		activate = true
 	}
 
+	_, hasPolicyScope := auth.PolicyScopeFromContext(gadgetCtx.Context())
+	policyRequired := hasPolicyScope || strings.EqualFold(paramValues[paramPolicyScope], "true")
 	if !activate {
+		if policyRequired {
+			return nil, status.Error(codes.PermissionDenied, "gadget does not support Kubernetes namespace isolation")
+		}
 		return nil, nil
+	}
+
+	if err := kubemanagerpolicy.EnforcePolicyScopeFromContext(gadgetCtx.Context(), paramValues); err != nil {
+		return nil, err
+	}
+	delete(paramValues, paramPolicyScope)
+	if err := params.CopyFromMap(paramValues, ""); err != nil {
+		return nil, err
 	}
 
 	return traceInstance, nil

@@ -75,6 +75,30 @@
         "experimental": {
           "type": "boolean"
         },
+        "multiTenancy": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "scope": {
+              "type": "object",
+              "properties": {
+                "apiGroup": {
+                  "type": "string"
+                },
+                "resource": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "verb": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        },
         "eventsBufferLength": {
           "type": ["integer", "string"]
         },
