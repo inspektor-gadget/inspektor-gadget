@@ -59,5 +59,5 @@ func (p *SignaturePuller) PullSigningInformation(ctx context.Context, repo *remo
 		errs = append(errs, fmt.Errorf("pulling signing information with %s: %w", puller.Name(), err))
 	}
 
-	return errors.Join(errs...)
+	return classify(errs)
 }
