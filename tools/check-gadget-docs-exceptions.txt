@@ -1,0 +1,32 @@
+# Gadgets with pre-existing documentation-structure violations, skipped
+# by tools/check-gadget-docs.sh until fixed (see #5635). Remove a gadget
+# from this list once its README.mdx follows the canonical structure —
+# the check then enforces it from that point on.
+
+# Empty '## Guide' (TODO placeholder) and/or title variant — tracked in
+# #5628, with in-flight PRs (#5691, #5692, #5693, #5642):
+profile_cuda
+trace_lsm
+trace_malloc
+trace_ssl
+
+# Missing '## Guide' section — in-flight PR #5639:
+trace_init_module
+
+# Title heading variant ('# trace signal'):
+trace_signal
+
+# Missing the '# <gadget-name>' title heading:
+advise_networkpolicy
+advise_seccomp
+audit_seccomp
+gpu_top
+gpu_top_per_pid
+snapshot_file
+snapshot_process
+snapshot_socket
+trace_gpu_starvation
+
+# Sections out of canonical order:
+top_cpu_throttle
+ttysnoop
