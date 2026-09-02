@@ -202,7 +202,7 @@ func pullGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (
 		return nil, err
 	}
 
-	if err := ociStore.saveIndexWithLock(); err != nil {
+	if err := ociStore.saveIndexAndPruneWithLock(ctx); err != nil {
 		return nil, err
 	}
 
@@ -933,7 +933,7 @@ func EnsureImage(ctx context.Context, image string, imgOpts *ImageOptions, pullP
 			return err
 		}
 
-		return imageStore.saveIndexWithLock()
+		return imageStore.saveIndexAndPruneWithLock(ctx)
 	})
 }
 
