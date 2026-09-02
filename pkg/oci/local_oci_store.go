@@ -32,6 +32,7 @@ import (
 type localOciStore struct {
 	*oci.Store
 
+	storePath  string
 	indexPath  string
 	oldIndex   *ocispec.Index
 	indexFlock *flock.Flock
@@ -88,6 +89,11 @@ func newLocalOciStore() (*localOciStore, error) {
 		return nil, fmt.Errorf("getting OCI store path: %w", err)
 	}
 
+	return newLocalOciStoreAt(ociStorePath)
+}
+
+// newLocalOciStoreAt opens the store at the given path.
+func newLocalOciStoreAt(ociStorePath string) (*localOciStore, error) {
 	// When running as root with --oci-store-user, let's open everything as
 	// read only in order to avoid polluting user directories with root
 	// owned files.
@@ -128,6 +134,7 @@ func newLocalOciStore() (*localOciStore, error) {
 
 	return &localOciStore{
 		Store:      ociStore,
+		storePath:  ociStorePath,
 		indexPath:  indexPath,
 		oldIndex:   oldIndex,
 		indexFlock: indexLock,
