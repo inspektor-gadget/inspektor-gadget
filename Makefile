@@ -418,11 +418,11 @@ install-headers:
 remove-headers:
 	rm -rf /usr/include/gadget
 
-.PHOHY: build-gadgets
+.PHONY: build-gadgets
 build-gadgets: install/ig
 	$(MAKE) -C gadgets/ build
 
-.PHOHY: push-gadgets
+.PHONY: push-gadgets
 push-gadgets: install/ig
 	$(MAKE) -C gadgets/ push
 
@@ -462,11 +462,10 @@ update-vmlinux:
 	popd && \
 	rm -rf $$TMP
 
-.PHONY:
-%-update-latest-tag:
+%-update-latest-tag: phony_explicit
 	$(CRANE) copy $(CONTAINER_REPO_NAMESPACE)/$*:$(IMAGE_TAG) $(CONTAINER_REPO_NAMESPACE)/$*:latest
 
-.PHOHY:
+.PHONY: update-latest-tag
 update-latest-tag: $(addsuffix -update-latest-tag,$(CONTAINER_IMAGES))
 	$(MAKE) -C gadgets/ update-latest-tag
 
