@@ -123,6 +123,27 @@ $(GADGETS): pull-builder-image
 		$$GADGET_BUILD_PARAMS \
 		$@
 
+# Gadget sources embedded in the documentation (e.g. the hello-world guide).
+# They are built to verify they compile, but never pushed.
+DOCS_GADGETS = \
+	../docs/gadget-devel/_hello-world-gadget/basic \
+	../docs/gadget-devel/_hello-world-gadget/final \
+	#
+
+.PHONY: $(DOCS_GADGETS)
+$(DOCS_GADGETS): pull-builder-image
+	@echo "Building $@"
+	@$(SUDO) \
+		IG_SOURCE_PATH=$(realpath $(ROOT_DIR)/..) \
+		$(IG) image build \
+		--builder-image $(BUILDER_IMAGE) \
+		-t hello-world-docs-$(notdir $@):latest \
+		--builder-image-pull=never \
+		$@
+
+.PHONY: validate-docs-gadgets
+validate-docs-gadgets: $(DOCS_GADGETS)
+
 .PHONY: $(GADGETS_README)
 $(GADGETS_README):
 	@# Create README if not exists

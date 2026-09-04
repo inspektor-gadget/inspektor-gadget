@@ -12,7 +12,7 @@ to learn how they implement the tests.
 
 :::
 
-Inspektor Gadget provides a set of helpers to implement tests for your gadget. This document is a small guide showing how to implement tests for the [hello-world gadget](./hello-world-gadget.md).
+Inspektor Gadget provides a set of helpers to implement tests for your gadget. This document is a small guide showing how to implement tests for the [hello-world gadget](./hello-world-gadget.mdx).
 
 First, create the testing file, `mygadget_test.go` and import some packages, like:
 
