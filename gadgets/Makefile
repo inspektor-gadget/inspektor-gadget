@@ -100,6 +100,12 @@ GADGETS_README_DEV = $(filter-out ci/%, $(addsuffix /dev.md, $(GADGETS)))
 .PHONY: all
 all: build
 
+# make does not allow implicit rules (with '%') to be phony so let's use
+# the 'phony_explicit' dependency to make implicit rules inherit the phony
+# attribute
+.PHONY: phony_explicit
+phony_explicit:
+
 .PHONY: build
 build: $(GADGETS)
 
@@ -122,6 +128,27 @@ $(GADGETS): pull-builder-image
 		--builder-image-pull=never \
 		$$GADGET_BUILD_PARAMS \
 		$@
+
+# Gadget sources embedded in the documentation (e.g. the hello-world guide).
+# They are built to verify they compile, but never pushed.
+DOCS_GADGETS = \
+	../docs/gadget-devel/_hello-world-gadget/basic \
+	../docs/gadget-devel/_hello-world-gadget/final \
+	#
+
+.PHONY: $(DOCS_GADGETS)
+$(DOCS_GADGETS): pull-builder-image
+	@echo "Building $@"
+	@$(SUDO) \
+		IG_SOURCE_PATH=$(realpath $(ROOT_DIR)/..) \
+		$(IG) image build \
+		--builder-image $(BUILDER_IMAGE) \
+		-t hello-world-docs-$(notdir $@):latest \
+		--builder-image-pull=never \
+		$@
+
+.PHONY: validate-docs-gadgets
+validate-docs-gadgets: $(DOCS_GADGETS)
 
 .PHONY: $(GADGETS_README)
 $(GADGETS_README):
@@ -156,14 +183,14 @@ $(GADGETS_README_DEV):
 	sudo ig image inspect $(@:/dev.md=):$(GADGET_TAG) -o custom --extra-info=ebpf.sequence $$GADGET_README_DEV_PARAMS >> "$@"
 	echo -e "\`\`\`" >> "$@"
 
-%-push: %-build
+%-push: %-build phony_explicit
 	@echo "Pushing $*"
 	@$(SUDO) $(IG) image push $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
 
-.PHONY:
+.PHONY: push
 push: $(addsuffix -push,$(GADGETS))
 
-%-push-existing: %
+%-push-existing: % phony_explicit
 	@echo "Pushing existing $*"
 	@n=0; \
 	until $(SUDO) $(IG) image push $(GADGET_REPOSITORY)/$*:$(GADGET_TAG) $(IG_FLAGS); do \
@@ -176,17 +203,18 @@ push: $(addsuffix -push,$(GADGETS))
 		sleep $$((n*5)); \
 	done
 
-.PHONY:
+.PHONY: push-existing
 push-existing: $(addsuffix -push-existing,$(GADGETS))
 
-%-sign: %-push
+%-sign: %-push phony_explicit
 	@echo "Signing $*"
 	digest=$$($(SUDO) $(IG) image inspect $(GADGET_REPOSITORY)/$*:$(GADGET_TAG) -o json | jq -r .Digest) ; \
 	$(COSIGN) sign $(COSIGN_FLAGS) --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$*@$$digest
 
+.PHONY: sign
 sign: $(addsuffix -sign,$(GADGETS))
 
-%-sign-existing:
+%-sign-existing: phony_explicit
 	@echo "Signing existing $*"
 	@digest=$$($(SUDO) $(IG) image list --no-trunc | grep "$* " | awk '{ print $$3 }') ; \
 	n=0; \
@@ -200,15 +228,16 @@ sign: $(addsuffix -sign,$(GADGETS))
 		sleep $$((n*5)); \
 	done
 
+.PHONY: sign-existing
 sign-existing: $(addsuffix -sign-existing,$(GADGETS))
 
-%-clean:
+%-clean: phony_explicit
 	$(SUDO) $(IG) image remove $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
 
-.PHONY:
+.PHONY: clean
 clean: $(addsuffix -clean,$(GADGETS))
 
-.PHONY:
+.PHONY: pull
 pull:
 	GADGET_TAG=$(GADGET_TAG) \
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) && \
@@ -216,13 +245,12 @@ pull:
 		$(SUDO) $(IG) image pull $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG); \
 	done
 
-.PHONY:
-%/pull:
+%/pull: phony_explicit
 	GADGET_TAG=$(GADGET_TAG) \
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
 	$(SUDO) $(IG) image pull $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
 
-.PHONY:
+.PHONY: test-unit
 test-unit: build
 	# use PATH preservation to find **right** go binary inside vimto as it's run as sudo
 	IG_VERIFY_IMAGE=$(IG_VERIFY_IMAGE) \
@@ -236,8 +264,7 @@ test-unit: build
 		-memory $(VIMTO_VM_MEMORY) -- go test -v ./.../$(UNIT_TEST_DIR)/..., \
 		go test -v -exec '$(SUDO)' ./.../$(UNIT_TEST_DIR)/...)
 
-.PHONY:
-%/test-unit: %
+%/test-unit: % phony_explicit
 	# use PATH preservation to find **right** go binary inside vimto as it's run as sudo
 	IG_VERIFY_IMAGE=$(IG_VERIFY_IMAGE) \
 	IG_DEBUG_LOGS=$(IG_DEBUG_LOGS) \
@@ -250,8 +277,7 @@ test-unit: build
 		-memory $(VIMTO_VM_MEMORY) -- go test -v ./$*/$(UNIT_TEST_DIR)/..., \
 		go test -v -exec '$(SUDO)' ./$*/$(UNIT_TEST_DIR)/...)
 
-.PHONY:
-%/test-integration: %
+%/test-integration: % phony_explicit
 	IG_PATH=$(IG_PATH) \
 	GPU_EBPF_BRIDGE_PATH=$(GPU_EBPF_BRIDGE_PATH) \
 	CGO_ENABLED=0 \
@@ -279,7 +305,7 @@ $(1)/test-integration: $(1)/workload-image
 endef
 $(foreach gadget,$(CI_WORKLOAD_GADGETS),$(eval $(call CI_WORKLOAD_INTEGRATION_PREREQUISITE,$(gadget))))
 
-.PHONY:
+.PHONY: test-integration
 test-integration: build $(addsuffix /workload-image,$(filter $(GADGETS),$(CI_WORKLOAD_GADGETS)))
 	IG_PATH=$(IG_PATH) \
 	GPU_EBPF_BRIDGE_PATH=$(GPU_EBPF_BRIDGE_PATH) \
@@ -290,18 +316,17 @@ test-integration: build $(addsuffix /workload-image,$(filter $(GADGETS),$(CI_WOR
 	TEST_DNS_SERVER_IMAGE=$(DNSTESTER_IMAGE) \
 	go test -v -exec '$(SUDO)' ./.../$(INTEGRATION_TEST_DIR)/...
 
-.PHONY:
+.PHONY: test-local
 test-local: IG_PATH=$(IG)
 test-local: GPU_EBPF_BRIDGE_PATH=$(GPU_EBPF_BRIDGE)
 test-local: test-integration
 
-.PHONY:
+.PHONY: test-k8s
 test-k8s: IG_PATH=$(KUBECTL_GADGET)
 test-k8s: test-integration
 
-.PHONY:
-%-update-latest-tag:
+%-update-latest-tag: phony_explicit
 	$(CRANE) copy $(GADGET_REPOSITORY)/$*:$(GADGET_TAG) $(GADGET_REPOSITORY)/$*:latest
 
-.PHONY:
+.PHONY: update-latest-tag
 update-latest-tag: $(addsuffix -update-latest-tag,$(GADGETS))
