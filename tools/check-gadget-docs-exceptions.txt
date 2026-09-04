@@ -1,0 +1,44 @@
+# Known pre-existing violations of the canonical gadget documentation
+# structure, one '<gadget>|<rule>' per line (see tools/check-gadget-docs.sh
+# for the rule ids). A rule names one individual violation, so an entry
+# silences exactly that problem and every other check still applies to
+# the gadget.
+#
+# Once a violation is fixed the check reports its entry as stale and fails
+# until the line is removed, so this list can only shrink.
+
+# Empty Guide sections tracked in #5628, with PRs in flight (#5691, #5692,
+# #5693, #5642) - left alone here to avoid conflicting with them.
+profile_cuda|guide-todo
+trace_lsm|guide-todo
+trace_malloc|guide-todo
+trace_ssl|guide-todo
+
+# Missing Guide section entirely, also #5628 (PR #5639).
+trace_init_module|missing-guide
+
+# README has no '# <gadget-name>' title, or a section appears above it.
+advise_networkpolicy|title
+advise_seccomp|title
+audit_seccomp|title
+gpu_top|title
+gpu_top_per_pid|title
+snapshot_file|title
+snapshot_process|title
+snapshot_socket|title
+trace_gpu_starvation|title
+
+# Title heading uses spaces instead of the gadget's directory name,
+# e.g. '# trace lsm' instead of '# trace_lsm'.
+trace_lsm|title
+trace_malloc|title
+trace_signal|title
+trace_ssl|title
+
+# '## Requirements' sits after the Guide instead of before
+# '## Getting started', so both following sections are reported.
+top_cpu_throttle|order-getting-started
+top_cpu_throttle|order-guide
+
+# '## Use Cases' appears before '## Guide'.
+ttysnoop|extra-section-use-cases
