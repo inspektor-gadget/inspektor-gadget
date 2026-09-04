@@ -1,7 +1,8 @@
 # Known pre-existing violations of the canonical gadget documentation
 # structure, one '<gadget>|<rule>' per line (see tools/check-gadget-docs.sh
-# for the rule ids). Only the listed rule is ignored for that gadget, so
-# every other rule still applies and regressions are still caught.
+# for the rule ids). A rule names one individual violation, so an entry
+# silences exactly that problem and every other check still applies to
+# the gadget.
 #
 # Once a violation is fixed the check reports its entry as stale and fails
 # until the line is removed, so this list can only shrink.
@@ -14,7 +15,7 @@ trace_malloc|guide-todo
 trace_ssl|guide-todo
 
 # Missing Guide section entirely, also #5628 (PR #5639).
-trace_init_module|missing-section
+trace_init_module|missing-guide
 
 # README has no '# <gadget-name>' title, or a section appears above it.
 advise_networkpolicy|title
@@ -34,9 +35,10 @@ trace_malloc|title
 trace_signal|title
 trace_ssl|title
 
-# '## Requirements' appears after the Guide instead of before
-# '## Getting started'.
-top_cpu_throttle|order
+# '## Requirements' sits after the Guide instead of before
+# '## Getting started', so both following sections are reported.
+top_cpu_throttle|order-getting-started
+top_cpu_throttle|order-guide
 
 # '## Use Cases' appears before '## Guide'.
-ttysnoop|extra-section
+ttysnoop|extra-section-use-cases

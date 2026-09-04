@@ -10,19 +10,21 @@
 #   ## Guide
 #   ... any additional sections ...
 #
-# Known pre-existing violations are listed per rule in
-# tools/check-gadget-docs-exceptions.txt as '<gadget>|<rule>', so every
-# other rule still applies to those gadgets. Once a violation is fixed
-# its exception becomes stale and this check fails until the entry is
-# removed, so the list can only shrink.
+# Known pre-existing violations are listed in
+# tools/check-gadget-docs-exceptions.txt as '<gadget>|<rule>'. A rule
+# identifies one individual violation rather than a category, so an
+# exception silences exactly the known problem and every other check
+# still applies to that gadget. Once a violation is fixed its exception
+# becomes stale and this check fails until the entry is removed, so the
+# list can only shrink.
 #
 # Rules:
-#   title            first heading must be '# <gadget-name>'
-#   heading-casing   canonical headings must use exact casing and spacing
-#   missing-section  a mandatory section is missing
-#   order            canonical sections appear out of canonical order
-#   extra-section    a non-canonical section appears before '## Guide'
-#   guide-todo       the Guide section still holds a TODO placeholder
+#   title                     first heading must be '# <gadget-name>'
+#   heading-casing-<section>  that heading must use canonical casing and spacing
+#   missing-<section>         that mandatory section is missing
+#   order-<section>           that section appears out of canonical order
+#   extra-section-<section>   that non-canonical section appears before '## Guide'
+#   guide-todo                the Guide section still holds a TODO placeholder
 #
 # Usage: tools/check-gadget-docs.sh [gadgets-dir]
 
@@ -52,6 +54,14 @@ add_error() {
     return
   fi
   errors+=("$readme [$rule]: $message")
+}
+
+slugify() {
+  # '## Getting started' -> 'getting-started', so a rule id names the
+  # individual section it is about.
+  printf '%s' "$1" | sed -E 's/^#+[[:space:]]*//' |
+    tr '[:upper:]' '[:lower:]' |
+    sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//'
 }
 
 canonical_heading() {
@@ -88,16 +98,17 @@ for readme in "$GADGETS_DIR"/*/README.mdx; do
     canonical=$(canonical_heading "$text")
     [ -z "$canonical" ] && continue
     if [ "$text" != "$canonical" ]; then
-      add_error "$gadget" heading-casing "$readme" \
+      add_error "$gadget" "heading-casing-$(slugify "$canonical")" "$readme" \
         "line $lineno: heading must be exactly '$canonical' (found '$text')"
     fi
   done < <(grep -nE '^##[[:space:]]' "$readme")
 
   # Mandatory sections
-  grep -qxF '## Getting started' "$readme" ||
-    add_error "$gadget" missing-section "$readme" "missing mandatory section '## Getting started'"
-  grep -qxF '## Guide' "$readme" ||
-    add_error "$gadget" missing-section "$readme" "missing mandatory section '## Guide'"
+  for section in '## Getting started' '## Guide'; do
+    grep -qxF "$section" "$readme" ||
+      add_error "$gadget" "missing-$(slugify "$section")" "$readme" \
+        "missing mandatory section '$section'"
+  done
 
   # Canonical sections that are present must appear in canonical order
   prev_line=0
@@ -106,7 +117,7 @@ for readme in "$GADGETS_DIR"/*/README.mdx; do
     line=$(grep -nxF "$section" "$readme" | head -1 | cut -d: -f1)
     [ -z "$line" ] && continue
     if [ "$line" -lt "$prev_line" ]; then
-      add_error "$gadget" order "$readme" \
+      add_error "$gadget" "order-$(slugify "$section")" "$readme" \
         "'$section' (line $line) must come after '$prev_name' (line $prev_line)"
     else
       prev_line=$line
@@ -120,7 +131,7 @@ for readme in "$GADGETS_DIR"/*/README.mdx; do
     while IFS=: read -r lineno text; do
       [ -n "$(canonical_heading "$text")" ] && continue
       if [ "$lineno" -lt "$guide_line" ]; then
-        add_error "$gadget" extra-section "$readme" \
+        add_error "$gadget" "extra-section-$(slugify "$text")" "$readme" \
           "line $lineno: section '$text' must come after '## Guide'"
       fi
     done < <(grep -nE '^##[[:space:]]' "$readme")
