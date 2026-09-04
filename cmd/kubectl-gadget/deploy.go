@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -112,6 +113,7 @@ var (
 	otelMetricsListenAddr string
 	daemonConfig          string
 	setDaemonConfig       []string
+	dropCapSysAdmin       bool
 )
 
 var clusterImagePolicyKind = schema.GroupVersionKind{
@@ -263,6 +265,10 @@ func init() {
 	deployCmd.PersistentFlags().StringVar(
 		&daemonConfig,
 		"daemon-config", "", "Path to a config file to override the daemon configuration values. The file must be in YAML format")
+	deployCmd.PersistentFlags().BoolVar(
+		&dropCapSysAdmin,
+		"drop-cap-sys-admin", false,
+		"Drop CAP_SYS_ADMIN and use CAP_BPF and CAP_PERFMON instead. This disables fanotify-based container detection and use a non-fanotify hook-mode (podinformer/nri/crio)")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -271,6 +277,32 @@ func info(format string, args ...any) {
 		return
 	}
 	fmt.Printf(format, args...)
+}
+
+func replaceCapSysAdminWithCapBpfAndCapPerfmon(c *v1.Container) error {
+	if c.SecurityContext == nil || c.SecurityContext.Capabilities == nil {
+		return fmt.Errorf("gadget container has no capabilities to modify")
+	}
+	caps := c.SecurityContext.Capabilities
+
+	filtered := make([]v1.Capability, 0, len(caps.Add))
+	found := false
+	for _, capability := range caps.Add {
+	if capability == "SYS_ADMIN" {
+			found = true
+			continue
+		}
+		filtered = append(filtered, capability)
+	}
+	if !found {
+		return errors.New("--drop-cap-sys-admin used but CAP_SYS_ADMIN was not present in deployment")
+	}
+
+	filtered = append(filtered, "BPF", "PERFMON")
+	caps.Add = filtered
+
+	log.Warn("CAP_SYS_ADMIN dropped: new-container detection via fanotify is disabled")
+	return nil
 }
 
 // parseK8sYaml parses a k8s YAML deployment file content and returns the
@@ -787,6 +819,13 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			gadgetContainer := &daemonSet.Spec.Template.Spec.Containers[0]
 
 			gadgetContainer.Image = image
+
+			if dropCapSysAdmin {
+				err := replaceCapSysAdminWithCapBpfAndCapPerfmon(gadgetContainer)
+				if err != nil {
+					return err
+				}
+			}
 
 			policy, err := stringToPullPolicy(imagePullPolicy)
 			if err != nil {
