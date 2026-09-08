@@ -235,4 +235,4 @@ replace github.com/notaryproject/notation-go => github.com/inspektor-gadget/nota
 // - GetStackCacheMap() accessor for userspace cleanup
 // - GetPerfEntryEbpfProgram() accessor for perf_event OTel stack correlation
 // Please keep in sync with examples/go.mod
-replace go.opentelemetry.io/ebpf-profiler => github.com/alban/opentelemetry-ebpf-profiler v0.0.202633-0.20260827144410-0c05fb0a0bc6
+replace go.opentelemetry.io/ebpf-profiler => github.com/alban/opentelemetry-ebpf-profiler v0.0.202637-0.20260908174505-38a8228ed245
