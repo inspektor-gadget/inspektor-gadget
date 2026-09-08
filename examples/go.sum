@@ -14,8 +14,8 @@ github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERo
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/Microsoft/hcsshim v0.13.0 h1:/BcXOiS6Qi7N9XqUcv27vkIuVOkBEcWstd2pMlWSeaA=
 github.com/Microsoft/hcsshim v0.13.0/go.mod h1:9KWJ/8DgU+QzYGupX4tzMhRQE8h6w90lH6HAaclpEok=
-github.com/alban/opentelemetry-ebpf-profiler v0.0.202633-0.20260826130604-af89924d87af h1:yUWmqSUudfE/rii0f7B/IJE6RJu+G+hysqyMdVukAfE=
-github.com/alban/opentelemetry-ebpf-profiler v0.0.202633-0.20260826130604-af89924d87af/go.mod h1:rzCKCGm8P5gcPENFauKQATXbwg7yUldRr6YT3O9JRaE=
+github.com/alban/opentelemetry-ebpf-profiler v0.0.202637-0.20260908174505-38a8228ed245 h1:JlwqRVL1oTAN++zcNcxG5icFie+FH2QZgSFPurzq9h8=
+github.com/alban/opentelemetry-ebpf-profiler v0.0.202637-0.20260908174505-38a8228ed245/go.mod h1:rzCKCGm8P5gcPENFauKQATXbwg7yUldRr6YT3O9JRaE=
 github.com/alexbrainman/sspi v0.0.0-20250919150558-7d374ff0d59e h1:4dAU9FXIyQktpoUAgOJK3OTFc/xug0PCXYCqU0FgDKI=
 github.com/alexbrainman/sspi v0.0.0-20250919150558-7d374ff0d59e/go.mod h1:cEWa1LVoE5KvSD9ONXsZrj0z6KqySlCCNKHlLzbqAt4=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
