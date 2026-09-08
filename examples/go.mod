@@ -187,4 +187,4 @@ replace github.com/inspektor-gadget/inspektor-gadget => ../
 replace github.com/notaryproject/notation-go => github.com/inspektor-gadget/notation-go v1.3.3
 
 // keep in sync with root module
-replace go.opentelemetry.io/ebpf-profiler => github.com/alban/opentelemetry-ebpf-profiler v0.0.202633-0.20260826130604-af89924d87af
+replace go.opentelemetry.io/ebpf-profiler => github.com/alban/opentelemetry-ebpf-profiler v0.0.202637-0.20260908174505-38a8228ed245
