@@ -41,6 +41,14 @@ func (a allOptions) WithCPUUsageRelative() bool {
 	return true
 }
 
+func (a allOptions) WithCPUPressure() bool {
+	return true
+}
+
+func (a allOptions) WithCPUWait() bool {
+	return true
+}
+
 func (a allOptions) WithComm() bool {
 	return true
 }
