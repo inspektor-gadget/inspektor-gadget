@@ -42,6 +42,7 @@ type EventWrapperBase struct {
 	nodeAccessor                 datasource.FieldAccessor
 	namespaceAccessor            datasource.FieldAccessor
 	podnameAccessor              datasource.FieldAccessor
+	podUidAccessor               datasource.FieldAccessor
 	containernameAccessorK8s     datasource.FieldAccessor
 	containernameAccessor        datasource.FieldAccessor
 	runtimenameAccessor          datasource.FieldAccessor
@@ -186,6 +187,16 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 	if err != nil {
 		return nil, err
 	}
+	ev.podUidAccessor, err = k8s.AddSubField(
+		"podUID",
+		api.Kind_String,
+		datasource.WithTags("kubernetes"),
+		datasource.WithFlags(datasource.FieldFlagHidden),
+		datasource.WithOrder(-28),
+	)
+	if err != nil {
+		return nil, err
+	}
 	ev.containernameAccessorK8s, err = k8s.AddSubField(
 		"containerName",
 		api.Kind_String,
@@ -193,7 +204,7 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		datasource.WithAnnotations(map[string]string{
 			metadatav1.TemplateAnnotation: "container",
 		}),
-		datasource.WithOrder(-28),
+		datasource.WithOrder(-27),
 	)
 	if err != nil {
 		return nil, err
@@ -203,7 +214,7 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		api.Kind_Bool,
 		datasource.WithTags("kubernetes"),
 		datasource.WithFlags(datasource.FieldFlagHidden),
-		datasource.WithOrder(-27),
+		datasource.WithOrder(-26),
 	)
 	if err != nil {
 		return nil, err
@@ -213,7 +224,7 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		api.Kind_String,
 		datasource.WithTags("kubernetes"),
 		datasource.WithFlags(datasource.FieldFlagHidden),
-		datasource.WithOrder(-26),
+		datasource.WithOrder(-25),
 	)
 	if err != nil {
 		return nil, err
@@ -371,6 +382,9 @@ func (ev *EventWrapper) SetPodMetadata(container types.Container) {
 		}
 		if ev.podnameAccessor.IsRequested() {
 			ev.podnameAccessor.Set(ev.Data, []byte(k8s.PodName))
+		}
+		if ev.podUidAccessor.IsRequested() {
+			ev.podUidAccessor.PutString(ev.Data, container.K8sPodUID())
 		}
 		if ev.containernameAccessor.IsRequested() {
 			ev.containernameAccessorK8s.Set(ev.Data, []byte(k8s.ContainerName))

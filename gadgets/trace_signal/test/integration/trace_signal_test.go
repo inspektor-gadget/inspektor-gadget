@@ -84,7 +84,7 @@ func TestTraceSignal(t *testing.T) {
 	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
 		func(t *testing.T, output string) {
 			expectedEntry := &traceSignalEvent{
-				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+				CommonData: utils.BuildCommonData(t, containerName, commonDataOpts...),
 				Proc:       utils.BuildProc("sh", 0, 0),
 				Signal:     "SIGTERM",
 				SignalRaw:  15,

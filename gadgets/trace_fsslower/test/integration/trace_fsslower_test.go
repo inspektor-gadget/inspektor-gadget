@@ -94,7 +94,7 @@ func TestTraceFSSlower(t *testing.T) {
 	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
 		func(t *testing.T, output string) {
 			expectedEntry := &traceFSSlowerEvent{
-				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+				CommonData: utils.BuildCommonData(t, containerName, commonDataOpts...),
 				Proc:       utils.BuildProc("cat", 0, 0),
 				File:       "foo",
 				Op:         "F_OPEN",

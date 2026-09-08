@@ -111,7 +111,7 @@ func TestAuditSeccomp(t *testing.T) {
 		func(t *testing.T, output string) {
 			expectedEntries := []*auditSeccompEvent{
 				{
-					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+					CommonData: utils.BuildCommonData(t, containerName, commonDataOpts...),
 					Proc:       utils.BuildProc("unshare", 1000, 1111),
 					Syscall:    "SYS_UNSHARE",
 					Code:       "SECCOMP_RET_KILL_THREAD",
@@ -120,7 +120,7 @@ func TestAuditSeccomp(t *testing.T) {
 					Timestamp: utils.NormalizedStr,
 				},
 				{
-					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+					CommonData: utils.BuildCommonData(t, containerName, commonDataOpts...),
 					Proc:       utils.BuildProc("mkdir", 1000, 1111),
 					Syscall:    "SYS_MKDIR",
 					Code:       "SECCOMP_RET_LOG",
