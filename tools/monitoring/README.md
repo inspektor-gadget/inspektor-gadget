@@ -10,7 +10,7 @@ go run -exec sudo ../../cmd/ig daemon --tls-insecure --otel-metrics-listen=true
 then start the gadget with
 
 ```bash
-go run -exec 'sudo -E' ../../cmd/gadgetctl run ghcr.io/inspektor-gadget/gadget/profile_blockio:latest \
+go run -exec sudo ../../cmd/gadgetctl run ghcr.io/inspektor-gadget/gadget/profile_blockio:latest \
         --annotate=blockio:metrics.collect=true \
         --otel-metrics-name=blockio:blockio-metrics \
         --detach
