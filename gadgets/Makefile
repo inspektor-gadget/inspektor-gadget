@@ -28,7 +28,80 @@ CRANE ?= crane
 VIMTO ?= vimto
 VIMTO_VM_MEMORY ?= 4096M
 DOCKER ?= docker
-SUDO ?= sudo -E
+# sudo resets the environment, so anything the command needs has to be passed
+# on the sudo command line or named in --preserve-env. `sudo -E` is not usable
+# here: sudo-rs, the default sudo implementation since Ubuntu 25.10, does not
+# implement it. It prints a warning and runs the command with a reset
+# environment, which makes the gadget tests skip themselves rather than fail.
+SUDO ?= sudo
+#
+# The variables that used to be carried over by `sudo -E`, enumerated:
+#
+# - HOME, because a lot of things are derived from it. The commands talking to
+#   a registry (push, pull, inspect) fall back to the docker credentials of
+#   ~/.docker/config.json, which is how the CI authenticates: it logs in with
+#   docker/login-action, which writes the config file of the runner user.
+#   DOCKER_CONFIG overrides that path, so it is needed as well.
+# - The DOCKER_* variables, because `ig image build` runs the builder in a
+#   container through a docker client configured from the environment.
+# - XDG_CACHE_HOME and HOME, because vimto caches the kernel images it pulls in
+#   $XDG_CACHE_HOME/vimto, falling back to ~/.cache.
+# - The GO* variables, because the unit tests run go under sudo inside vimto.
+# - The IG_*, GADGET_* and TEST_* variables that the gadget tests read from
+#   their environment. They are exported by the test recipes below, and vimto
+#   passes its own environment to the command it runs in the VM.
+# - KERNEL_VERSION, which the workflow sets and some tests read to skip
+#   themselves on the ci-kernels images, e.g. trace_fsslower, whose filesystem
+#   is not present there. Dropping it makes those tests run and fail rather
+#   than skip.
+#
+# sudo silently ignores the variables of the list that are not set, so a single
+# list can serve every command. Keeping one list rather than a tailored one per
+# command is deliberate: `-E` passed everything, so anything left out here is a
+# silent behaviour change rather than an error.
+#
+# --preserve-env takes a comma separated list, which keeps this a single
+# whitespace free token. That matters for `go test -exec`, which splits its
+# argument on whitespace with no quote handling: an `env VAR=value` prefix
+# could not carry a value containing spaces, such as an IG_FLAGS with more than
+# one flag.
+#
+# The list is written one variable per line for readability and joined
+# afterwards: a backslash continuation expands to a space, so the names are
+# collected whitespace separated and the spaces are then turned into commas.
+# "$() " below is a literal space; the comma needs a variable because a literal
+# one would be taken as an argument separator by $(subst ...).
+SUDO_ENV_COMMA := ,
+SUDO_ENV_VARS = \
+	HOME \
+	DOCKER_CONFIG \
+	DOCKER_HOST \
+	DOCKER_TLS_VERIFY \
+	DOCKER_CERT_PATH \
+	DOCKER_API_VERSION \
+	XDG_CACHE_HOME \
+	GOFLAGS \
+	GOPATH \
+	GOCACHE \
+	GOMODCACHE \
+	IG_PATH \
+	IG_RUNTIME \
+	IG_FLAGS \
+	IG_SOURCE_PATH \
+	IG_EXPERIMENTAL \
+	IG_VERIFY_IMAGE \
+	IG_DEBUG_LOGS \
+	GPU_EBPF_BRIDGE_PATH \
+	GADGET_REPOSITORY \
+	GADGET_TAG \
+	TEST_DNS_SERVER_IMAGE \
+	TEST_DNS_CLIENT_IMAGE \
+	KUBERNETES_DISTRIBUTION \
+	KERNEL_VERSION
+SUDO_ENV = $(subst $() ,$(SUDO_ENV_COMMA),$(strip $(SUDO_ENV_VARS)))
+# Empty when SUDO is overridden to nothing, e.g. when running as root, so that
+# the option string is not mistaken for the command to run.
+SUDO_E ?= $(if $(SUDO),$(SUDO) --preserve-env=$(SUDO_ENV))
 
 UNIT_TEST_DIR = test/unit
 INTEGRATION_TEST_DIR = test/integration
@@ -124,7 +197,7 @@ pull-builder-image:
 .PHONY: $(GADGETS)
 $(GADGETS): pull-builder-image
 	@echo "Building $@"
-	@$(SUDO) \
+	@$(SUDO_E) \
 		IG_SOURCE_PATH=$(realpath $(ROOT_DIR)/..) \
 		$(IG) image build \
 		--builder-image $(BUILDER_IMAGE) \
@@ -143,7 +216,7 @@ DOCS_GADGETS = \
 .PHONY: $(DOCS_GADGETS)
 $(DOCS_GADGETS): pull-builder-image
 	@echo "Building $@"
-	@$(SUDO) \
+	@$(SUDO_E) \
 		IG_SOURCE_PATH=$(realpath $(ROOT_DIR)/..) \
 		$(IG) image build \
 		--builder-image $(BUILDER_IMAGE) \
@@ -189,7 +262,7 @@ $(GADGETS_README_DEV):
 
 %-push: %-build phony_explicit
 	@echo "Pushing $*"
-	@$(SUDO) $(IG) image push $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
+	@$(SUDO_E) $(IG) image push $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
 
 .PHONY: push
 push: $(addsuffix -push,$(GADGETS))
@@ -197,7 +270,7 @@ push: $(addsuffix -push,$(GADGETS))
 %-push-existing: % phony_explicit
 	@echo "Pushing existing $*"
 	@n=0; \
-	until $(SUDO) $(IG) image push $(GADGET_REPOSITORY)/$*:$(GADGET_TAG) $(IG_FLAGS); do \
+	until $(SUDO_E) $(IG) image push $(GADGET_REPOSITORY)/$*:$(GADGET_TAG) $(IG_FLAGS); do \
 		if [ $$n -ge $(GADGET_PUSH_RETRIES) ]; then \
 			echo "Push of $* failed after $$n retries"; \
 			exit 1; \
@@ -212,7 +285,7 @@ push-existing: $(addsuffix -push-existing,$(GADGETS))
 
 %-sign: %-push phony_explicit
 	@echo "Signing $*"
-	digest=$$($(SUDO) $(IG) image inspect $(GADGET_REPOSITORY)/$*:$(GADGET_TAG) -o json | jq -r .Digest) ; \
+	digest=$$($(SUDO_E) $(IG) image inspect $(GADGET_REPOSITORY)/$*:$(GADGET_TAG) -o json | jq -r .Digest) ; \
 	$(COSIGN) sign $(COSIGN_FLAGS) --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$*@$$digest
 
 .PHONY: sign
@@ -220,7 +293,7 @@ sign: $(addsuffix -sign,$(GADGETS))
 
 %-sign-existing: phony_explicit
 	@echo "Signing existing $*"
-	@digest=$$($(SUDO) $(IG) image list --no-trunc | grep "$* " | awk '{ print $$3 }') ; \
+	@digest=$$($(SUDO_E) $(IG) image list --no-trunc | grep "$* " | awk '{ print $$3 }') ; \
 	n=0; \
 	until $(COSIGN) sign $(COSIGN_FLAGS) --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$*@$$digest; do \
 		if [ $$n -ge $(GADGET_PUSH_RETRIES) ]; then \
@@ -236,7 +309,7 @@ sign: $(addsuffix -sign,$(GADGETS))
 sign-existing: $(addsuffix -sign-existing,$(GADGETS))
 
 %-clean: phony_explicit
-	$(SUDO) $(IG) image remove $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
+	$(SUDO_E) $(IG) image remove $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
 
 .PHONY: clean
 clean: $(addsuffix -clean,$(GADGETS))
@@ -246,13 +319,13 @@ pull:
 	GADGET_TAG=$(GADGET_TAG) \
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) && \
 	for GADGET in $(GADGETS); do \
-		$(SUDO) $(IG) image pull $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG); \
+		$(SUDO_E) $(IG) image pull $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG); \
 	done
 
 %/pull: phony_explicit
 	GADGET_TAG=$(GADGET_TAG) \
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
-	$(SUDO) $(IG) image pull $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
+	$(SUDO_E) $(IG) image pull $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
 
 .PHONY: test-unit
 test-unit: build
@@ -264,9 +337,9 @@ test-unit: build
 	VIMTO=$(VIMTO) \
 	VIMTO_VM_MEMORY=$(VIMTO_VM_MEMORY) \
 	$(if $(KERNEL_VERSION), \
-		$(SUDO) PATH="$$PATH" $(VIMTO) -kernel $(KERNEL_REPOSITORY):$(KERNEL_VERSION) \
+		$(SUDO_E) PATH="$$PATH" $(VIMTO) -kernel $(KERNEL_REPOSITORY):$(KERNEL_VERSION) \
 		-memory $(VIMTO_VM_MEMORY) -- go test -v ./.../$(UNIT_TEST_DIR)/..., \
-		go test -v -exec '$(SUDO)' ./.../$(UNIT_TEST_DIR)/...)
+		go test -v -exec '$(SUDO_E)' ./.../$(UNIT_TEST_DIR)/...)
 
 %/test-unit: % phony_explicit
 	# use PATH preservation to find **right** go binary inside vimto as it's run as sudo
@@ -277,19 +350,20 @@ test-unit: build
 	VIMTO=$(VIMTO) \
 	VIMTO_VM_MEMORY=$(VIMTO_VM_MEMORY) \
 	$(if $(KERNEL_VERSION), \
-		$(SUDO) PATH="$$PATH" $(VIMTO) -kernel $(KERNEL_REPOSITORY):$(KERNEL_VERSION) \
+		$(SUDO_E) PATH="$$PATH" $(VIMTO) -kernel $(KERNEL_REPOSITORY):$(KERNEL_VERSION) \
 		-memory $(VIMTO_VM_MEMORY) -- go test -v ./$*/$(UNIT_TEST_DIR)/..., \
-		go test -v -exec '$(SUDO)' ./$*/$(UNIT_TEST_DIR)/...)
+		go test -v -exec '$(SUDO_E)' ./$*/$(UNIT_TEST_DIR)/...)
 
 %/test-integration: % phony_explicit
 	IG_PATH=$(IG_PATH) \
+	IG_RUNTIME=$(IG_RUNTIME) \
 	GPU_EBPF_BRIDGE_PATH=$(GPU_EBPF_BRIDGE_PATH) \
 	CGO_ENABLED=0 \
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
 	GADGET_TAG=$(GADGET_TAG) \
 	IG_FLAGS=$(IG_FLAGS) \
 	TEST_DNS_SERVER_IMAGE=$(DNSTESTER_IMAGE) \
-	go test -v -exec '$(SUDO)' ./$*/$(INTEGRATION_TEST_DIR)/...
+	go test -v -exec '$(SUDO_E)' ./$*/$(INTEGRATION_TEST_DIR)/...
 
 # CI-only gadgets can ship a workload container image built locally from
 # ci/<gadget>/workload/Dockerfile. It is tagged ig-<gadget>:test, e.g.
@@ -312,13 +386,14 @@ $(foreach gadget,$(CI_WORKLOAD_GADGETS),$(eval $(call CI_WORKLOAD_INTEGRATION_PR
 .PHONY: test-integration
 test-integration: build $(addsuffix /workload-image,$(filter $(GADGETS),$(CI_WORKLOAD_GADGETS)))
 	IG_PATH=$(IG_PATH) \
+	IG_RUNTIME=$(IG_RUNTIME) \
 	GPU_EBPF_BRIDGE_PATH=$(GPU_EBPF_BRIDGE_PATH) \
 	CGO_ENABLED=0 \
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
 	GADGET_TAG=$(GADGET_TAG) \
 	IG_FLAGS=$(IG_FLAGS) \
 	TEST_DNS_SERVER_IMAGE=$(DNSTESTER_IMAGE) \
-	go test -v -exec '$(SUDO)' ./.../$(INTEGRATION_TEST_DIR)/...
+	go test -v -exec '$(SUDO_E)' ./.../$(INTEGRATION_TEST_DIR)/...
 
 .PHONY: test-local
 test-local: IG_PATH=$(IG)
