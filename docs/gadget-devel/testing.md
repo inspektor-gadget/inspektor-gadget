@@ -132,5 +132,10 @@ $ export GADGET_REPOSITORY=ghcr.io/my-org GADGET_TAG=latest
 We are all set now to run the test.
 
 ```bash
-$ go test -exec 'sudo -E' -v ./mygadget_test.go
+$ go test -exec 'sudo --preserve-env=GADGET_REPOSITORY,GADGET_TAG' -v ./mygadget_test.go
 ```
+
+`sudo` resets the environment, so the variables the test needs have to be named
+in `--preserve-env`. Do not use `sudo -E`: it is silently ignored by
+[sudo-rs](https://github.com/trifectatechfoundation/sudo-rs), which is the
+default `sudo` implementation since Ubuntu 25.10.
