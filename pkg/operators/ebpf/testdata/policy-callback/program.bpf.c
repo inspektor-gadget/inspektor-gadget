@@ -11,10 +11,11 @@ struct {
 } state SEC(".maps");
 
 static unsigned long long (*bpf_get_current_pid_tgid)(void) = (void *)14;
-static long (*bpf_for_each_map_elem)(void *, void *, void *, unsigned long long) = (void *)164;
+static long (*bpf_for_each_map_elem)(void *, void *, void *,
+				     unsigned long long) = (void *)164;
 
-static __attribute__((noinline)) long visit(void *map, const unsigned int *key,
-					 unsigned long long *value, void *ctx)
+static __attribute__((noinline)) long
+visit(void *map, const unsigned int *key, unsigned long long *value, void *ctx)
 {
 	*value = bpf_get_current_pid_tgid();
 	return 0;
