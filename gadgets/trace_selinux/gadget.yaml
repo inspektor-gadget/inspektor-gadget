@@ -1,5 +1,5 @@
 name: trace selinux
-description: trace SELinux AVC audit events (denials)
+description: trace SELinux AVC audit events
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_selinux
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_selinux
@@ -111,7 +111,7 @@ params:
       description: Only report AVC denials. Set to false to also report allowed audited events.
     collect_kstack:
       key: collect-kstack
-      defaultValue: "true"
+      defaultValue: "false"
       description: Collect kernel stack traces
     collect_ustack:
       key: collect-ustack

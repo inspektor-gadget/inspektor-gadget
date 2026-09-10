@@ -26,7 +26,7 @@ containers, the gadget reports the offending container directly.
 ## Requirements
 
 - The node must have SELinux enabled (`CONFIG_SECURITY_SELINUX=y`) and the
-  `avc:selinux_audited` tracepoint available (Linux 4.16+).
+  `avc:selinux_audited` tracepoint available (upstream Linux 5.10+; older vendor kernels may backport it).
 
 ## Getting started
 
@@ -46,6 +46,10 @@ Running the gadget:
     </TabItem>
 </Tabs>
 
+## Security and privacy
+
+This gadget requires the privileges needed to load and attach eBPF programs. SELinux contexts, process identifiers, container metadata, and stack traces can disclose sensitive workload structure. Restrict access in multi-tenant environments, avoid collecting stacks unless needed, and apply output retention and access controls. AVC/auditallow storms can amplify CPU, memory, and output volume; use filters, bounded capture durations, and monitor dropped events.
+
 ## Flags
 
 ### `--denials-only`
@@ -60,7 +64,7 @@ Default value: `true`
 Collect the kernel stack trace that led to the AVC audit event (exposed in the
 `kstack` field).
 
-Default value: `true`
+Default value: `false`
 
 ### `--collect-ustack`
 
