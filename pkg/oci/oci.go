@@ -202,7 +202,7 @@ func pullGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (
 		return nil, err
 	}
 
-	if err := ociStore.saveIndexWithLock(); err != nil {
+	if err := ociStore.saveIndexAndPruneWithLock(ctx); err != nil {
 		return nil, err
 	}
 
@@ -691,11 +691,12 @@ func deleteGadgetImage(ctx context.Context, image string) error {
 		return err
 	}
 
-	// TODO: GC() could race with other processes calling it a the same time.
-	if err := ociStore.GC(ctx); err != nil {
-		if !errors.Is(err, errdef.ErrNotFound) {
-			return err
-		}
+	// Reclaim the manifests and blobs the removed image was the last user
+	// of, like its per-host manifests. Store.GC() is not used for this: it
+	// computes a pruned index in memory but never writes it, so the entries
+	// it drops stay in index.json and only its blob sweep has any effect.
+	if _, err := ociStore.pruneWithLock(ctx, true); err != nil {
+		return err
 	}
 
 	return nil
@@ -933,7 +934,7 @@ func EnsureImage(ctx context.Context, image string, imgOpts *ImageOptions, pullP
 			return err
 		}
 
-		return imageStore.saveIndexWithLock()
+		return imageStore.saveIndexAndPruneWithLock(ctx)
 	})
 }
 

@@ -1478,6 +1478,17 @@ jobs:
           go build "./$dir";
         done
 
+  check-gadget-docs:
+    name: Check gadget docs structure
+    # level: 0
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+    - name: Check gadget documentation structure
+      run: make check-gadget-docs
+
   validate-docs-gadgets:
     name: Validate docs gadgets
     # level: 0

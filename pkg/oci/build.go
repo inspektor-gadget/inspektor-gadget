@@ -138,7 +138,7 @@ func buildGadgetImage(ctx context.Context, opts *BuildGadgetImageOpts, image str
 		}
 	}
 
-	if err := ociStore.saveIndexWithLock(); err != nil {
+	if err := ociStore.saveIndexAndPruneWithLock(ctx); err != nil {
 		return nil, err
 	}
 

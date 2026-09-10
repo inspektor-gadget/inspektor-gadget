@@ -1,0 +1,283 @@
+# Weekly kernel-compatibility check for published Inspektor Gadget gadgets.
+#
+# Pulls each published gadget by its OCI reference, extracts the eBPF object,
+# and load/attach-tests it on unmodified vendor distro cloud images in
+# disposable QEMU/KVM VMs. Vendor kernels and cloud images move underneath
+# already-published gadgets, and "kernel version" does not predict eBPF feature
+# support (for example RHEL backports the ring buffer to 4.18 while upstream
+# needs >= 5.8), so this is a drift detector for the shipped artifacts.
+#
+# It is non-blocking (schedule + manual dispatch only, no PR/push trigger),
+# needs no build step or manifest, and consumes the published gadget images
+# directly. Complementary to the existing vimto/ci-kernels tests, not a
+# replacement.
+name: gadget-kernel-compatibility
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gadget-kernel-compatibility
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_REPOSITORY: inspektor-gadget/inspektor-gadget
+  GADGET_REPOSITORY: ghcr.io/inspektor-gadget/gadget
+
+jobs:
+  generate-matrix:
+    name: generate gadget matrix
+    # Skip on forks by default to avoid burning runner minutes; a fork can
+    # opt in by setting the ENABLE_GADGET_KERNEL_COMPATIBILITY repo variable.
+    # Gating only the root job disables the whole lane: gadget-matrix and
+    # compatibility-summary both `needs:` this job, so a skip cascades.
+    if: >-
+      github.repository == 'inspektor-gadget/inspektor-gadget' ||
+      vars.ENABLE_GADGET_KERNEL_COMPATIBILITY == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      baseline-tag: ${{ steps.matrix.outputs.baseline-tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install crane
+        uses: imjasonh/setup-crane@feee3b6bb0d4c68370f256a4502498c9227e5c6b # v0.7
+
+      - name: Generate release comparison matrix
+        id: matrix
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          baseline_tag="$(
+            gh api "repos/${UPSTREAM_REPOSITORY}/releases/latest" \
+              --jq '.tag_name'
+          )"
+          matrix="$(
+            make -s -C gadgets list-gadgets |
+              jq -Rsc \
+                --arg baseline "$baseline_tag" \
+                --arg repository "$GADGET_REPOSITORY" \
+                '
+                  (split("\n") | map(select(length > 0))) as $gadgets |
+                  {include: [
+                    $gadgets[] as $gadget |
+                    ($gadget | gsub("/"; "--")) as $key |
+                    {
+                      gadget: $gadget,
+                      version: "baseline",
+                      tag: $baseline,
+                      ref: ($repository + "/" + $gadget + ":" + $baseline),
+                      artifact_key: ($key + "--baseline")
+                    },
+                    {
+                      gadget: $gadget,
+                      version: "current",
+                      tag: "main",
+                      ref: ($repository + "/" + $gadget + ":main"),
+                      artifact_key: ($key + "--current")
+                    }
+                  ]}
+                '
+          )"
+          resolution_dir="$(mktemp -d)"
+          trap 'rm -rf "$resolution_dir"' EXIT
+          resolved='[]'
+          while IFS=$'\t' read -r artifact_key ref; do
+            error_file="${resolution_dir}/${artifact_key}.log"
+            if digest="$(crane digest "$ref" 2>"$error_file")"; then
+              ref_exists=true
+            elif grep -Eiq \
+              'MANIFEST_UNKNOWN|manifest unknown|NAME_UNKNOWN|not found' \
+              "$error_file"; then
+              ref_exists=false
+              digest=""
+            else
+              cat "$error_file" >&2
+              exit 1
+            fi
+            resolved="$(
+              jq -c \
+                --arg artifact_key "$artifact_key" \
+                --arg digest "$digest" \
+                --argjson ref_exists "$ref_exists" \
+                '. + [{
+                  artifact_key: $artifact_key,
+                  ref_exists: $ref_exists,
+                  manifest_digest: (
+                    if $digest == "" then null else $digest end
+                  )
+                }]' <<<"$resolved"
+            )"
+          done < <(
+            jq -r '.include[] | [.artifact_key, .ref] | @tsv' <<<"$matrix"
+          )
+          matrix="$(
+            jq -c --argjson resolved "$resolved" '
+              .include |= map(
+                . as $entry |
+                (
+                  $resolved[] |
+                  select(.artifact_key == $entry.artifact_key)
+                ) as $resolution |
+                $entry + $resolution
+              )
+            ' <<<"$matrix"
+          )"
+          jq -e '
+            (.include | length) > 0 and
+            (.include | length) <= 256 and
+            all(.include[]; has("ref_exists") and has("manifest_digest"))
+          ' \
+            <<<"$matrix" >/dev/null
+          printf 'matrix=%s\n' "$matrix" >>"$GITHUB_OUTPUT"
+          printf 'baseline-tag=%s\n' "$baseline_tag" >>"$GITHUB_OUTPUT"
+
+  gadget-matrix:
+    needs: generate-matrix
+    name: ${{ matrix.gadget }} (${{ matrix.tag }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix: ${{ fromJSON(needs.generate-matrix.outputs.matrix) }}
+    steps:
+      - name: Install VM dependencies
+        run: |
+          sudo apt-get update
+          # cloud-image-utils provides cloud-localds: RHEL-family guests only
+          # boot from a genuine cloud-init seed ISO.
+          sudo apt-get install -y --no-install-recommends \
+            qemu-system-x86 qemu-utils cloud-image-utils jq
+
+      - name: Enable KVM on the hosted runner
+        run: |
+          if [[ -e /dev/kvm ]]; then sudo chmod 0666 /dev/kvm || true; ls -l /dev/kvm; fi
+
+      - name: Validate the published gadget across kernels
+        id: compatibility
+        continue-on-error: true
+        # Pinned by commit SHA to a checksum-verified bpfcompat release, so no
+        # toolchain is built on the runner.
+        uses: Kernel-Guard/bpfcompat@179ff612ed2b5d1afb16dd9c282752028d47c415 # v0.3.7
+        with:
+          # An OCI reference: bpfcompat pulls it and extracts the eBPF layer.
+          artifact: ${{ matrix.ref }}
+          # Curated vendor kernels where "kernel version" stops predicting
+          # behaviour (RHEL/Alma/Rocky/CentOS backports, Amazon Linux, Oracle
+          # UEK, openSUSE, Ubuntu, Debian).
+          matrix: quirk-library
+          out: reports/${{ matrix.artifact_key }}/compatibility.json
+          markdown: reports/${{ matrix.artifact_key }}/compatibility.md
+          timeout: 15m
+          concurrency: "2"
+
+      - name: Record comparison metadata
+        if: always()
+        env:
+          ACTION_OUTCOME: ${{ steps.compatibility.outcome }}
+          ARTIFACT_KEY: ${{ matrix.artifact_key }}
+          GADGET: ${{ matrix.gadget }}
+          GADGET_REF: ${{ matrix.ref }}
+          GADGET_TAG: ${{ matrix.tag }}
+          GADGET_VERSION: ${{ matrix.version }}
+          MANIFEST_DIGEST: ${{ matrix.manifest_digest }}
+          REF_EXISTS: ${{ matrix.ref_exists }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          report_dir="reports/${ARTIFACT_KEY}"
+          mkdir -p "$report_dir"
+          jq -n \
+            --arg schema_version \
+              "ig.gadget-kernel-compatibility-metadata.v2" \
+            --arg gadget "$GADGET" \
+            --arg version "$GADGET_VERSION" \
+            --arg tag "$GADGET_TAG" \
+            --arg ref "$GADGET_REF" \
+            --arg action_outcome "$ACTION_OUTCOME" \
+            --arg manifest_digest "$MANIFEST_DIGEST" \
+            --argjson ref_exists "$REF_EXISTS" \
+            --arg run_id "$RUN_ID" \
+            --arg run_attempt "$RUN_ATTEMPT" \
+            '{
+              schema_version: $schema_version,
+              gadget: $gadget,
+              version: $version,
+              tag: $tag,
+              ref: $ref,
+              action_outcome: $action_outcome,
+              ref_exists: $ref_exists,
+              manifest_digest: (
+                if $manifest_digest == "" then null else $manifest_digest end
+              ),
+              run_id: $run_id,
+              run_attempt: $run_attempt
+            }' >"${report_dir}/metadata.json"
+
+      - name: Upload compatibility report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gadget-compatibility-${{ matrix.artifact_key }}
+          path: reports/${{ matrix.artifact_key }}/
+          if-no-files-found: warn
+
+  compatibility-summary:
+    needs:
+      - generate-matrix
+      - gadget-matrix
+    if: ${{ always() && needs.generate-matrix.result == 'success' }}
+    name: aggregate compatibility report
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download compatibility reports
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: gadget-compatibility-*
+          path: downloaded-reports
+
+      - name: Build release comparison
+        env:
+          EXPECTED_MATRIX: ${{ needs.generate-matrix.outputs.matrix }}
+        run: |
+          set +e
+          python3 tools/gadget_kernel_compatibility_summary.py \
+            --reports-dir downloaded-reports \
+            --matrix-json "$EXPECTED_MATRIX" \
+            --markdown-output reports/gadget-kernel-compatibility.md \
+            --json-output reports/gadget-kernel-compatibility.json \
+            --expected-no-ebpf-gadget bpfstats \
+            --expected-no-ebpf-gadget top_cpu_throttle \
+            --expected-no-ebpf-gadget top_process \
+            --fail-on-regression \
+            --fail-on-unexpected-missing \
+            --fail-on-identical-artifacts
+          status=$?
+          set -e
+          if [[ -f reports/gadget-kernel-compatibility.md ]]; then
+            cat reports/gadget-kernel-compatibility.md \
+              >>"$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$status"
+
+      - name: Upload aggregate report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gadget-kernel-compatibility-summary
+          path: reports/
+          if-no-files-found: error

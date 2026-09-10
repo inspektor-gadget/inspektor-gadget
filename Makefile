@@ -426,6 +426,10 @@ build-gadgets: install/ig
 push-gadgets: install/ig
 	$(MAKE) -C gadgets/ push
 
+.PHONY: check-gadget-docs
+check-gadget-docs:
+	./tools/check-gadget-docs.sh
+
 .PHONY: unit-test-gadgets
 unit-test-gadgets:
 	$(MAKE) -C gadgets/ test-unit
