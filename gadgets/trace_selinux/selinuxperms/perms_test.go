@@ -75,3 +75,37 @@ func TestDecode(t *testing.T) {
 		})
 	}
 }
+
+func TestDecodeBoundaries(t *testing.T) {
+	tests := []struct {
+		name, class string
+		mask        uint32
+		want        string
+	}{
+		{"empty", "file", 0, ""},
+		{"unknown class preserves bits", "future_class", 0x80000001, "{ 0x1 0x80000000 }"},
+		{"known and unknown bit", "fd", 0x80000001, "{ use 0x80000000 }"},
+		{"file read write", "file", 0x6, "{ read write }"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Decode(tt.class, tt.mask); got != tt.want {
+				t.Fatalf("Decode(%q, %#x) = %q, want %q", tt.class, tt.mask, got, tt.want)
+			}
+		})
+	}
+}
+
+func FuzzDecodeNeverDropsSetBits(f *testing.F) {
+	f.Add("file", uint32(0xffffffff))
+	f.Add("unknown", uint32(0x80000001))
+	f.Fuzz(func(t *testing.T, class string, mask uint32) {
+		got := Decode(class, mask)
+		if mask == 0 && got != "" {
+			t.Fatalf("zero mask: %q", got)
+		}
+		if mask != 0 && (len(got) < 4 || got[:2] != "{ " || got[len(got)-2:] != " }") {
+			t.Fatalf("malformed result %q", got)
+		}
+	})
+}
