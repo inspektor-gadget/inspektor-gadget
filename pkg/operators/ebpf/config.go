@@ -14,7 +14,12 @@
 
 package ebpfoperator
 
-import "github.com/spf13/viper"
+import (
+	"fmt"
+	"sort"
+
+	"github.com/spf13/viper"
+)
 
 const (
 	// ConfigKey is the configuration key prefix for the eBPF operator.
@@ -56,7 +61,7 @@ type PolicyConfigSpec struct {
 
 // HelpersConfig defines the add/drop lists for BPF helpers.
 type HelpersConfig struct {
-	// Add is the list of additional BPF helpers to allow beyond the defaults.
+	// Add is the list of BPF helpers to allow (an explicit list starts an allowlist).
 	Add []string
 
 	// Drop is the list of BPF helpers to deny from the defaults.
@@ -65,34 +70,85 @@ type HelpersConfig struct {
 
 // ProgramTypesConfig defines the add/drop lists for BPF program types.
 type ProgramTypesConfig struct {
-	// Add is the list of additional BPF program types to allow beyond the defaults.
+	// Add is the list of BPF program types to allow (an explicit list starts an allowlist).
 	Add []string
 
 	// Drop is the list of BPF program types to deny from the defaults.
 	Drop []string
 }
 
-// NewConfigFromViper creates a Config from a viper configuration.
+// NewConfigFromViper reads administrator policy without Viper's permissive
+// string-slice conversions, which can silently discard malformed restrictions.
 func NewConfigFromViper(v *viper.Viper) (*Config, error) {
-	if v == nil {
-		return &Config{}, nil
-	}
-
 	cfg := &Config{}
-
-	// Load policy configuration
-	cfg.Policy.Helpers.Add = v.GetStringSlice(ConfigKey + ".policy.helpers.add")
-	cfg.Policy.Helpers.Drop = v.GetStringSlice(ConfigKey + ".policy.helpers.drop")
-	cfg.Policy.ProgramTypes.Add = v.GetStringSlice(ConfigKey + ".policy.programTypes.add")
-	cfg.Policy.ProgramTypes.Drop = v.GetStringSlice(ConfigKey + ".policy.programTypes.drop")
-
-	// Set defaults to "all" if not specified
-	if len(cfg.Policy.Helpers.Add) == 0 && len(cfg.Policy.Helpers.Drop) == 0 {
-		cfg.Policy.Helpers.Add = []string{"all"}
+	if v == nil || v.Get(ConfigKey+".policy") == nil {
+		return cfg, nil
 	}
-	if len(cfg.Policy.ProgramTypes.Add) == 0 && len(cfg.Policy.ProgramTypes.Drop) == 0 {
-		cfg.Policy.ProgramTypes.Add = []string{"all"}
+	root, err := policyConfigMap(v.Get(ConfigKey+".policy"), ConfigKey+".policy", []string{"helpers", "programtypes"})
+	if err != nil {
+		return nil, err
 	}
-
+	for _, category := range []string{"helpers", "programtypes"} {
+		raw, exists := root[category]
+		if !exists {
+			continue
+		}
+		path := ConfigKey + ".policy." + category
+		fields, err := policyConfigMap(raw, path, []string{"add", "drop"})
+		if err != nil {
+			return nil, err
+		}
+		var lists [2][]string
+		for idx, key := range []string{"add", "drop"} {
+			raw, exists := fields[key]
+			if !exists {
+				continue
+			}
+			switch value := raw.(type) {
+			case []string:
+				lists[idx] = append([]string(nil), value...)
+			case []any:
+				for _, entry := range value {
+					str, ok := entry.(string)
+					if !ok {
+						return nil, fmt.Errorf("%s.%s: expected a list of strings", path, key)
+					}
+					lists[idx] = append(lists[idx], str)
+				}
+			default:
+				return nil, fmt.Errorf("%s.%s: expected a list of strings", path, key)
+			}
+		}
+		if category == "helpers" {
+			cfg.Policy.Helpers = HelpersConfig{Add: lists[0], Drop: lists[1]}
+		} else {
+			cfg.Policy.ProgramTypes = ProgramTypesConfig{Add: lists[0], Drop: lists[1]}
+		}
+	}
 	return cfg, nil
+}
+
+func policyConfigMap(raw any, path string, allowed []string) (map[string]any, error) {
+	fields, ok := raw.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("%s: expected a mapping", path)
+	}
+	var unknown []string
+	for key := range fields {
+		valid := false
+		for _, name := range allowed {
+			if key == name {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			unknown = append(unknown, key)
+		}
+	}
+	if len(unknown) > 0 {
+		sort.Strings(unknown)
+		return nil, fmt.Errorf("%s.%s: unsupported policy key", path, unknown[0])
+	}
+	return fields, nil
 }

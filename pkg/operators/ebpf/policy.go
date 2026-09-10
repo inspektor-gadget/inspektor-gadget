@@ -22,59 +22,50 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/asm"
-
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
 )
 
-// bpfCoreUnreachable is a special helper used by the eBPF CO-RE (Compile Once - Run
-// Everywhere) mechanism to poison code paths when a relocation fails.
-// This helper must always be allowed since it's part of the CO-RE infrastructure.
-const bpfCoreUnreachable = asm.BuiltinFunc(0xbad2310)
-
-// verifyPolicy verifies that the gadget's BPF programs comply with
-// the configured BPF policy restrictions.
-func (i *ebpfInstance) verifyPolicy() error {
-	cfg, err := NewConfigFromViper(config.Config)
-	if err != nil {
-		return fmt.Errorf("loading operator config: %w", err)
+// verifyCollectionSpec checks the gadget's final instructions, including linked subprograms.
+func verifyCollectionSpec(spec *ebpf.CollectionSpec, p *policy) error {
+	if p == nil || (p.helpers.unrestricted() && p.programTypes.unrestricted()) {
+		return nil
 	}
-
-	policy, err := NewPolicy(cfg)
-	if err != nil {
-		return fmt.Errorf("creating policy from config: %w", err)
-	}
-
-	return verifyCollectionSpec(i.collectionSpec, policy)
-}
-
-// verifyCollectionSpec verifies that all programs in the collection spec
-// comply with the given capability configuration.
-// Returns an error describing all policy violations, or nil if the spec is compliant.
-func verifyCollectionSpec(spec *ebpf.CollectionSpec, cfg *policy) error {
 	var violations []string
-
-	// Verify each program
 	for name, prog := range spec.Programs {
-		// Check program type
-		if _, ok := cfg.programTypes[prog.Type]; !ok {
-			str := fmt.Sprintf("program %q uses denied BPF program type %q", name, programTypeToName(prog.Type))
-			violations = append(violations, str)
+		if !p.programTypes.allows(prog.Type) {
+			violations = append(violations, fmt.Sprintf("program %q uses denied BPF program type %q", name, programTypeToName(prog.Type)))
 		}
-
-		// Extract and check helpers used by this program
+		if p.helpers.unrestricted() {
+			continue
+		}
 		helpers := extractHelpers(prog)
 		for h := range helpers {
-			if _, ok := cfg.helpers[h]; !ok {
-				str := fmt.Sprintf("program %q uses denied BPF helper %q", name, helperFuncToName(h))
-				violations = append(violations, str)
+			if !p.helpers.allows(h) {
+				violations = append(violations, fmt.Sprintf("program %q uses denied BPF helper %q", name, helperFuncToName(h)))
+			}
+			var fallback asm.BuiltinFunc
+			switch h {
+			case asm.FnProbeReadKernel, asm.FnProbeReadUser:
+				fallback = asm.FnProbeRead
+			case asm.FnProbeReadKernelStr, asm.FnProbeReadUserStr:
+				fallback = asm.FnProbeReadStr
+			}
+			if fallback != 0 && !p.helpers.allows(fallback) {
+				violations = append(violations, fmt.Sprintf("program %q helper %q requires denied loader fallback helper %q", name, helperFuncToName(h), helperFuncToName(fallback)))
+			}
+		}
+		if p.readonlyHelpers {
+			for _, ins := range prog.Instructions {
+				if ins.IsKfuncCall() {
+					violations = append(violations, fmt.Sprintf("program %q uses a kfunc call denied by helpers readonly", name))
+					break
+				}
 			}
 		}
 	}
-
 	if len(violations) == 0 {
 		return nil
 	}
-
+	sort.Strings(violations)
 	return fmt.Errorf("BPF policy violations:\n%s", strings.Join(violations, "\n"))
 }
 
@@ -350,16 +341,17 @@ func init() {
 	// Program type IDs are continuous starting from 0, so we can use map length directly
 	programTypeIDToName = make([]string, len(programTypeNameToID)+1)
 	for name, id := range programTypeNameToID {
-		programTypeIDToName[id] = name
+		if programTypeIDToName[id] == "" || name < programTypeIDToName[id] {
+			programTypeIDToName[id] = name
+		}
 	}
 }
 
-// helperIDToName converts a BPF helper function ID to its user-friendly name.
 // helperNameToFunc converts a user-friendly BPF helper name to its function ID.
 // It accepts the standard BPF helper name format (e.g., "bpf_map_lookup_elem").
 // The "bpf_" prefix is required.
 func helperNameToFunc(s string) (asm.BuiltinFunc, error) {
-	if id, ok := helperNameToID[strings.ToLower(strings.ToLower(s))]; ok {
+	if id, ok := helperNameToID[strings.ToLower(strings.TrimSpace(s))]; ok {
 		return id, nil
 	}
 
@@ -368,7 +360,7 @@ func helperNameToFunc(s string) (asm.BuiltinFunc, error) {
 
 // helperFuncToName converts a BPF helper function ID to its user-friendly name.
 func helperFuncToName(h asm.BuiltinFunc) string {
-	if int(h) < len(helperIDToName) && helperIDToName[h] != "" {
+	if uint64(h) < uint64(len(helperIDToName)) && helperIDToName[h] != "" {
 		return helperIDToName[h]
 	}
 	return fmt.Sprintf("bpf_unknown_%d", h)
@@ -394,17 +386,14 @@ func programTypeNameToType(s string) (ebpf.ProgramType, error) {
 
 // programTypeToName converts an ebpf.ProgramType to its user-friendly name.
 func programTypeToName(pt ebpf.ProgramType) string {
-	if int(pt) < len(programTypeIDToName) && programTypeIDToName[pt] != "" {
+	if uint64(pt) < uint64(len(programTypeIDToName)) && programTypeIDToName[pt] != "" {
 		return programTypeIDToName[pt]
 	}
 	return fmt.Sprintf("unknown_prog_type_%d", pt)
 }
 
-// readonlyHelpers is a predefined set of BPF helpers that are considered safe
-// for read-only observability use cases. These helpers cannot modify kernel
-// behavior, network traffic, or bypass security mechanisms.
-//
-// Users can reference this set using the "readonly" keyword in their configuration.
+// readonlyHelpers is a curated observability selection, not a sandbox.
+// Map writes, output, and access to sensitive data are intentionally possible.
 var readonlyHelpers = map[asm.BuiltinFunc]struct{}{
 	// Map operations
 	asm.FnMapLookupElem:       {},
@@ -477,7 +466,7 @@ var readonlyHelpers = map[asm.BuiltinFunc]struct{}{
 	asm.FnSkAncestorCgroupId:  {},
 	asm.FnSkCgroupId:          {},
 
-	// Socket operations (read-only)
+	// Socket inspection (may acquire references or initialize a socket cookie)
 	asm.FnGetSocketCookie: {},
 	asm.FnGetSocketUid:    {},
 	asm.FnSkLookupTcp:     {},
@@ -487,7 +476,6 @@ var readonlyHelpers = map[asm.BuiltinFunc]struct{}{
 	asm.FnGetListenerSock: {},
 
 	// Network helpers (read-only)
-	asm.FnGetHashRecalc:        {},
 	asm.FnSkbLoadBytes:         {},
 	asm.FnSkbLoadBytesRelative: {},
 	asm.FnGetRouteRealm:        {},
@@ -501,9 +489,6 @@ var readonlyHelpers = map[asm.BuiltinFunc]struct{}{
 	asm.FnSeqWrite:     {},
 	asm.FnSeqPrintfBtf: {},
 
-	// BTF helpers
-	asm.FnBtfFindByNameKind: {},
-
 	// Function arguments (tracing)
 	asm.FnGetFuncIp:         {},
 	asm.FnGetAttachCookie:   {},
@@ -516,12 +501,6 @@ var readonlyHelpers = map[asm.BuiltinFunc]struct{}{
 	// Spin locks (for map synchronization)
 	asm.FnSpinLock:   {},
 	asm.FnSpinUnlock: {},
-
-	// Timers
-	asm.FnTimerInit:        {},
-	asm.FnTimerSetCallback: {},
-	asm.FnTimerStart:       {},
-	asm.FnTimerCancel:      {},
 
 	// Task/process lookup
 	asm.FnFindVma: {},
@@ -537,165 +516,16 @@ var readonlyHelpers = map[asm.BuiltinFunc]struct{}{
 	asm.FnDynptrData:       {},
 	asm.FnDynptrFromMem:    {},
 	asm.FnDynptrRead:       {},
-	asm.FnDynptrWrite:      {},
 	asm.FnUserRingbufDrain: {},
 
-	// Misc safe helpers
+	// Tail calls (external targets are outside this policy)
 	asm.FnTailCall: {},
-
-	// ==================== DANGEROUS HELPERS ====================
-	// The following helpers are NOT included in the default set.
-	// They can modify kernel behavior or bypass security mechanisms.
-	// Users can explicitly add them using the "add" configuration if needed.
-
-	// Can modify function return values:
-	// asm.FnOverrideReturn: {},
-
-	// Can send signals to processes:
-	// asm.FnSendSignal:       {},
-	// asm.FnSendSignalThread: {},
-
-	// Can modify socket buffer data:
-	// asm.FnSkbStoreBytes: {},
-	// asm.FnL3CsumReplace: {},
-	// asm.FnL4CsumReplace: {},
-	// asm.FnCsumDiff:      {},
-	// asm.FnCsumUpdate:    {},
-
-	// Can modify packets (TC/XDP):
-	// asm.FnCloneRedirect:  {},
-	// asm.FnRedirect:       {},
-	// asm.FnRedirectMap:    {},
-	// asm.FnRedirectPeer:   {},
-	// asm.FnRedirectNeigh:  {},
-	// asm.FnSkRedirectMap:  {},
-	// asm.FnSkRedirectHash: {},
-
-	// Can modify skb metadata:
-	// asm.FnSkbVlanPush:     {},
-	// asm.FnSkbVlanPop:      {},
-	// asm.FnSkbChangeProto:  {},
-	// asm.FnSkbChangeType:   {},
-	// asm.FnSkbAdjustRoom:   {},
-	// asm.FnSkbChangeHead:   {},
-	// asm.FnSkbChangeTail:   {},
-	// asm.FnSkbPullData:     {},
-	// asm.FnSkbSetTunnelKey: {},
-	// asm.FnSkbSetTunnelOpt: {},
-
-	// Can modify XDP packets:
-	// asm.FnXdpAdjustHead: {},
-	// asm.FnXdpAdjustTail: {},
-	// asm.FnXdpAdjustMeta: {},
-
-	// Can modify socket options:
-	// asm.FnSetsockopt:      {},
-	// asm.FnSkAssign:        {},
-	// asm.FnSockMapUpdate:   {},
-	// asm.FnSockHashUpdate:  {},
-	// asm.FnMsgRedirectMap:  {},
-	// asm.FnMsgRedirectHash: {},
-	// asm.FnMsgApplyBytes:   {},
-	// asm.FnMsgCorkBytes:    {},
-	// asm.FnMsgPullData:     {},
-	// asm.FnMsgPushData:     {},
-	// asm.FnMsgPopData:      {},
-
-	// Can bind sockets:
-	// asm.FnBind:        {},
-	// asm.FnSkbEcnSetCe: {},
-
-	// Can set packet marks/priority:
-	// asm.FnSetHash:        {},
-	// asm.FnSetHashInvalid: {},
-
-	// Can write to user memory:
-	// asm.FnProbeWriteUser: {},
-
-	// Cgroup/namespace manipulation:
-	// asm.FnSetRetval: {},
-	// asm.FnSysBpf:    {},
-
-	// Sysctl modification:
-	// asm.FnSysctlGetCurrentValue: {},
-	// asm.FnSysctlGetName:         {},
-	// asm.FnSysctlGetNewValue:     {},
-	// asm.FnSysctlSetNewValue:     {},
 }
 
-// readonlyProgramTypes is a predefined set of BPF program types that are considered
-// safe for read-only observability use cases. These program types are typically
-// used for tracing and monitoring and cannot modify network traffic or kernel behavior.
-//
-// Users can reference this set using the "readonly" keyword in their configuration.
+// readonlyProgramTypes excludes types whose return values or attach modes can
+// directly influence system behavior. Helper readonly must be selected separately.
 var readonlyProgramTypes = map[ebpf.ProgramType]struct{}{
-	// Kprobes and related
-	ebpf.Kprobe: {}, // Also used for uprobes
-
-	// Tracepoints
-	ebpf.TracePoint:            {},
-	ebpf.RawTracepoint:         {},
-	ebpf.RawTracepointWritable: {},
-
-	// Tracing (fentry/fexit)
-	ebpf.Tracing: {},
-
-	// Perf events
-	ebpf.PerfEvent: {},
-
-	// LSM (Linux Security Module) - for security observability
-	ebpf.LSM: {},
-
-	// Syscall (for tracing syscalls)
-	ebpf.Syscall: {},
-
-	// Socket filter (read-only packet inspection)
-	ebpf.SocketFilter: {},
-
-	// ==================== DANGEROUS PROGRAM TYPES ====================
-	// The following program types are NOT included in the default set.
-	// They can modify network traffic or make routing decisions.
-	// Users can explicitly add them using the "add" configuration if needed.
-
-	// XDP - can drop/redirect packets at driver level:
-	// ebpf.XDP: {},
-
-	// TC (Traffic Control) - can modify/drop packets:
-	// ebpf.SchedCLS: {},
-	// ebpf.SchedACT: {},
-
-	// Cgroup programs - can affect process behavior:
-	// ebpf.CGroupSKB:      {},
-	// ebpf.CGroupSock:     {},
-	// ebpf.CGroupSockAddr: {},
-	// ebpf.CGroupSockopt:  {},
-	// ebpf.CGroupSysctl:   {},
-	// ebpf.CGroupDevice:   {},
-
-	// Socket programs - can modify socket behavior:
-	// ebpf.SockOps:     {},
-	// ebpf.SkSKB:       {},
-	// ebpf.SkMsg:       {},
-	// ebpf.SkReuseport: {},
-	// ebpf.SkLookup:    {},
-
-	// Flow dissector - can affect packet parsing:
-	// ebpf.FlowDissector: {},
-
-	// LWT (Lightweight Tunnel) - can affect routing:
-	// ebpf.LWTIn:        {},
-	// ebpf.LWTOut:       {},
-	// ebpf.LWTXmit:      {},
-	// ebpf.LWTSeg6Local: {},
-
-	// Netfilter - can affect packet filtering:
-	// ebpf.Netfilter: {},
-
-	// Struct ops - can modify kernel behavior:
-	// ebpf.StructOps: {},
-
-	// Extension - modifies other BPF programs:
-	// ebpf.Extension: {},
+	ebpf.Kprobe: {}, ebpf.TracePoint: {}, ebpf.RawTracepoint: {}, ebpf.PerfEvent: {},
 }
 
 // validateKeywords checks for special keywords ("all" or "readonly")
@@ -716,9 +546,6 @@ func validateKeywords(list []string, listName string) (string, error) {
 	if (hasAll || hasReadonly) && len(list) > 1 {
 		return "", fmt.Errorf("special keyword ('all' or 'readonly') in %s cannot be used together with other items", listName)
 	}
-	if hasAll && hasReadonly {
-		return "", fmt.Errorf("'all' and 'readonly' keywords cannot both be used in %s", listName)
-	}
 
 	if hasAll {
 		return "all", nil
@@ -730,145 +557,90 @@ func validateKeywords(list []string, listName string) (string, error) {
 	return "", nil
 }
 
-// policy holds the final computed set of allowed BPF helpers and program types.
-// The sets are computed as: (defaults + add) - drop
+// A category is either an explicit allowlist or an unrestricted baseline with
+// named exclusions. The latter also admits IDs introduced by future kernels.
+type policyCategory[T comparable] struct {
+	all     bool
+	allowed map[T]struct{}
+	denied  map[T]struct{}
+}
+
+func (c policyCategory[T]) allows(id T) bool {
+	if _, denied := c.denied[id]; denied {
+		return false
+	}
+	_, allowed := c.allowed[id]
+	return c.all || allowed
+}
+
+func (c policyCategory[T]) unrestricted() bool { return c.all && len(c.denied) == 0 }
+
 type policy struct {
-	// helpers is the set of allowed BPF helpers.
-	helpers map[asm.BuiltinFunc]struct{}
-
-	// programTypes is the set of allowed BPF program types.
-	programTypes map[ebpf.ProgramType]struct{}
+	helpers         policyCategory[asm.BuiltinFunc]
+	programTypes    policyCategory[ebpf.ProgramType]
+	readonlyHelpers bool
 }
 
-// NewPolicy converts the Config's PolicyConfigSpec to an internal policy struct.
-// It starts with an empty set, then processes the "add" and "drop" lists.
-// Special keywords for add lists:
-//   - "all": adds all known helpers/program types (from helperNameToID/programTypeNameToID)
-//   - "readonly": adds the predefined readonly set (readonlyHelpers/readonlyProgramTypes)
-//
-// Special keywords for drop lists:
-//   - "all": clears all helpers/program types
-//
-// Special keywords cannot be used together with other items in the same list.
+func newPolicyCategory[T comparable](add, drop []string, path string, parse func(string) (T, error), readonly map[T]struct{}) (policyCategory[T], error) {
+	var c policyCategory[T]
+	addKeyword, err := validateKeywords(add, path+".add")
+	if err != nil {
+		return c, err
+	}
+	dropKeyword, err := validateKeywords(drop, path+".drop")
+	if err != nil {
+		return c, err
+	}
+	if dropKeyword == "readonly" {
+		return c, fmt.Errorf("%s.drop: readonly is only valid in add", path)
+	}
+	if addKeyword == "all" && dropKeyword == "all" {
+		return c, fmt.Errorf("%s: add all and drop all are contradictory", path)
+	}
+	c.all = (len(add) == 0 || addKeyword == "all") && dropKeyword != "all"
+	c.allowed = make(map[T]struct{})
+	c.denied = make(map[T]struct{})
+	if addKeyword == "readonly" {
+		maps.Copy(c.allowed, readonly)
+	}
+	if addKeyword == "" {
+		for _, name := range add {
+			id, err := parse(name)
+			if err != nil {
+				return c, fmt.Errorf("%s.add: %w", path, err)
+			}
+			c.allowed[id] = struct{}{}
+		}
+	}
+	if dropKeyword == "" {
+		for _, name := range drop {
+			id, err := parse(name)
+			if err != nil {
+				return c, fmt.Errorf("%s.drop: %w", path, err)
+			}
+			c.denied[id] = struct{}{}
+		}
+	}
+	return c, nil
+}
+
+// NewPolicy takes an immutable snapshot of both independently configured categories.
 func NewPolicy(c *Config) (*policy, error) {
-	// Validate special keywords in add/drop lists
-	helpersAddKeyword, err := validateKeywords(c.Policy.Helpers.Add, "helpers.add")
+	if c == nil {
+		c = &Config{}
+	}
+	p := &policy{}
+	var err error
+	p.helpers, err = newPolicyCategory(c.Policy.Helpers.Add, c.Policy.Helpers.Drop, ConfigKey+".policy.helpers", helperNameToFunc, readonlyHelpers)
 	if err != nil {
 		return nil, err
 	}
-	helpersDropKeyword, err := validateKeywords(c.Policy.Helpers.Drop, "helpers.drop")
+	p.programTypes, err = newPolicyCategory(c.Policy.ProgramTypes.Add, c.Policy.ProgramTypes.Drop, ConfigKey+".policy.programTypes", programTypeNameToType, readonlyProgramTypes)
 	if err != nil {
 		return nil, err
 	}
-	if helpersAddKeyword != "" && helpersDropKeyword != "" {
-		return nil, fmt.Errorf("keywords cannot be used in both helpers.add and helpers.drop")
-	}
-
-	programTypesAddKeyword, err := validateKeywords(c.Policy.ProgramTypes.Add, "programTypes.add")
-	if err != nil {
-		return nil, err
-	}
-	programTypesDropKeyword, err := validateKeywords(c.Policy.ProgramTypes.Drop, "programTypes.drop")
-	if err != nil {
-		return nil, err
-	}
-	if programTypesAddKeyword != "" && programTypesDropKeyword != "" {
-		return nil, fmt.Errorf("keywords cannot be used in both programTypes.add and programTypes.drop")
-	}
-
-	// Start with empty sets
-	p := &policy{
-		helpers:      make(map[asm.BuiltinFunc]struct{}),
-		programTypes: make(map[ebpf.ProgramType]struct{}),
-	}
-
-	// Add helpers
-	switch helpersAddKeyword {
-	case "all":
-		for _, helperID := range helperNameToID {
-			p.helpers[helperID] = struct{}{}
-		}
-	case "readonly":
-		maps.Copy(p.helpers, readonlyHelpers)
-	default:
-		for _, h := range c.Policy.Helpers.Add {
-			helper, err := helperNameToFunc(h)
-			if err != nil {
-				return nil, fmt.Errorf("parsing add helper %q: %w", h, err)
-			}
-			p.helpers[helper] = struct{}{}
-		}
-	}
-
-	// Drop helpers
-	switch helpersDropKeyword {
-	case "all":
-		p.helpers = make(map[asm.BuiltinFunc]struct{})
-	default:
-		for _, h := range c.Policy.Helpers.Drop {
-			helper, err := helperNameToFunc(h)
-			if err != nil {
-				return nil, fmt.Errorf("parsing drop helper %q: %w", h, err)
-			}
-			delete(p.helpers, helper)
-		}
-	}
-
-	// Always allow bpf_core_unreachable - it's required for eBPF CO-RE relocations.
-	p.helpers[bpfCoreUnreachable] = struct{}{}
-
-	// Add program types
-	switch programTypesAddKeyword {
-	case "all":
-		for _, progTypeID := range programTypeNameToID {
-			p.programTypes[progTypeID] = struct{}{}
-		}
-	case "readonly":
-		maps.Copy(p.programTypes, readonlyProgramTypes)
-	default:
-		for _, pt := range c.Policy.ProgramTypes.Add {
-			programType, err := programTypeNameToType(pt)
-			if err != nil {
-				return nil, fmt.Errorf("parsing add program type %q: %w", pt, err)
-			}
-			p.programTypes[programType] = struct{}{}
-		}
-	}
-
-	// Drop program types
-	switch programTypesDropKeyword {
-	case "all":
-		p.programTypes = make(map[ebpf.ProgramType]struct{})
-	default:
-		for _, pt := range c.Policy.ProgramTypes.Drop {
-			programType, err := programTypeNameToType(pt)
-			if err != nil {
-				return nil, fmt.Errorf("parsing drop program type %q: %w", pt, err)
-			}
-			delete(p.programTypes, programType)
-		}
-	}
-
+	p.readonlyHelpers = len(c.Policy.Helpers.Add) == 1 && strings.EqualFold(strings.TrimSpace(c.Policy.Helpers.Add[0]), "readonly")
 	return p, nil
-}
-
-// String returns a human-readable representation of the configuration.
-func (c *policy) String() string {
-	var helpers []string
-	for h := range c.helpers {
-		helpers = append(helpers, helperFuncToName(h))
-	}
-	sort.Strings(helpers)
-
-	var programTypes []string
-	for pt := range c.programTypes {
-		programTypes = append(programTypes, programTypeToName(pt))
-	}
-	sort.Strings(programTypes)
-
-	return fmt.Sprintf("allowed_helpers=[%s], allowed_program_types=[%s]",
-		strings.Join(helpers, "\n"),
-		strings.Join(programTypes, "\n"))
 }
 
 // extractHelpers extracts all BPF helper function calls from a program.
