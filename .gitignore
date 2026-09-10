@@ -48,3 +48,4 @@ pkg/btfgen/btfs/arm64/*
 
 !gadgets/*.o
 !testdata/*.o
+!pkg/operators/ebpf/testdata/policy*.bpf.o
