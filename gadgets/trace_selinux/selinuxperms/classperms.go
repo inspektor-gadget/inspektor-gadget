@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Code generated from the Linux kernel security/selinux/include/classmap.h. DO NOT EDIT.
+// Code generated from Linux v6.17 security/selinux/include/classmap.h. DO NOT EDIT.
+// Source: https://github.com/torvalds/linux/blob/v6.17/security/selinux/include/classmap.h
+// SHA-256: 95c6c44516ba33f02e94458967e120e5319123f758d1a7e2da4c4c71f96de395
 
 // Package selinuxperms maps SELinux object classes to their ordered
 // access-vector permission names, used to decode AVC permission bitmasks.
