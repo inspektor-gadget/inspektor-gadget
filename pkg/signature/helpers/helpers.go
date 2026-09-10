@@ -16,11 +16,11 @@ package helpers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 )
 
@@ -111,7 +111,9 @@ func findReferrerTag(ctx context.Context, imageStore oras.ReadOnlyGraphTarget, i
 	}
 
 	if len(descriptors) == 0 {
-		return "", errors.New("no referrers found")
+		// Report this the same way a registry reports a missing signature tag,
+		// so callers can tell "nothing is signed here" from a real failure.
+		return "", fmt.Errorf("no referrers found: %w", errdef.ErrNotFound)
 	}
 
 	if len(descriptors) > 1 {
