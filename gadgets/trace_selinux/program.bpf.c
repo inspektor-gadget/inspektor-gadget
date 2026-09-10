@@ -70,7 +70,7 @@ const volatile bool denials_only = true;
 GADGET_PARAM(denials_only);
 
 // Collect the kernel stack trace that led to the AVC audit event.
-const volatile bool collect_kstack = true;
+const volatile bool collect_kstack = false;
 GADGET_PARAM(collect_kstack);
 
 GADGET_TRACER_MAP(events, 1024 * 256);
@@ -99,6 +99,8 @@ int ig_selinux(struct trace_event_raw_selinux_audited *ctx)
 	if (!event)
 		return 0;
 
+	/* Ring-buffer reservations are not guaranteed to be zero-filled. */
+	__builtin_memset(event, 0, sizeof(*event));
 	gadget_process_populate(&event->proc);
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
 
@@ -117,7 +119,7 @@ int ig_selinux(struct trace_event_raw_selinux_audited *ctx)
 	if (collect_kstack)
 		event->kstack_raw = gadget_get_kernel_stack(ctx);
 
-	gadget_get_user_stack(ctx, &event->ustack);
+	gadget_get_user_stack_from_tracepoint(ctx, &event->ustack);
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 
