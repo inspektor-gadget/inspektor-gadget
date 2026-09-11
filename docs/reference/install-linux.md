@@ -53,9 +53,14 @@ $ sudo IG_EXPERIMENTAL=true ig run trace_exec
 INFO[0000] Experimental features enabled
 ...
 
-# pass -E if using export and sudo
+# if the variable is already exported, ask sudo to preserve it
 $ export IG_EXPERIMENTAL=true
-$ sudo -E ig run trace_exec
+$ sudo --preserve-env=IG_EXPERIMENTAL ig run trace_exec
 INFO[0000] Experimental features enabled
 ...
 ```
+
+`sudo` resets the environment, so the variable has to be passed on the `sudo`
+command line or named in `--preserve-env`. Do not use `sudo -E`: it is silently
+ignored by [sudo-rs](https://github.com/trifectatechfoundation/sudo-rs), which
+is the default `sudo` implementation since Ubuntu 25.10.
