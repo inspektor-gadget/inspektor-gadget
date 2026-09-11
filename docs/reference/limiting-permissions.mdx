@@ -1,0 +1,135 @@
+---
+title: 'Limiting Permissions of Gadgets'
+sidebar_position: 650
+description: Restrict the builtin BPF helpers and program types used by gadgets
+---
+
+The eBPF operator can restrict the builtin BPF helpers and program types in a gadget's BPF programs. Restrictions are **opt-in**: an upgrade without policy configuration preserves existing behavior. The kernel verifier and other existing checks still apply.
+
+## Configure an administrator policy
+
+Set `operator.ebpf.policy` in the configuration of the process that runs the gadget. For local execution, save a policy in `gadget-policy.yaml` and pass it explicitly:
+
+```bash
+sudo ig --config=gadget-policy.yaml run trace_open
+```
+
+For a daemon, include the policy in its administrator configuration:
+
+```bash
+sudo ig daemon --config=/etc/ig/config.yaml
+```
+
+For Kubernetes, supply the YAML file at deployment:
+
+```bash
+kubectl gadget deploy --daemon-config=gadget-policy.yaml
+```
+
+The policy comes from the administrator's process configuration. Gadget image metadata and client-supplied instance parameters cannot replace it; configuring a remote client's own file does not change the daemon's policy. Each gadget instance keeps the policy snapshot taken during initialization, including for its final check before loading. There is no policy hot reload for an existing instance.
+
+See [Configuration](./configuration.md) for configuration-file locations and general precedence. Policy lists should be supplied through the YAML file; `--set-daemon-config` supports primitive values, not these lists.
+
+## Policy rules
+
+The `helpers` and `programTypes` categories are independent. Configuring only one leaves the other unrestricted. Each accepts `add` and `drop` lists:
+
+| Configuration for one category | Result |
+| --- | --- |
+| Absent category, or empty `add` and `drop` lists | Unrestricted |
+| Named `add` entries | Allow only those entries |
+| `add: [all]` | Unrestricted baseline |
+| `add: [readonly]` | Allow the curated readonly set |
+| Named `drop` entries without `add` | Allow everything except those entries |
+| Named `add` and named `drop` entries | Allow the additions except any named exclusions; drop wins overlap |
+| `drop: [all]` without `add` | Allow nothing in this category |
+| `drop: [all]` with named `add` entries | Start empty, then allow the additions |
+| `drop: [all]` with `add: [readonly]` | Start empty, then allow readonly |
+| `add: [all]` with `drop: [all]` | Invalid |
+
+An unrestricted baseline is a wildcard, not a list of currently known IDs. It also admits future helper or program-type IDs, except explicitly denied entries. A finite allowlist rejects IDs outside its set. Empty lists deliberately preserve compatibility; use `drop: [all]` to deny all.
+
+`all` and `readonly` must each be the sole entry in their list. `readonly` is valid only in `add`. To remove entries from a preset, use named `drop` entries. To allow a selection beyond the preset, supply an explicit named allowlist instead of mixing names with `readonly`.
+
+Names are case-insensitive and surrounding whitespace is ignored. Helpers require the `bpf_` prefix, such as `bpf_map_lookup_elem`. Program types accept names such as `kprobe`, `KPROBE`, or `BPF_PROG_TYPE_KPROBE`. Duplicate names have no additional effect. Unknown names, unsupported keys under `policy`, and malformed mappings or string lists produce configuration errors identifying the path.
+
+### Allow only kprobe programs
+
+This example allows the `kprobe` program type, also used for uprobes. Helpers remain unrestricted:
+
+```yaml
+operator:
+  ebpf:
+    policy:
+      programTypes:
+        drop: [all]
+        add: [kprobe]
+```
+
+### Deny a specific helper
+
+This example denies `bpf_override_return`, leaving other builtin helpers and all program types unrestricted:
+
+```yaml
+operator:
+  ebpf:
+    policy:
+      helpers:
+        drop: [bpf_override_return]
+```
+
+It does not prevent every way to affect return values or system behavior; program types and kfuncs have separate behavior.
+
+## Readonly selection
+
+`readonly` is a curated observability selection, **not a sandbox or a guarantee of zero side effects**. Select it in both categories to restrict both builtin helpers and program types:
+
+```yaml
+operator:
+  ebpf:
+    policy:
+      helpers:
+        add: [readonly]
+      programTypes:
+        add: [readonly]
+```
+
+### Program types
+
+The program-type selection contains exactly `kprobe`, `tracepoint`, `raw_tracepoint`, and `perf_event`.
+
+It excludes `raw_tracepoint_writable`, `tracing`, `lsm`, `syscall`, `socket_filter`, and all other types. In particular, **fentry/fexit gadgets are excluded** because they share `tracing` with other attach modes. Tracing includes [function-return modification](https://docs.kernel.org/bpf/libbpf/program_types.html); [LSM return values](https://docs.kernel.org/6.12/bpf/prog_lsm.html) can deny operations, and [socket-filter return values](https://github.com/torvalds/linux/blob/adc218676eef25575469234709c2d87185ca223a/net/core/filter.c#L120-L133) can affect packet delivery. Explicit custom policies can admit these types when required.
+
+### Helpers
+
+The helper selection retains tracing functionality in these groups:
+
+- Process, task, cgroup, CPU, time, stack, memory-read, and selected socket/network inspection helpers provide observations.
+- Map lookup/update/delete, queue/stack operations, iteration, and synchronization support collection and aggregation. Map writes are permitted.
+- Perf events, ring buffers, printing, and formatting provide event output.
+- Selected dynptr access, callbacks, and tail calls support data processing and composition. External tail-call targets remain outside this policy's inspection.
+
+The exact membership is maintained in `readonlyHelpers` in `pkg/operators/ebpf/policy.go`. It excludes `bpf_override_return`, signal helpers, `bpf_probe_write_user`, `bpf_sys_bpf`, `bpf_set_retval`, and packet/redirect/socket-mutating helpers.
+
+Additional exclusions keep the selection conservative: [`bpf_get_hash_recalc` updates packet metadata](https://github.com/torvalds/linux/blob/adc218676eef25575469234709c2d87185ca223a/include/uapi/linux/bpf.h#L2580-L2595); [`bpf_btf_find_by_name_kind` obtains a BTF object file descriptor](https://github.com/torvalds/linux/blob/adc218676eef25575469234709c2d87185ca223a/kernel/bpf/btf.c#L8050-L8073); [timer initialization, callback registration, start, and cancel manage asynchronous execution and lifetime](https://github.com/torvalds/linux/blob/adc218676eef25575469234709c2d87185ca223a/include/uapi/linux/bpf.h#L5189-L5260); and [`bpf_dynptr_write` can write packet data](https://github.com/torvalds/linux/blob/adc218676eef25575469234709c2d87185ca223a/kernel/bpf/helpers.c#L1793-L1830).
+
+Selecting `helpers.add: [readonly]` also rejects **kfunc calls**. Explicit custom helper allowlists or denylists govern builtin helpers only; they do not restrict kfuncs. Selecting only `programTypes.add: [readonly]` does not reject kfuncs either. Ordinary BPF-to-BPF calls are allowed, but builtin helper calls in linked subprogram and callback bodies are checked.
+
+## Enforcement and compatibility limits
+
+The operator checks the gadget collection during initialization and again immediately before loading its transformed programs. Errors identify the program and denied helper or program type. Checks are static: forbidden calls are rejected even when they occur in code that would be unreachable on a particular kernel.
+
+The loader can [replace newer probe-read helpers with legacy helpers](https://github.com/cilium/ebpf/blob/e55144e17360b60cc4583229c35c2dbf0935b308/linker.go#L375-L392). When helper restrictions are active, a program calling either source below must have permission for both the source and its possible fallback:
+
+| Source helpers | Required possible fallback |
+| --- | --- |
+| `bpf_probe_read_kernel`, `bpf_probe_read_user` | `bpf_probe_read` |
+| `bpf_probe_read_kernel_str`, `bpf_probe_read_user_str` | `bpf_probe_read_str` |
+
+This conservative rule applies even on a newer kernel that would not use the fallback. A missing permission produces a loader-fallback diagnostic. The readonly helper selection includes all six helpers; unrestricted helper policies need no additional configuration.
+
+The policy covers gadget-defined programs in the inspected collection. It does not inspect arbitrary memory stores, map provenance, external tail-call targets, or separate runtime-supplied programs such as the OpenTelemetry programs. Other operators and kernel-internal transformations are outside its scope.
+
+Even with both readonly selections enabled, gadgets can read sensitive data, write maps, emit events, acquire socket references or allocate socket cookies, and consume CPU, memory, and other resources. Shared or replacement maps can connect those writes to other programs. The policy does not establish confidentiality, availability, isolation, or absence of system effects.
+
+Use the bounded policy together with [gadget restrictions](./restricting-gadgets.mdx) and [signature verification](./verify-gadgets.mdx) according to the trust required for your deployment.
