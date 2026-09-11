@@ -85,10 +85,13 @@ Let's try to run an image-based gadget which was not signed:
 
 ```bash
 $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_open:v0.27.0
-Error: fetching gadget information: initializing and preparing operators: instantiating operator "oci": ensuring image: verifying image "ghcr.io/inspektor-gadget/gadget/trace_open:v0.27.0": getting signing information: getting signature: getting signature bytes: ghcr.io/inspektor-gadget/gadget/trace_open:sha256-0c0e2fa72ae70e65351ab7a48a1cd5a68752a94d9c36e7b51e8764a1b7be3d7a.sig: not found
+WARN[0000] no signature found for gadget ghcr.io/inspektor-gadget/gadget/trace_open:v0.27.0
+Error: fetching gadget information: initializing and preparing operators: instantiating operator "oci": verifying image: no signature found for gadget ghcr.io/inspektor-gadget/gadget/trace_open:v0.27.0
+If the gadget is not signed and you are sure you want to skip signature verification, run or deploy Inspektor Gadget with --verify-image=false
 ```
 
 As the image was not signed, no signature was found in the repository, so the execution is denied.
+Run with `-v` to see which signature formats were tried and why each one failed.
 
 You can set your own public keys with `--public-keys`:
 

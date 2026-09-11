@@ -154,7 +154,9 @@ func VerifyGadgetImage(ctx context.Context, image string, imgOpts *ImageOptions)
 				return fmt.Errorf("verifying gadget signature %q: %w", image, err)
 			}
 
-			log.Warn("signature not found, will pull signing information and try verification again")
+			// The signing information is simply not in the local store yet;
+			// this is the normal path the first time an image is verified.
+			log.Debug("signature not found locally, will pull signing information and try verification again")
 
 			if imageStore.readOnly {
 				return fmt.Errorf("disabling signature pull for %q as --oci-store-user opens the user's store as read only", image)
@@ -174,7 +176,9 @@ func VerifyGadgetImage(ctx context.Context, image string, imgOpts *ImageOptions)
 			// again.
 			err = puller.DefaultSignaturePuller.PullSigningInformation(ctx, repo, imageStore, desc.Digest.String())
 			if err != nil {
-				return fmt.Errorf("pulling gadget signature %q: %w", image, err)
+				log.Debugf("pulling signing information for %q: %v", image, err)
+
+				return signaturePullError(imageRef, err)
 			}
 
 			if err := imageStore.saveIndexWithLock(); err != nil {
@@ -273,8 +277,12 @@ func pullImage(ctx context.Context, targetImage reference.Named, imageStore oras
 
 	imageDigest := desc.Digest.String()
 	if err := puller.DefaultSignaturePuller.PullSigningInformation(ctx, repo, imageStore, imageDigest); err != nil {
-		log.Warnf("error pulling signature: %v", err)
-		// it's not a requirement to have a signature for pulling the image
+		// It's not a requirement to have a signature for pulling the image, so
+		// only warn about it. Keep the warning to a single line and leave the
+		// per-puller detail to the debug log.
+		log.Debugf("pulling signing information for %q: %v", targetImage.String(), err)
+		log.Warnf("%s", signaturePullWarning(targetImage, err))
+
 		return &desc, nil
 	}
 
