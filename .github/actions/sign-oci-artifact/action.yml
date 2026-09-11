@@ -24,6 +24,4 @@ runs:
         OCI_ARTIFACT: '${{ inputs.oci_artifact }}'
       shell: bash
       run: |
-        # Force using legacy .sig format.
-        # TODO Switch to bundle format.
-        cosign sign --new-bundle-format=false --use-signing-config=false --key env://COSIGN_PRIVATE_KEY --yes --recursive "${OCI_ARTIFACT}"
+        cosign sign --key env://COSIGN_PRIVATE_KEY --yes --recursive "${OCI_ARTIFACT}"

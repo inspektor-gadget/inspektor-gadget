@@ -21,9 +21,7 @@ IG_FLAGS ?=
 GADGET_PUSH_RETRIES ?= 0
 IG_DEBUG_LOGS ?= true
 COSIGN ?= cosign
-# Force using legacy .sig format.
-# TODO Switch to bundle format.
-COSIGN_FLAGS ?= --new-bundle-format=false --use-signing-config=false
+COSIGN_FLAGS ?=
 CRANE ?= crane
 VIMTO ?= vimto
 VIMTO_VM_MEMORY ?= 4096M
