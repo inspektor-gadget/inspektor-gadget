@@ -121,8 +121,8 @@ func TestProcessOperatorWithFields(t *testing.T) {
 			assert.True(t, fieldNames["pid"])
 			assert.True(t, fieldNames["ppid"])
 			assert.True(t, fieldNames["comm"])
-			assert.False(t, fieldNames["cpuUsage"])
-			assert.False(t, fieldNames["memoryRSS"])
+			assert.False(t, fieldNames["cpu"])
+			assert.False(t, fieldNames["memRSS"])
 
 			err := ds.Subscribe(subscriber.handleEvent, Priority+1)
 			require.NoError(t, err)

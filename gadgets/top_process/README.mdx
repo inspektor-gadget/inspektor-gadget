@@ -3,8 +3,8 @@ title: top_process
 sidebar_position: 0
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
 
 # top_process
 
@@ -26,6 +26,7 @@ Running the gadget:
         $ sudo ig run ghcr.io/inspektor-gadget/gadget/top_process:%IG_TAG%
         ```
     </TabItem>
+
 </Tabs>
 
 ## Guide
@@ -50,7 +51,7 @@ You can sort the output by any field, for example by CPU usage:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/top_process:%IG_TAG% --sort -cpuUsage --max-entries 12
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/top_process:%IG_TAG% --sort -cpu --max-entries 12
         K8S.NODE            K8S.NAMESPACE       K8S.PODNAME         K8S.CONTAINERNAME         PID COMM               CPUUSAGE CPUUSAGERELA…     MEMORYRSS MEMORYVIRTUAL MEMORYRELATI… THREADCOUNT STATE               UID STARTTIMESTR
         minikube            test-namespace      test-pod            test-container            747 ig                      0.3           0.1      94101504    1979633664           2.3           8 S                     0 2025-05-20T2
         minikube            test-namespace      test-pod            test-container          40192 ig                      0.3           0.1     134131712    2056871936           3.3           9 S                     0 2025-05-27T1
@@ -63,7 +64,7 @@ You can sort the output by any field, for example by CPU usage:
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run top_process --sort -cpuUsage --max-entries 12
+        $ sudo ig run top_process --sort -cpu --max-entries 12
         RUNTIME.CONTAINERNAME            PID COMM               CPUUSAGE CPUUSAGERELA…     MEMORYRSS MEMORYVIRTUAL MEMORYRELATI… THREADCOUNT STATE               UID STARTTIMESTR
         test-container                   747 ig                      0.3           0.1      94101504    1979633664           2.3           8 S                     0 2025-05-20T2
         test-container                 40192 ig                      0.3           0.1     134131712    2056871936           3.3           9 S                     0 2025-05-27T1
@@ -74,4 +75,5 @@ You can sort the output by any field, for example by CPU usage:
         ...
         ```
     </TabItem>
+
 </Tabs>

@@ -87,8 +87,8 @@ shape (see `discovering-params-and-fields.md`).
   rows. Prefer matching client, DaemonSet, and gadget versions before concluding
   that an empty trace means no events occurred.
 - **Bare field vs `*_raw`.** Numeric fields often render as a human-formatted
-  string (`latency_ns`="1.2ms", `memoryRSS`="12 MB", `throttledTime`="4ms"); the
-  `_raw` sibling (`latency_ns_raw`, `memoryRSS_raw`, `throttledTime_raw`) is the
+  string (`latency_ns`="1.2ms", `memRSS`="12 MB", `throttledTime`="4ms"); the
+  `_raw` sibling (`latency_ns_raw`, `memRSS_raw`, `throttledTime_raw`) is the
   machine number — use `_raw` for arithmetic/sort/`jq` comparisons, the bare
   field for display. Both appear under `-h`/`--fields`.
 - **In-cluster IG must be present.** `kubectl gadget run` needs the IG DaemonSet

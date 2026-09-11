@@ -56,14 +56,14 @@ pivot to `trace_malloc`).
   `common-flags.md`); `-o json` + `jq '.[].parent.comm'` also works for nested fields.
 - **`top_process`** — periodic process stats (CPU/mem ranking) — "what's hot
   right now". Verified flags: `--sort` (join with `,`; `-` prefix = descending,
-  e.g. `--sort -memoryRSS` for the biggest memory users), `--interval` (default
+  e.g. `--sort -memRSS` for the biggest memory users), `--interval` (default
   `3s`), `--count` (number of reports; `0` = until timeout), `--max-entries`.
-  Memory columns `memoryRSS`/`memoryVirtual`/`memoryShared` (each with a `_raw`
-  numeric sibling); CPU `cpuUsage`/`cpuUsageRelative`.
+  Memory columns `memRSS`/`memVirtual`/`memShared` (each with a `_raw`
+  numeric sibling); CPU `cpu`/`cpuRelative`.
 
 ```bash
 # Top memory consumers in a namespace, refreshed every 5s
-kubectl gadget run top_process:latest -n <ns> --sort -memoryRSS --interval 5 --max-entries 10 -o json
+kubectl gadget run top_process:latest -n <ns> --sort -memRSS --interval 5 --max-entries 10 -o json
 ```
 
 ## Flight recorder
