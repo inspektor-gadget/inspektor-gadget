@@ -83,6 +83,14 @@ func TestInventoryCacheAdd(t *testing.T) {
 			ok:           true,
 		},
 		{
+			testName:     "Add valid Node with InternalIP",
+			kind:         "node",
+			initialObj:   constructNode("test-node", "192.168.58.2"),
+			expectedName: "test-node",
+			expectedIP:   "192.168.58.2",
+			ok:           true,
+		},
+		{
 			testName:     "Add Pod with no IP",
 			kind:         "pod",
 			initialObj:   constructPod("no-ip-pod", "default", ""),
@@ -119,10 +127,11 @@ func TestInventoryCacheAdd(t *testing.T) {
 		t.Run(tc.testName, func(t *testing.T) {
 			// Prepare the cache with all maps.
 			cache := &inventoryCache{
-				pods:     cachedmap.NewCachedMap[string, *SlimPod](time.Second),
-				podsByIp: cachedmap.NewCachedMap[string, *SlimPod](time.Second),
-				svcs:     cachedmap.NewCachedMap[string, *SlimService](time.Second),
-				svcsByIp: cachedmap.NewCachedMap[string, *SlimService](time.Second),
+				pods:      cachedmap.NewCachedMap[string, *SlimPod](time.Second),
+				podsByIp:  cachedmap.NewCachedMap[string, *SlimPod](time.Second),
+				svcs:      cachedmap.NewCachedMap[string, *SlimService](time.Second),
+				svcsByIp:  cachedmap.NewCachedMap[string, *SlimService](time.Second),
+				nodesByIp: cachedmap.NewCachedMap[string, *SlimNode](time.Second),
 			}
 
 			// If we expect an error, capture log output.
@@ -161,6 +170,10 @@ func TestInventoryCacheAdd(t *testing.T) {
 					require.NotNil(t, retrievedByIP, "expected service to be retrievable by IP")
 					assert.Equal(t, tc.expectedName, retrievedByIP.Name)
 				}
+			case "node":
+				retrievedByIP := cache.GetNodeByIp(tc.expectedIP)
+				require.NotNil(t, retrievedByIP, "expected node to be retrievable by IP")
+				assert.Equal(t, tc.expectedName, retrievedByIP.Name)
 			}
 		})
 	}
@@ -195,6 +208,14 @@ func TestInventoryCacheUpdate(t *testing.T) {
 			ok:         true,
 		},
 		{
+			testName:   "Update Node InternalIP",
+			kind:       "node",
+			initialObj: constructNode("test-node", "192.168.58.2"),
+			updatedObj: constructNode("test-node", "192.168.58.3"),
+			expectedIP: "192.168.58.3",
+			ok:         true,
+		},
+		{
 			testName:   "Update Pod with invalid key",
 			kind:       "pod",
 			initialObj: constructPod("invalid-pod", "default", "1.2.3.4"),
@@ -216,10 +237,11 @@ func TestInventoryCacheUpdate(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.testName, func(t *testing.T) {
 			cache := &inventoryCache{
-				pods:     cachedmap.NewCachedMap[string, *SlimPod](time.Nanosecond),
-				podsByIp: cachedmap.NewCachedMap[string, *SlimPod](time.Nanosecond),
-				svcs:     cachedmap.NewCachedMap[string, *SlimService](time.Nanosecond),
-				svcsByIp: cachedmap.NewCachedMap[string, *SlimService](time.Nanosecond),
+				pods:      cachedmap.NewCachedMap[string, *SlimPod](time.Nanosecond),
+				podsByIp:  cachedmap.NewCachedMap[string, *SlimPod](time.Nanosecond),
+				svcs:      cachedmap.NewCachedMap[string, *SlimService](time.Nanosecond),
+				svcsByIp:  cachedmap.NewCachedMap[string, *SlimService](time.Nanosecond),
+				nodesByIp: cachedmap.NewCachedMap[string, *SlimNode](time.Nanosecond),
 			}
 
 			cache.OnAdd(tc.initialObj, false)
@@ -251,6 +273,10 @@ func TestInventoryCacheUpdate(t *testing.T) {
 				assert.Equal(t, tc.expectedIP, retrieved.Spec.ClusterIP)
 				retrievedByIP := cache.GetSvcByIp(tc.expectedIP)
 				require.NotNil(t, retrievedByIP, "expected service to be retrievable by new IP")
+			case "node":
+				retrievedByIP := cache.GetNodeByIp(tc.expectedIP)
+				require.NotNil(t, retrievedByIP, "expected node to be retrievable by new IP")
+				assert.Equal(t, "test-node", retrievedByIP.Name)
 			}
 		})
 	}
@@ -279,6 +305,12 @@ func TestInventoryCacheDelete(t *testing.T) {
 			ok:         true,
 		},
 		{
+			testName:   "Delete Node",
+			kind:       "node",
+			initialObj: constructNode("test-node", "192.168.58.2"),
+			ok:         true,
+		},
+		{
 			testName:      "Delete unknown object",
 			kind:          "unknown",
 			initialObj:    "not a valid object",
@@ -291,10 +323,11 @@ func TestInventoryCacheDelete(t *testing.T) {
 		t.Run(tc.testName, func(t *testing.T) {
 			// Use a very short duration so that cache entries can expire.
 			cache := &inventoryCache{
-				pods:     cachedmap.NewCachedMap[string, *SlimPod](time.Nanosecond),
-				podsByIp: cachedmap.NewCachedMap[string, *SlimPod](time.Nanosecond),
-				svcs:     cachedmap.NewCachedMap[string, *SlimService](time.Nanosecond),
-				svcsByIp: cachedmap.NewCachedMap[string, *SlimService](time.Nanosecond),
+				pods:      cachedmap.NewCachedMap[string, *SlimPod](time.Nanosecond),
+				podsByIp:  cachedmap.NewCachedMap[string, *SlimPod](time.Nanosecond),
+				svcs:      cachedmap.NewCachedMap[string, *SlimService](time.Nanosecond),
+				svcsByIp:  cachedmap.NewCachedMap[string, *SlimService](time.Nanosecond),
+				nodesByIp: cachedmap.NewCachedMap[string, *SlimNode](time.Nanosecond),
 			}
 
 			if tc.ok {
@@ -328,6 +361,11 @@ func TestInventoryCacheDelete(t *testing.T) {
 					if rtvdName == nil && rtvdIp == nil {
 						break
 					}
+				} else if tc.kind == "node" {
+					rtvdIp := cache.GetNodeByIp(tc.initialObj.(*v1.Node).Status.Addresses[0].Address)
+					if rtvdIp == nil {
+						break
+					}
 				}
 				time.Sleep(time.Nanosecond)
 
@@ -357,6 +395,19 @@ func constructService(name, namespace, clusterIP string) *v1.Service {
 		},
 		Spec: v1.ServiceSpec{
 			ClusterIP: clusterIP,
+		},
+	}
+}
+
+func constructNode(name, internalIP string) *v1.Node {
+	return &v1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Status: v1.NodeStatus{
+			Addresses: []v1.NodeAddress{
+				{Type: v1.NodeInternalIP, Address: internalIP},
+			},
 		},
 	}
 }
