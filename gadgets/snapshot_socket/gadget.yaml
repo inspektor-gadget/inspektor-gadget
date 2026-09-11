@@ -14,9 +14,13 @@ datasources:
         annotations:
           description: Destination address
           template: l4endpoint
+      state_raw:
+        annotations:
+          columns.hidden: true
       state:
         annotations:
-          columns.width: 10
+          description: Socket state
+          columns.width: 12
       ino:
         annotations:
           description: Inode number

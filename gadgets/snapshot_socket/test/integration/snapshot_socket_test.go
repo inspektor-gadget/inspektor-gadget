@@ -37,7 +37,8 @@ type snapshotSocketEntry struct {
 
 	SrcEndpoint utils.L4Endpoint `json:"src"`
 	DstEndpoint utils.L4Endpoint `json:"dst"`
-	Status      uint64           `json:"status"`
+	State       string           `json:"state"`
+	StateRaw    uint16           `json:"state_raw"`
 }
 
 func TestSnapshotSocket(t *testing.T) {
@@ -100,7 +101,8 @@ func TestSnapshotSocket(t *testing.T) {
 					Port:    0,
 					Proto:   "TCP",
 				},
-				Status:      0,
+				State:       "LISTEN",
+				StateRaw:    10,
 				NetNsID:     utils.NormalizedInt,
 				InodeNumber: utils.NormalizedInt,
 			}

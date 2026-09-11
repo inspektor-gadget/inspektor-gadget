@@ -9,7 +9,9 @@
 
 /* This BPF program uses the GPL-restricted function bpf_seq_write(). */
 
+#define UNKNOWN __IGNORE_UNKNOWN
 #include <vmlinux.h>
+#undef UNKNOWN
 
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_endian.h>
@@ -47,10 +49,28 @@
 #define tw_v6_rcv_saddr __tw_common.skc_v6_rcv_saddr
 #define tw_family __tw_common.skc_family
 
+enum socket_state {
+	UNKNOWN = 0,
+	ESTABLISHED = 1,
+	SYN_SENT = 2,
+	SYN_RECV = 3,
+	FIN_WAIT1 = 4,
+	FIN_WAIT2 = 5,
+	TIME_WAIT = 6,
+	CLOSE = 7,
+	CLOSE_WAIT = 8,
+	LAST_ACK = 9,
+	LISTEN = 10,
+	CLOSING = 11,
+	NEW_SYN_RECV = 12,
+	ACTIVE = 13,
+	INACTIVE = 14,
+};
+
 struct socket_entry {
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
-	__u32 state;
+	enum socket_state state_raw;
 	__u32 ino;
 	gadget_netns_id netns_id;
 };
@@ -112,7 +132,23 @@ socket_bpf_seq_write(struct seq_file *seq, __u16 family, __u16 proto,
 	entry.src.proto_raw = entry.dst.proto_raw = proto;
 	entry.src.port = bpf_htons(srcp);
 	entry.dst.port = bpf_htons(destp);
-	entry.state = state;
+
+	if (proto == IPPROTO_UDP) {
+		switch (state) {
+		case 1:
+			entry.state_raw = ACTIVE;
+			break;
+		case 7:
+			entry.state_raw = INACTIVE;
+			break;
+		default:
+			entry.state_raw = UNKNOWN;
+			break;
+		}
+	} else {
+		entry.state_raw = (enum socket_state)state;
+	}
+
 	entry.ino = ino;
 	entry.netns_id = netns;
 
