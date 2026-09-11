@@ -830,3 +830,24 @@ on a field according to the `ebpf.rest.name` datasource annotation. The
 field that contains the length of the trailing data. If the gadget doesn't
 provide this annotation, the whole remaining data will be used as the trailing
 data.
+
+### Perf Buffer Size
+
+When running on kernels that do not support eBPF ring buffers (kernel < 5.8),
+gadgets configured with `GADGET_TRACER_MAP()` fall back to using a perf event
+array. By default, the perf reader allocates 64 pages per CPU.
+
+You can override the number of perf buffer pages on a per-datasource basis using
+the `ebpf.tracer.perf-buffer-pages` annotation in `gadget.yaml`:
+
+```yaml
+datasources:
+  events:
+    annotations:
+      ebpf.tracer.perf-buffer-pages: "128"
+```
+
+The annotation value must be a positive integer specifying the number of
+memory pages per CPU. If omitted, invalid, or less than or equal to 0, Inspektor
+Gadget falls back to the default of 64 pages per CPU. This annotation has no
+effect when eBPF ring buffers are supported and in use.

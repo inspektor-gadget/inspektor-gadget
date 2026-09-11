@@ -70,10 +70,11 @@ const (
 
 	kernelTypesVar = "kernelTypes"
 
-	AnnotationMapFlushOnStop  = "ebpf.map.flush-on-stop"
-	AnnotationIterFetchOnStop = "ebpf.iter.fetch-on-stop"
-	AnnotationRestName        = "ebpf.rest.name"
-	AnnotationRestLen         = "ebpf.rest.len"
+	AnnotationMapFlushOnStop        = "ebpf.map.flush-on-stop"
+	AnnotationIterFetchOnStop       = "ebpf.iter.fetch-on-stop"
+	AnnotationRestName              = "ebpf.rest.name"
+	AnnotationRestLen               = "ebpf.rest.len"
+	AnnotationTracerPerfBufferPages = "ebpf.tracer.perf-buffer-pages"
 )
 
 type gadgetObjects struct {
