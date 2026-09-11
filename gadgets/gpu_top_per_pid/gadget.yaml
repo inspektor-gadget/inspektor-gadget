@@ -9,10 +9,20 @@ datasources:
       fetch-interval: 1s
       fetch-count: "0"
       cli.clear-screen-before: "true"
+      metrics.collect: "true"
+      metrics.snapshot: "true"
     fields:
+      k8s.node:
+        annotations:
+          metrics.type: key
+      proc.pid:
+        annotations:
+          metrics.type: key
       mem_used_raw:
         annotations:
           description: Total GPU memory in use across all devices (bytes)
+          metrics.type: gauge
+          metrics.unit: By
       mem_used:
         annotations:
           description: Total GPU memory in use across all devices (human-readable)
@@ -21,11 +31,15 @@ datasources:
       sm_util_pct_max:
         annotations:
           description: Peak SM utilization across devices (0-100)
+          metrics.type: gauge
+          metrics.unit: "%"
           columns.width: 8
           columns.alignment: right
       mem_util_pct_max:
         annotations:
           description: Peak memory-bus utilization across devices (0-100)
+          metrics.type: gauge
+          metrics.unit: "%"
           columns.width: 9
           columns.alignment: right
       gpu_device_primary:
@@ -36,6 +50,8 @@ datasources:
       device_count:
         annotations:
           description: Number of devices the PID is using
+          metrics.type: gauge
+          metrics.unit: "{device}"
           columns.width: 8
           columns.alignment: right
       _pad:
