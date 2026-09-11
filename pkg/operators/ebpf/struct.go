@@ -153,6 +153,7 @@ func applyAnnotationsTemplateForType(typeName string, dst map[string]string) boo
 		ebpftypes.NetNsTypeName,
 		ebpftypes.PcommTypeName,
 		ebpftypes.PpidTypeName,
+		ebpftypes.PtidTypeName,
 		ebpftypes.UserStackTypeName:
 		return metadatav1.ApplyAnnotationsTemplate(strings.TrimPrefix(typeName, "gadget_"), dst)
 	case ebpftypes.ProcessTypeName,
