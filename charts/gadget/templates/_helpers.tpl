@@ -35,10 +35,8 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 app.kubernetes.io/part-of: inspektor-gadget
-{{- if .Values.additionalLabels.enabled }}
-{{- if .Values.additionalLabels }}
-{{ toYaml .Values.additionalLabels }}
-{{- end }}
+{{- with .Values.additionalLabels }}
+{{ toYaml . }}
 {{- end }}
 {{- end }}
 
