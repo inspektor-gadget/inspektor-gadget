@@ -92,6 +92,7 @@ func (m *KubeIPResolverInstance) enrich(ev any) {
 		pod := m.k8sInventory.GetPodByIp(endpoint.Addr)
 		if pod != nil {
 			if pod.Spec.HostNetwork {
+				endpoint.Kind = types.EndpointKindHostNetwork
 				continue
 			}
 			endpoint.Kind = types.EndpointKindPod
@@ -171,7 +172,8 @@ func (k *KubeIPResolver) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 			if err != nil {
 				return nil, fmt.Errorf("adding field %q: %w", "k8s", err)
 			}
-			k8sKindAcc, err := k8sSubAcc.AddSubField("kind", api.Kind_String,
+			k8sKindAcc, err := k8sSubAcc.AddSubField(
+				"kind", api.Kind_String,
 				datasource.WithAnnotations(map[string]string{
 					metadatav1.ColumnsMaxWidthAnnotation: "12",
 				}),
@@ -180,7 +182,8 @@ func (k *KubeIPResolver) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 			if err != nil {
 				return nil, fmt.Errorf("adding field %q: %w", "kind", err)
 			}
-			k8sNameAcc, err := k8sSubAcc.AddSubField("name",
+			k8sNameAcc, err := k8sSubAcc.AddSubField(
+				"name",
 				api.Kind_String,
 				datasource.WithAnnotations(map[string]string{
 					metadatav1.TemplateAnnotation: "pod",
@@ -190,7 +193,8 @@ func (k *KubeIPResolver) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 			if err != nil {
 				return nil, fmt.Errorf("adding field %q: %w", "name", err)
 			}
-			k8sNamespaceAcc, err := k8sSubAcc.AddSubField("namespace",
+			k8sNamespaceAcc, err := k8sSubAcc.AddSubField(
+				"namespace",
 				api.Kind_String,
 				datasource.WithAnnotations(map[string]string{
 					metadatav1.TemplateAnnotation: "namespace",
@@ -279,6 +283,22 @@ func (m *KubeIPResolverInstance) PreStart(gadgetCtx operators.GadgetContext) err
 				pod := m.k8sInventory.GetPodByIp(addrStr)
 				if pod != nil {
 					if pod.Spec.HostNetwork {
+						// The IP belongs to a pod running with hostNetwork:
+						// true, i.e. it's actually the node's IP. That IP can
+						// be shared by several unrelated pods on the same
+						// node, so we can't attribute this traffic to one
+						// specific pod. Mark it distinctly as "hostnetwork"
+						// (handled as node-identity traffic downstream)
+						// instead of silently dropping the enrichment, which
+						// used to leave k8s.kind empty and made
+						// advise_networkpolicy fail with "unknown endpoint
+						// kind".
+						a.subK8sKind.Set(data, []byte(string(types.EndpointKindHostNetwork)))
+						if a.column != nil && a.port != nil {
+							p, _ := a.port.Uint16(data)
+							v := fmt.Sprintf("n/%s:%d", addrStr, p)
+							a.column.Set(data, []byte(v))
+						}
 						continue
 					}
 					a.subK8sName.Set(data, []byte(pod.Name))

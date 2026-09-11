@@ -26,6 +26,7 @@
 
 struct event_t {
 	gadget_netns_id netns_id;
+	gadget_mntns_id mntns_id;
 	struct gadget_l4endpoint_t endpoint;
 	__u8 egress;
 };
@@ -106,8 +107,16 @@ int ig_trace_net(struct __sk_buff *skb)
 		return 0;
 	}
 
+	// Look up the socket owning this packet to retrieve the mount namespace
+	// of the process behind it. This lets us attribute traffic to a specific
+	// pod even when the netns is shared by several pods (host network),
+	// since mntns_id is unique per container.
+	struct gadget_socket_value *skb_val = gadget_socket_lookup(skb);
+
 	struct event_t event = {};
 	event.netns_id = skb->cb[0]; // cb[0] initialized by dispatcher.bpf.c
+	if (skb_val)
+		event.mntns_id = skb_val->mntns;
 
 	if (skb->pkt_type == PACKET_HOST) {
 		event.endpoint.addr_raw.v4 = iph.saddr;

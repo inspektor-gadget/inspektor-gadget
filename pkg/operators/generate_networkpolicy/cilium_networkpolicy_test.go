@@ -201,6 +201,71 @@ func TestHandleCiliumEvents_Service(t *testing.T) {
 	assert.Equal(t, map[string]string{"app": "backend"}, ingress[0].FromEndpoints[0].MatchLabels)
 }
 
+func TestHandleCiliumEvents_HostNetwork_Egress(t *testing.T) {
+	events := []NetworkEvent{
+		makeEvent(true, "prod", map[string]string{"app": "backend"},
+			types.EndpointKindHostNetwork, "", nil,
+			"192.168.58.2", 6443, "TCP"),
+	}
+	eventsBySource := map[string][]NetworkEvent{
+		localPodKey(events[0]): events,
+	}
+
+	policies, err := handleCiliumEvents(eventsBySource)
+	require.NoError(t, err)
+	require.Len(t, policies, 1)
+
+	p := policies[0]
+	egress := p.Spec.Egress
+	require.Len(t, egress, 1)
+	// Host-network traffic must map to the remote-node entity, not a CIDR/IP.
+	assert.Equal(t, []string{remoteNodeEntity}, egress[0].ToEntities)
+	assert.Empty(t, egress[0].ToCIDR)
+	assert.Empty(t, egress[0].ToEndpoints)
+
+	// The generated policy must carry the explanatory annotation.
+	assert.Equal(t, hostNetworkNote, p.Annotations[HostNetworkNoteAnnotation])
+}
+
+func TestHandleCiliumEvents_HostNetwork_CollapsesDifferentAddresses(t *testing.T) {
+	// Two host-network peers with different IPs must collapse into a single
+	// rule, since the remote-node entity is address-agnostic.
+	base := makeEvent(true, "prod", map[string]string{"app": "backend"},
+		types.EndpointKindHostNetwork, "", nil,
+		"192.168.58.2", 6443, "TCP")
+	other := base
+	other.endpoint.Addr = "192.168.58.3"
+	other.endpoint.Port = 9090
+
+	eventsBySource := map[string][]NetworkEvent{
+		localPodKey(base): {base, other},
+	}
+
+	policies, err := handleCiliumEvents(eventsBySource)
+	require.NoError(t, err)
+	require.Len(t, policies, 1)
+
+	egress := policies[0].Spec.Egress
+	require.Len(t, egress, 1, "different host-network addresses must collapse into a single rule")
+	assert.Len(t, egress[0].ToPorts[0].Ports, 2)
+}
+
+func TestHandleCiliumEvents_NoAnnotationWithoutHostNetworkPeer(t *testing.T) {
+	events := []NetworkEvent{
+		makeEvent(true, "prod", map[string]string{"app": "backend"},
+			types.EndpointKindRaw, "", nil,
+			"1.2.3.4", 443, "TCP"),
+	}
+	eventsBySource := map[string][]NetworkEvent{
+		localPodKey(events[0]): events,
+	}
+
+	policies, err := handleCiliumEvents(eventsBySource)
+	require.NoError(t, err)
+	require.Len(t, policies, 1)
+	assert.Empty(t, policies[0].Annotations)
+}
+
 func TestFormatCiliumPolicies_YAMLOutput(t *testing.T) {
 	events := []NetworkEvent{
 		makeEvent(true, "prod", map[string]string{"app": "backend"},

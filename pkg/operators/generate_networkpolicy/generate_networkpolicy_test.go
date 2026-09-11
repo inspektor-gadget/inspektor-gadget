@@ -42,6 +42,45 @@ func TestLabelFilterIgnoresNonIdentityLabels(t *testing.T) {
 	assert.Equal(t, []string{"app", "run"}, labelFilteredKeyList(in))
 }
 
+func TestHandleEvents_HostNetwork_NoRuleButAnnotated(t *testing.T) {
+	events := []NetworkEvent{
+		makeEvent(true, "prod", map[string]string{"app": "backend"},
+			types.EndpointKindHostNetwork, "", nil,
+			"192.168.58.2", 6443, "TCP"),
+	}
+	eventsBySource := map[string][]NetworkEvent{
+		localPodKey(events[0]): events,
+	}
+
+	policies, err := handleEvents(eventsBySource)
+	require.NoError(t, err)
+	require.Len(t, policies, 1)
+
+	p := policies[0]
+	// An IPBlock rule can't reliably target a shared node IP, so no rule
+	// is generated for this traffic.
+	assert.Empty(t, p.Spec.Egress)
+
+	// The policy must still carry the explanatory annotation.
+	assert.Equal(t, hostNetworkNote, p.Annotations[HostNetworkNoteAnnotation])
+}
+
+func TestHandleEvents_NoAnnotationWithoutHostNetworkPeer(t *testing.T) {
+	events := []NetworkEvent{
+		makeEvent(true, "prod", map[string]string{"app": "backend"},
+			types.EndpointKindRaw, "", nil,
+			"1.2.3.4", 443, "TCP"),
+	}
+	eventsBySource := map[string][]NetworkEvent{
+		localPodKey(events[0]): events,
+	}
+
+	policies, err := handleEvents(eventsBySource)
+	require.NoError(t, err)
+	require.Len(t, policies, 1)
+	assert.Empty(t, policies[0].Annotations)
+}
+
 func TestHandleCiliumEvents_IgnoresTopologyLabels(t *testing.T) {
 	events := []NetworkEvent{
 		makeEvent(false, "prod",

@@ -44,13 +44,20 @@ type CiliumNetworkPolicySpec struct {
 type CiliumIngressRule struct {
 	FromEndpoints []metav1.LabelSelector `json:"fromEndpoints,omitempty"`
 	FromCIDR      []string               `json:"fromCIDR,omitempty"`
-	ToPorts       []CiliumPortRule       `json:"toPorts,omitempty"`
+	// FromEntities lists Cilium security identities (e.g. "remote-node",
+	// "host", "world") this rule applies to. Used for traffic that can't be
+	// expressed as a pod/namespace selector or a specific CIDR, such as
+	// host-network pods.
+	FromEntities []string         `json:"fromEntities,omitempty"`
+	ToPorts      []CiliumPortRule `json:"toPorts,omitempty"`
 }
 
 type CiliumEgressRule struct {
 	ToEndpoints []metav1.LabelSelector `json:"toEndpoints,omitempty"`
 	ToCIDR      []string               `json:"toCIDR,omitempty"`
-	ToPorts     []CiliumPortRule       `json:"toPorts,omitempty"`
+	// ToEntities is the egress counterpart of CiliumIngressRule.FromEntities.
+	ToEntities []string         `json:"toEntities,omitempty"`
+	ToPorts    []CiliumPortRule `json:"toPorts,omitempty"`
 }
 
 // CiliumPortRule groups ports for a single rule. Cilium uses string port values.
@@ -63,6 +70,12 @@ type CiliumPortProtocol struct {
 	Protocol string `json:"protocol,omitempty"`
 }
 
+// remoteNodeEntity is the Cilium security identity covering traffic to/from
+// any node in the cluster (including the local one). It's the closest native
+// match for traffic to/from a host-network pod, whose IP is really the node's
+// own IP rather than a distinct pod identity.
+const remoteNodeEntity = "remote-node"
+
 // ciliumPeerKey identifies a unique endpoint peer without the port, so that events
 // sharing the same peer but different ports can be grouped into a single Cilium rule.
 func ciliumPeerKey(e NetworkEvent) (string, error) {
@@ -73,6 +86,11 @@ func ciliumPeerKey(e NetworkEvent) (string, error) {
 		return string(e.endpoint.Kind) + ":" + e.endpoint.Namespace + ":" + labelKeyString(e.endpoint.PodSelector), nil
 	case types.EndpointKindRaw:
 		return string(e.endpoint.Kind) + ":" + e.endpoint.Addr, nil
+	case types.EndpointKindHostNetwork:
+		// The remote-node entity isn't address-specific, so group all
+		// host-network traffic into a single rule regardless of which node
+		// IP was observed.
+		return string(e.endpoint.Kind), nil
 	default:
 		return "", fmt.Errorf("unknown endpoint kind: %s", e.endpoint.Kind)
 	}
@@ -164,14 +182,20 @@ func handleCiliumEvents(eventsBySource map[string][]NetworkEvent) ([]CiliumNetwo
 		}
 		name += "-network"
 
+		var annotations map[string]string
+		if eventsHaveHostNetworkPeer(events) {
+			annotations = map[string]string{HostNetworkNoteAnnotation: hostNetworkNote}
+		}
+
 		policy := CiliumNetworkPolicy{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "cilium.io/v2",
 				Kind:       "CiliumNetworkPolicy",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: localNamespace,
+				Name:        name,
+				Namespace:   localNamespace,
+				Annotations: annotations,
 			},
 			Spec: &CiliumNetworkPolicySpec{
 				EndpointSelector: metav1.LabelSelector{
@@ -215,6 +239,11 @@ func buildCiliumIngressRules(byPeer map[string]*peerGroup, localNamespace string
 				FromCIDR: []string{e0.endpoint.Addr + "/32"},
 				ToPorts:  ports,
 			})
+		case types.EndpointKindHostNetwork:
+			rules = append(rules, CiliumIngressRule{
+				FromEntities: []string{remoteNodeEntity},
+				ToPorts:      ports,
+			})
 		default:
 			return nil, fmt.Errorf("unknown endpoint kind: %s", e0.endpoint.Kind)
 		}
@@ -245,6 +274,11 @@ func buildCiliumEgressRules(byPeer map[string]*peerGroup, localNamespace string)
 			rules = append(rules, CiliumEgressRule{
 				ToCIDR:  []string{e0.endpoint.Addr + "/32"},
 				ToPorts: ports,
+			})
+		case types.EndpointKindHostNetwork:
+			rules = append(rules, CiliumEgressRule{
+				ToEntities: []string{remoteNodeEntity},
+				ToPorts:    ports,
 			})
 		default:
 			return nil, fmt.Errorf("unknown endpoint kind: %s", e0.endpoint.Kind)

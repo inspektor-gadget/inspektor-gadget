@@ -97,6 +97,14 @@ const (
 	EndpointKindPod     EndpointKind = "pod"
 	EndpointKindService EndpointKind = "svc"
 	EndpointKindRaw     EndpointKind = "raw"
+	// EndpointKindHostNetwork identifies traffic to/from a pod running with
+	// hostNetwork: true. Such a pod uses the node's own network namespace,
+	// which can be shared by several unrelated pods on the same node, so the
+	// traffic can't be reliably attributed to a single pod. It's kept
+	// distinct from EndpointKindRaw so consumers can apply node-identity
+	// semantics (e.g. Cilium's "remote-node" entity) instead of treating it
+	// as an arbitrary external IP.
+	EndpointKindHostNetwork EndpointKind = "hostnetwork"
 )
 
 type RuntimeName string
