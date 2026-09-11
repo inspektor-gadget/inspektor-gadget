@@ -181,3 +181,9 @@ int BPF_KPROBE(foo, args...)
 	return 0;
 }
 ```
+
+To choose a program's attach target (or disable it) declaratively at load time —
+for example, based on a parameter or on the availability of a kernel symbol — use
+the `GADGET_PROG_ATTACH_TO` macro, which returns either a symbol name or
+`program.disabled`. See
+[Declarative gating and configuration](./gadget-ebpf-api.md#declarative-gating-and-configuration).

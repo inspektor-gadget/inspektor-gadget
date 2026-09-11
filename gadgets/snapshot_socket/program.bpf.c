@@ -55,7 +55,7 @@ struct socket_entry {
 	gadget_netns_id netns_id;
 };
 
-GADGET_ITER(sockets, socket_entry, ig_snap_tcp, ig_snap_udp);
+GADGET_ITER(sockets, socket_entry);
 
 /**
  * sock_i_ino - Returns the inode identifier associated to a socket.
@@ -176,6 +176,7 @@ static int dump_req_sock(struct seq_file *seq, __u32 netns,
 }
 
 SEC("iter/tcp")
+GADGET_ITER_MEMBER(sockets)
 int ig_snap_tcp(struct bpf_iter__tcp *ctx)
 {
 	struct sock_common *sk_common = ctx->sk_common;
@@ -206,6 +207,7 @@ int ig_snap_tcp(struct bpf_iter__tcp *ctx)
 }
 
 SEC("iter/udp")
+GADGET_ITER_MEMBER(sockets)
 int ig_snap_udp(struct bpf_iter__udp *ctx)
 {
 	struct seq_file *seq = ctx->meta->seq;

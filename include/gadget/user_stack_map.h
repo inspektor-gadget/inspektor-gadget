@@ -24,7 +24,7 @@ struct {
 	__uint(key_size, sizeof(u32));
 	__uint(value_size, GADGET_USER_MAX_STACK_DEPTH * sizeof(u64));
 	__uint(max_entries, GADGET_USER_STACK_MAP_MAX_ENTRIES);
-} ig_ustack SEC(".maps");
+} ig_ustack SEC(".maps") GADGET_MAP_ONLY_IF("params.collect_ustack");
 
 const volatile bool collect_build_id = false;
 GADGET_PARAM(collect_build_id);
@@ -41,7 +41,8 @@ struct {
 	__uint(value_size,
 	       GADGET_USER_MAX_STACK_DEPTH * sizeof(struct bpf_stack_build_id));
 	__uint(max_entries, 0); // To be replaced at runtime
-} ig_build_id SEC(".maps");
+} ig_build_id SEC(".maps")
+	GADGET_MAP_ONLY_IF("params.collect_ustack && params.collect_build_id");
 
 static const struct bpf_stack_build_id
 	ig_empty_build_id[GADGET_USER_MAX_STACK_DEPTH] = {};
@@ -55,7 +56,8 @@ struct {
 	__uint(max_entries, 1);
 	__type(key, u32);
 	__type(value, struct generic_param);
-} otel_generic_params SEC(".maps");
+} otel_generic_params SEC(".maps")
+	GADGET_MAP_ONLY_IF("params.collect_ustack && params.collect_otel_stack");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PROG_ARRAY);
@@ -63,7 +65,8 @@ struct {
 	__type(key, u32);
 	__type(value, u32);
 	__array(values, int());
-} otel_tc_kprobe SEC(".maps");
+} otel_tc_kprobe SEC(".maps")
+	GADGET_MAP_ONLY_IF("params.collect_ustack && params.collect_otel_stack");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PROG_ARRAY);
@@ -71,7 +74,8 @@ struct {
 	__type(key, u32);
 	__type(value, u32);
 	__array(values, int());
-} otel_tc_perf SEC(".maps");
+} otel_tc_perf SEC(".maps")
+	GADGET_MAP_ONLY_IF("params.collect_ustack && params.collect_otel_stack");
 
 // Linux v4.0 - v4.17
 struct timespec___obsolete {
