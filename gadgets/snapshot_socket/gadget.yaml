@@ -1,5 +1,5 @@
 name: snapshot socket
-description: Show TCP and UDP sockets
+description: Show TCP, UDP and Unix sockets
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/snapshot_socket
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/snapshot_socket
@@ -26,3 +26,7 @@ datasources:
         annotations:
           description: Network namespace inode id
           template: ns
+      path:
+        annotations:
+          description: Unix domain socket path
+          columns.width: 30
