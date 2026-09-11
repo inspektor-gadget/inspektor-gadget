@@ -67,6 +67,7 @@ func (s *gnpOperator) InstanceParams() api.Params {
 
 type k8sAccesors struct {
 	k8sHostNetwork         datasource.FieldAccessor
+	k8sNode                datasource.FieldAccessor
 	k8sNamespace           datasource.FieldAccessor
 	k8sPodLabels           datasource.FieldAccessor
 	k8sPodIP               datasource.FieldAccessor
@@ -76,6 +77,7 @@ type k8sAccesors struct {
 	endpointPort           datasource.FieldAccessor
 	endpointK8sKind        datasource.FieldAccessor
 	endpointK8sName        datasource.FieldAccessor
+	endpointK8sNode        datasource.FieldAccessor
 	endpointK8sNamespace   datasource.FieldAccessor
 	endpointK8sLabels      datasource.FieldAccessor
 	endpointK8sPodSelector datasource.FieldAccessor
@@ -102,6 +104,10 @@ func (s *gnpOperator) getAccessors(gadgetCtx operators.GadgetContext) (map[datas
 		acc.k8sHostNetwork = ds.GetField("k8s.hostnetwork")
 		if acc.k8sHostNetwork == nil {
 			return nil, fmt.Errorf("no hostnetwork field found")
+		}
+		acc.k8sNode = ds.GetField("k8s.node")
+		if acc.k8sNode == nil {
+			return nil, fmt.Errorf("no node field found")
 		}
 		acc.k8sNamespace = ds.GetField("k8s.namespace")
 		if acc.k8sNamespace == nil {
@@ -138,6 +144,10 @@ func (s *gnpOperator) getAccessors(gadgetCtx operators.GadgetContext) (map[datas
 		acc.endpointK8sName = ds.GetField("endpoint.k8s.name")
 		if acc.endpointK8sName == nil {
 			return nil, fmt.Errorf("no endpoint.k8s.name field found")
+		}
+		acc.endpointK8sNode = ds.GetField("endpoint.k8s.node")
+		if acc.endpointK8sNode == nil {
+			return nil, fmt.Errorf("no endpoint.k8s.node field found")
 		}
 		acc.endpointK8sNamespace = ds.GetField("endpoint.k8s.namespace")
 		if acc.endpointK8sNamespace == nil {
@@ -253,6 +263,7 @@ func (s *gnpOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 				e.endpoint.Addr, _ = acc.endpointAddr.String(data)
 				e.endpoint.Port, _ = acc.endpointPort.Uint16(data)
 				e.endpoint.Name, _ = acc.endpointK8sName.String(data)
+				e.endpoint.Node, _ = acc.endpointK8sNode.String(data)
 				e.endpoint.Namespace, _ = acc.endpointK8sNamespace.String(data)
 				e.proto, _ = acc.endpointProto.String(data)
 
@@ -285,6 +296,7 @@ func (s *gnpOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 				}
 
 				e.K8s.PodName, _ = acc.k8sPodName.String(data)
+				e.K8s.Node, _ = acc.k8sNode.String(data)
 				e.K8s.Owner.Name, _ = acc.k8sOwnerName.String(data)
 				e.K8s.HostNetwork = hostNetwork
 				e.K8s.Namespace, _ = acc.k8sNamespace.String(data)
@@ -294,6 +306,11 @@ func (s *gnpOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 						continue
 					}
 					e.K8s.PodLabels[kv[0]] = kv[1]
+				}
+
+				// A NetworkPolicy needs a local pod to select.
+				if e.K8s.PodName == "" {
+					continue
 				}
 
 				// Kubernetes Network Policies can't block traffic from a pod's

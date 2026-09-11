@@ -108,6 +108,23 @@ func NewSlimService(s *v1.Service) *SlimService {
 	}
 }
 
+// SlimNode contains the node metadata needed to enrich network endpoints.
+type SlimNode struct {
+	Name string
+}
+
+// nodeAddresses returns every address (InternalIP and ExternalIP) that
+// identifies the node itself at the network level.
+func nodeAddresses(n *v1.Node) []string {
+	var addrs []string
+	for _, a := range n.Status.Addresses {
+		if a.Type == v1.NodeInternalIP || a.Type == v1.NodeExternalIP {
+			addrs = append(addrs, a.Address)
+		}
+	}
+	return addrs
+}
+
 // K8sInventoryCache is a cache of Kubernetes resources such as pods and services
 // that can be used by operators to enrich events.
 type K8sInventoryCache interface {
@@ -121,6 +138,11 @@ type K8sInventoryCache interface {
 	GetSvcs() []*SlimService
 	GetSvcByName(namespace string, name string) *SlimService
 	GetSvcByIp(ip string) *SlimService
+
+	// GetNodeByIp returns the node that owns ip (as one of its
+	// InternalIP/ExternalIP addresses), or nil if ip doesn't belong to any
+	// known node.
+	GetNodeByIp(ip string) *SlimNode
 }
 
 type inventoryCache struct {
@@ -130,10 +152,11 @@ type inventoryCache struct {
 	podsHandler k8sCache.ResourceEventHandlerRegistration
 	svcsHandler k8sCache.ResourceEventHandlerRegistration
 
-	pods     cachedmap.CachedMap[string, *SlimPod]
-	podsByIp cachedmap.CachedMap[string, *SlimPod]
-	svcs     cachedmap.CachedMap[string, *SlimService]
-	svcsByIp cachedmap.CachedMap[string, *SlimService]
+	pods      cachedmap.CachedMap[string, *SlimPod]
+	podsByIp  cachedmap.CachedMap[string, *SlimPod]
+	svcs      cachedmap.CachedMap[string, *SlimService]
+	svcsByIp  cachedmap.CachedMap[string, *SlimService]
+	nodesByIp cachedmap.CachedMap[string, *SlimNode]
 
 	exit chan struct{}
 
@@ -196,6 +219,17 @@ func transformObject(obj any) (any, error) {
 			},
 		}
 		return s, nil
+	case *v1.Node:
+		n := &v1.Node{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            t.Name,
+				ResourceVersion: t.ResourceVersion,
+			},
+			Status: v1.NodeStatus{
+				Addresses: t.Status.Addresses,
+			},
+		}
+		return n, nil
 	default:
 		return obj, nil
 	}
@@ -237,6 +271,10 @@ func (cache *inventoryCache) Close() {
 		cache.svcsByIp.Close()
 		cache.svcsByIp = nil
 	}
+	if cache.nodesByIp != nil {
+		cache.nodesByIp.Close()
+		cache.nodesByIp = nil
+	}
 }
 
 func (cache *inventoryCache) Start() {
@@ -252,9 +290,11 @@ func (cache *inventoryCache) Start() {
 		cache.podsByIp = cachedmap.NewCachedMap[string, *SlimPod](2 * time.Second)
 		cache.svcs = cachedmap.NewCachedMap[string, *SlimService](2 * time.Second)
 		cache.svcsByIp = cachedmap.NewCachedMap[string, *SlimService](2 * time.Second)
+		cache.nodesByIp = cachedmap.NewCachedMap[string, *SlimNode](2 * time.Second)
 
 		cache.factory.Core().V1().Pods().Informer().AddEventHandler(cache)
 		cache.factory.Core().V1().Services().Informer().AddEventHandler(cache)
+		cache.factory.Core().V1().Nodes().Informer().AddEventHandler(cache)
 		cache.exit = make(chan struct{})
 		cache.factory.Start(cache.exit)
 		cache.factory.WaitForCacheSync(cache.exit)
@@ -313,6 +353,14 @@ func (cache *inventoryCache) GetSvcByIp(ip string) *SlimService {
 	return svc
 }
 
+func (cache *inventoryCache) GetNodeByIp(ip string) *SlimNode {
+	node, found := cache.nodesByIp.Get(ip)
+	if !found {
+		return nil
+	}
+	return node
+}
+
 func (cache *inventoryCache) OnAdd(obj any, _ bool) {
 	switch o := obj.(type) {
 	case *v1.Pod:
@@ -344,6 +392,11 @@ func (cache *inventoryCache) OnAdd(obj any, _ bool) {
 		cache.svcs.Add(key, slimService)
 		if ip := slimService.Spec.ClusterIP; ip != "" {
 			cache.svcsByIp.Add(ip, slimService)
+		}
+	case *v1.Node:
+		slimNode := &SlimNode{Name: o.Name}
+		for _, ip := range nodeAddresses(o) {
+			cache.nodesByIp.Add(ip, slimNode)
 		}
 	default:
 		log.Warnf("OnAdd: unknown object type: %T", o)
@@ -382,6 +435,11 @@ func (cache *inventoryCache) OnUpdate(_, newObj any) {
 		if ip := slimService.Spec.ClusterIP; ip != "" {
 			cache.svcsByIp.Add(ip, slimService)
 		}
+	case *v1.Node:
+		slimNode := &SlimNode{Name: o.Name}
+		for _, ip := range nodeAddresses(o) {
+			cache.nodesByIp.Add(ip, slimNode)
+		}
 	default:
 		log.Warnf("OnUpdate: unknown object type: %T", o)
 	}
@@ -408,6 +466,10 @@ func (cache *inventoryCache) OnDelete(obj any) {
 		cache.svcs.Remove(key)
 		if ip := o.Spec.ClusterIP; ip != "" {
 			cache.svcsByIp.Remove(ip)
+		}
+	case *v1.Node:
+		for _, ip := range nodeAddresses(o) {
+			cache.nodesByIp.Remove(ip)
 		}
 	case k8sCache.DeletedFinalStateUnknown:
 		cache.OnDelete(o.Obj)
