@@ -1,0 +1,33 @@
+# Artifact Hub package metadata file
+version: 0.53.0
+name: "trace nvidia errors"
+category: monitoring-logging
+displayName: "trace nvidia errors"
+createdAt: "2026-05-26T00:00:00Z"
+digest: "2026-05-26T00:00:00Z"
+description: "Trace NVIDIA CUDA Driver API errors and in-kernel XID events with enrichment"
+logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
+license: "Apache-2.0"
+homeURL: "https://inspektor-gadget.io/docs/latest/gadgets/trace_nvidia_errors"
+containersImages:
+    - name: gadget
+      image: "ghcr.io/inspektor-gadget/gadget/trace_nvidia_errors:latest"
+      platforms:
+        - linux/amd64
+        - linux/arm64
+keywords:
+    - gadget
+    - nvidia
+    - cuda
+    - gpu
+    - xid
+links:
+    - name: source
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_nvidia_errors"
+install: |
+    # Run
+    ```bash
+    sudo ig run ghcr.io/inspektor-gadget/gadget/trace_nvidia_errors:latest
+    ```
+provider:
+    name: Inspektor Gadget
