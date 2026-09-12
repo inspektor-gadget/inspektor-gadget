@@ -1,0 +1,652 @@
+---
+title: Enrichment
+sidebar_position: 350
+description: >
+  Describe the automatic enrichment Inspektor Gadget performs with the
+  associated Kubernetes and container runtime information.
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+The enrichment process ensures that every time a Gadget reports an event
+generated within a container, the Gadget data is automatically enriched with the
+associated container information. This information can be divided into two
+categories:
+
+- [Kubernetes-specific information](#kubernetes-enrichment): The Kubernetes
+  information associated with the container where the event was generated, such
+  as the node name, namespace, pod name, etc.
+- [Container Runtime-specific information](#container-runtime-enrichment): The
+  container information, at the runtime level, associated with the container
+  where the event was generated, such as the container ID, image name and
+  digest, etc.
+
+Having this information automatically available is crucial for debugging and
+observability tasks because it allows you to correlate low-level events with
+their higher-level context.
+
+## Kubernetes Enrichment
+
+Inspektor Gadget can enrich Gadget data with the following Kubernetes-specific
+information:
+
+- Node name
+- Namespace
+- Pod name
+- Container name
+- [Owner reference](https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/)
+- Pod labels and annotations are work in progress, see issue
+  [#2318](https://github.com/inspektor-gadget/inspektor-gadget/issues/2318)
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+
+To enrich the events with the associated Kubernetes information, Inspektor
+Gadget keeps track of the containers running in the cluster using the Kubernetes
+API server and the
+[container-hook](https://pkg.go.dev/github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook)
+package.
+
+Now, let's try the `trace_exec` Gadget to see how the Kubernetes information is
+displayed along with the Gadget data:
+
+```bash
+$ kubectl gadget run trace_exec
+K8S.NODE         K8S.NAMESPACE    K8S.PODNAME      K8S.CONTAINERNA… COMM            PID       TID PCOMM        PPID ARGS     E… USER     LOGINUS… GROUP
+aks-agen…s000001 gadget           gadget-9sjkj     gadget           gadgettr…    486102    486102 contain…   486082 /bin/ga…    root     uid:429… root
+```
+
+As you can see, not all of the Kubernetes information is shown by default when
+using the `columns` output mode. However, if the fields you are interested in
+are not displayed, the [Displaying the Kubernetes
+information](#displaying-the-kubernetes-information) section shows you how to
+make them visible.
+
+</TabItem>
+<TabItem value="ig" label="ig">
+
+To enrich the events with the associated Kubernetes information, `ig` keeps
+track of the containers running in the cluster using the
+[container-hook](https://pkg.go.dev/github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook)
+package and the different container runtimes (containerd, Docker, CRI-O and
+Podman). The communication with the container runtimes is configurable, see the
+[Communication with the container
+runtimes](#communication-with-the-container-runtimes) section for more
+information.
+
+:::warning
+
+Depending on the configuration used to communicate with the container runtimes,
+`ig` might not be able to get all the Kubernetes information. In particular,
+only when using the `CRI` protocol, `ig` will be able to get the Kubernetes pod
+labels.
+
+Additionally, there is a dependency that needs to be met to ensure `ig` can get
+the Kubernetes pod labels. See issue
+[#2523](https://github.com/inspektor-gadget/inspektor-gadget/issues/2523) for
+further information.
+
+:::
+
+The fact that `ig` doesn't use the Kubernetes API server to get Kubernetes
+information makes it suitable also for Kubernetes environments where the
+availability of the API server might be occasionally compromised, or you simply
+don't want to rely on it. The downside is that not all Kubernetes information is
+available through the container runtimes. Check the section [Communication with
+the Kubernetes API server](#communication-with-the-kubernetes-api-server) to
+ensure `ig` provides all the Kubernetes information you might need.
+
+Now, by default, `ig` doesn't show the Kubernetes information when using the
+`columns` output mode. It is because `ig` is mainly designed to be not
+Kubernetes specific. In the [Displaying the Kubernetes
+information](#displaying-the-kubernetes-information) section, you can see how to
+make the Kubernetes information visible with `ig`.
+
+</TabItem>
+</Tabs>
+
+### Displaying the Kubernetes information
+
+Inspektor Gadget doesn't show all the Kubernetes information by default when
+using the `columns` output mode. However, you can use the `columns` output mode
+along with the `fields` flag to display the Kubernetes-specific fields you are
+interested in. Or, you can use `--fields=+k8s` to display the default Gadget
+columns plus all the Kubernetes-specific fields. See the [Selecting specific
+fields](/docs/reference/run.mdx#selecting-specific-fields) section for more
+information.
+
+Alternatively, you can always get the full Kubernetes information by using any
+of the JSON or YAML [output formats](/docs/reference/run.mdx#output-format)
+Inspektor Gadget provides. In such cases, the Kubernetes information will be
+shown under the `k8s` group:
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+
+```bash
+$ kubectl gadget run trace_exec -o jsonpretty
+{
+  "args": "/bin/gadgettracermanager -liveness",
+  "comm": "gadgettracerman",
+  "cwd": "",
+  "error": "",
+  "error_raw": 0,
+  "gid": 0,
+  "group": "root",
+  "k8s": {
+    "containerName": "gadget",
+    "hostnetwork": false,
+    "namespace": "gadget",
+    "node": "aks-agentpool-19875870-vmss000001",
+    "owner": {
+      "kind": "DaemonSet",
+      "name": "gadget"
+    },
+    "podName": "gadget-9sjkj"
+  },
+  "loginuid": 4294967295,
+  "loginuser": "uid:4294967295",
+  "mntns_id": 4026532271,
+  "pcomm": "containerd-shim",
+  "pid": 483712,
+  "ppid": 483689,
+  "pupper_layer": false,
+  "runtime": {
+    "containerId": "491cc81598d021253edf154d0bf5d6b7d681f7810d326bde6b9c210506ba793f",
+    "containerImageDigest": "sha256:bcd2a52069e7816acba82c0fdf9b849f8f99bbfe37744a78a3e20240c02d65c1",
+    "containerImageName": "ghcr.io/blanquicet/gadget:latest",
+    "containerName": "gadget",
+    "runtimeName": "containerd"
+  },
+  "sessionid": 4294967295,
+  "tid": 483712,
+  "timestamp": "2024-08-30T12:12:25.621903770Z",
+  "timestamp_raw": 1725019945621903770,
+  "uid": 0,
+  "upper_layer": false,
+  "user": "root"
+}
+```
+
+</TabItem>
+<TabItem value="ig" label="ig">
+
+```bash
+$ ig run trace_exec -o jsonpretty
+{
+  "args": "/bin/gadgettracermanager -liveness",
+  "comm": "gadgettracerman",
+  "cwd": "",
+  "error": "",
+  "error_raw": 0,
+  "gid": 0,
+  "group": "root",
+  "k8s": {
+    "containerName": "gadget",
+    "hostnetwork": false,
+    "namespace": "gadget",
+    "node": "",
+    "podName": "gadget-9sjkj"
+    "owner": {
+      "kind": "",
+      "name": ""
+    },
+  },
+  "loginuid": 4294967295,
+  "loginuser": "uid:4294967295",
+  "mntns_id": 4026532271,
+  "pcomm": "containerd-shim",
+  "pid": 478424,
+  "ppid": 478404,
+  "pupper_layer": false,
+  "runtime": {
+    "containerId": "491cc81598d021253edf154d0bf5d6b7d681f7810d326bde6b9c210506ba793f",
+    "containerImageDigest": "sha256:bcd2a52069e7816acba82c0fdf9b849f8f99bbfe37744a78a3e20240c02d65c1",
+    "containerImageName": "ghcr.io/blanquicet/gadget:latest",
+    "containerName": "gadget",
+    "runtimeName": "containerd"
+  },
+  "sessionid": 4294967295,
+  "tid": 478424,
+  "timestamp": "2024-08-30T12:09:40.622882188Z",
+  "timestamp_raw": 1725019780622882188,
+  "uid": 0,
+  "upper_layer": false,
+  "user": "root"
+}
+```
+
+</TabItem>
+</Tabs>
+
+### Communication with the Kubernetes API server
+
+To communicate with the Kubernetes API server, Inspektor Gadget needs to know
+the configuration to do so.
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+
+`kubectl-gadget` uses the [kubernetes
+cli-runtime](https://github.com/kubernetes/cli-runtime) helpers. This adds
+support for many CLI options that are common to many Kubernetes tools, which let
+us specify how to connect to the cluster, which kubeconfig to use, and so on:
+
+```bash
+  --as string                      Username to impersonate for the operation
+  --as-group stringArray           Group to impersonate for the operation, this flag can be repeated to specify multiple groups.
+  --cache-dir string               Default cache directory (default "/home/marga/.kube/cache")
+  --certificate-authority string   Path to a cert file for the certificate authority
+  --client-certificate string      Path to a client certificate file for TLS
+  --client-key string              Path to a client key file for TLS
+  --cluster string                 The name of the kubeconfig cluster to use
+  --context string                 The name of the kubeconfig context to use
+  --insecure-skip-tls-verify       If true, the server's certificate will not be checked for validity. This will make your HTTPS connections insecure
+  --kubeconfig string              Path to the kubeconfig file to use for CLI requests.
+  --request-timeout string         The length of time to wait before giving up on a single server request. Non-zero values should contain a corresponding time unit (e.g. 1s, 2m, 3h). A value of zero means don't timeout requests. (default "0")
+, --server string                  The address and port of the Kubernetes API server
+  --tls-server-name string         Server name to use for server certificate validation. If it is not provided, the hostname used to contact the server is used
+  --token string                   Bearer token for authentication to the API server
+  --user string                    The name of the kubeconfig user to use
+```
+
+If none of these options are specified, Inspektor Gadget will connect to the
+cluster configured in the default kubeconfig location, with the default
+connection options.
+
+</TabItem>
+<TabItem value="ig" label="ig">
+
+`ig` doesn't rely on the Kubernetes API server to keep track of the containers
+running in a host. Instead, it uses the container runtimes to get the container
+information. This makes `ig` suitable for Kubernetes environments where we want
+to decouple the observability functionality from the availability of the API
+server. However, the container runtimes don't provide all the Kubernetes
+information we get from the API server. The following Kubernetes information is
+not available with `ig` by default:
+
+- (?) Node name (?) TODO: At this point, why we don't enrich the node name too?
+- Owner reference
+- Pod labels and annotations
+
+In the case you need this information, you can enable the use of the Kubernetes
+API server to get the missing information by using the
+`enrich-with-k8s-apiserver` flag. However, it doesn't provide yet all the
+missing information but only the owner reference. Follow the progress of this
+feature in issue
+[#2318](https://github.com/inspektor-gadget/inspektor-gadget/issues/2318).
+
+```bash
+$ ig run trace_exec -o json --enrich-with-k8s-apiserver | jq .k8s
+{
+  "containerName": "gadget",
+  "hostnetwork": false,
+  "namespace": "gadget",
+  "node": "",
+  "owner": {
+    "kind": "DaemonSet",
+    "name": "gadget"
+  },
+  "podName": "gadget-9sjkj"
+}
+```
+
+:::note
+
+If you are running `ig` with [kubectl debug
+node](https://kubernetes.io/docs/tasks/debug/debug-cluster/kubectl-node-debug/),
+you need to provide the required permissions to the spawned debug pod, see the
+[Usage with
+--enable-k8s-apiserver](/docs/reference/run.mdx#usage-with---enable-k8s-apiserver)
+section for more information.
+
+:::
+
+Take into account that `ig` doesn't allow you to configure the connection to the
+Kubernetes API server, and it uses the default kubeconfig location and the
+default connection options. We are working on adding this feature too, see PR
+[#3370](https://github.com/inspektor-gadget/inspektor-gadget/pull/3370).
+
+</TabItem>
+</Tabs>
+
+## Container Runtime Enrichment
+
+Inspektor Gadget can enrich Gadget data with the following container
+runtime-specific information:
+
+- **Runtime name**: The name of the container runtime managing the lifecycle of
+  the container. It can be `containerd`, `docker`, `cri-o` or `podman`. Notice
+  Inspektor Gadget supports enriching events from multiple container runtimes at
+  the same time thus, this field allows you to distinguish between containers
+  with the same name but managed by different runtimes.
+- **Container ID**: The unique identifier of the container at the runtime level. It
+  doesn't contain the prefix some runtimes add to it. For example, in the case
+  of CRI-O, without the `cri-o://` prefix.
+- **Container name**: The name of the container as reported by the container
+  runtime. It can be different from the name reported by Kubernetes depending on
+  the runtime. Consider that in the case the runtime reports multiple names,
+  this field contains only the first one in the list.
+- **Container image name**: The name of the container image. It can be provided with
+  different formats depending on the container runtime. It can be the full image
+  like `docker.io/library/busybox:latest` or just the image ID like
+  `sha256:6e38f40d628db3002f5617342c8872c935de530d867d0f709a2fbda1a302a562`, or
+  `6e38f40d628d`, when truncated.
+- **Container image digest**: The (repo) digest of the container image. It is
+  provided in the format `sha256:<digest>`.
+- **Container started at**: It is the UNIX timestamp at which the container was
+  started at.
+
+The container runtime information will be automatically available every time a
+Gadget reports an event generated within a container, and it doesn't matter
+whether the container is running in a Kubernetes environment or not.
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+
+To enrich with the container runtime information, Inspektor Gadget uses
+different mechanisms. In some cases, it retrieves the information directly from
+the container runtime, and in others, it uses the annotations present in the OCI
+configuration used to run the container, see the
+[container-hook](https://pkg.go.dev/github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook)
+and the
+[oci-annotation](https://pkg.go.dev/github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/oci-annotations)
+packages for more information.
+
+Unlike the Kubernetes information, the container runtime information will not be
+displayed by default when using the `columns` output mode with `kubectl-gadget`.
+It is because `kubectl-gadget` is mainly designed to be used in Kubernetes
+environments, where people are more interested in the Kubernetes information and
+container runtime information is less relevant in most cases. In the [Displaying
+the container runtime information](#displaying-the-container-runtime-information)
+section, you can see how to make the container runtime information visible with
+`kubectl-gadget`.
+
+</TabItem>
+<TabItem value="ig" label="ig">
+
+Unlike the Kubernetes information, some of the container runtime information
+will be displayed by default when using the `columns` output mode with `ig`.
+
+Now, let's try the `trace_exec` Gadget to see how the container runtime
+information is displayed along with the Gadget data:
+
+```bash
+$ ig run trace_exec
+RUNTIME.CONTAINERNAME       COMM                  PID        TID PCOMM                PPID ARGS           ERROR USER           LOGINUSER     GROUP
+gadget                      gadgettracerm…     625083     625083 containerd-sh…     625063 /bin/gadgettr…       root           uid:42949672… root
+```
+
+As you can see, not all of the container runtime information is shown by default
+when using the `columns` output mode. However, if the fields you are interested
+in are not displayed, the [Displaying the container runtime
+information](#displaying-the-container-runtime-information) section shows you
+how to make them visible.
+
+</TabItem>
+</Tabs>
+
+### Displaying the container runtime information
+
+Similarly to [displaying the Kubernetes
+information](#displaying-the-kubernetes-information), the container runtime
+information will contain the prefix `runtime` when using the `columns` output
+mode, and it will be under the `runtime` group when using the JSON or YAML
+[output formats](/docs/reference/run.mdx#output-format).
+
+In the same way, you can use the [`fields`
+flag](/docs/reference/run.mdx#selecting-specific-fields) to make the container
+runtime information visible when using the `columns` output mode, or use the
+`--fields=+runtime` shortcut to get them all.
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+
+For example, let's use the `trace_exec` Gadget with the `fields` flag to display
+the container image name and few information about the `exec` system calls made
+in the `mypython` container:
+
+```bash
+$ kubectl gadget run trace_exec --fields=runtime.containerimagename,comm,pid,args --containername mypython
+RUNTIME.CONTAINERIMAGENAME                                      COMM                    PID ARGS
+```
+
+Now, create the `mypython` container with the image `python:3.12.5-alpine3.19`:
+
+```bash
+$ kubectl run mypython --rm -ti --image=python:3.12.5-alpine3.19 -- python
+If you don't see a command prompt, try pressing enter.
+>>>
+```
+
+And the `trace_exec` Gadget will show the container image name:
+
+```bash
+RUNTIME.CONTAINERIMAGENAME                                      COMM                    PID ARGS
+docker.io/library/python:3.12.5-alpine3.19                      python              2020328 /usr/local/bin/python
+```
+
+</TabItem>
+<TabItem value="ig" label="ig">
+
+For example, let's start an alpine container for which we want to trace the
+`exec` system calls:
+
+```bash
+docker run -it --rm --name myalpine alpine:3.20.0 /bin/sh
+```
+
+And then, run the `trace_exec` Gadget to see the events generated by the `exec`
+system calls along with the container runtime information:
+
+```bash
+$ ig run trace_exec --containername myalpine --output=yaml
+---
+args: /bin/ls
+comm: ls
+error: ""
+error_raw: 0
+gid: 0
+k8s:
+  containerName: ""
+  hostnetwork: false
+  namespace: ""
+  node: ""
+  owner:
+    kind: ""
+    name: ""
+  podName: ""
+loginuid: 4294967295
+mntns_id: 4026534477
+pcomm: sh
+pid: 479274
+ppid: 476492
+pupper_layer: false
+runtime:
+  containerId: 4f7c57e5a6624ad81bf981852096f1ce922bfcc59f0996e897dc5ee98ee49958
+  containerImageDigest: sha256:216266c86fc4dcef5619930bd394245824c2af52fd21ba7c6fa0e618657d4c3b
+  containerImageName: alpine:3.20.0
+  containerName: myalpine
+  runtimeName: docker
+sessionid: 4294967295
+tid: 479274
+timestamp: "2024-09-03T23:20:35.369092280+02:00"
+timestamp_raw: 1725398435369092280
+uid: 0
+upper_layer: false
+```
+
+</TabItem>
+</Tabs>
+
+### Communication with the container runtimes
+
+To communicate with the different container runtimes, Inspektor Gadget needs to
+know the runtime to communicate with and the configuration to do so.
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+
+When using `kubectl-gadget`, Inspektor Gadget auto-detects most of the
+configuration, some of it is well-known and doesn't need to be configured, and
+some other is configurable through environment variables or the configuration
+file. There are no flags to configure it. The following is a summary of the
+configuration:
+
+- **Container Runtimes**: Inspektor Gadget auto-detects the container runtime
+  used to run the containers in a given node using the [node system
+  information](https://pkg.go.dev/k8s.io/api/core/v1#NodeSystemInfo.ContainerRuntimeVersion)
+  retrieved from the Kubernetes API server.
+
+- **Container runtime socket paths**: Inspektor Gadget auto-detect the container
+  runtime socket path querying the kubelet configuration from the Kubernetes API
+  Server. See the [PR
+  #2794](https://github.com/inspektor-gadget/inspektor-gadget/pull/2794) for
+  more information. If the auto-detection fails, Inspektor Gadget uses the
+  values provided through environment variables or the configuration file, see
+  the [Configuration](/docs/reference/configuration.md) documentation for more
+  information. The following table shows the options available to set the
+  container runtime socket paths:
+
+  | Container Runtime | Environment Variable | Configuration File | Default Value |
+  |-------------------|----------------------|--------------------| --------------|
+  | Docker            | `INSPEKTOR_GADGET_DOCKER_SOCKETPATH` | `docker-socketpath` | `/run/cri-dockerd.sock` |
+  | Containerd        | `INSPEKTOR_GADGET_CONTAINERD_SOCKETPATH` | `containerd-socketpath` | `/run/containerd/containerd.sock` |
+  | CRI-O             | `INSPEKTOR_GADGET_CRIO_SOCKETPATH` | `crio-socketpath` | `/run/crio/crio.sock` |
+  | Podman            | `INSPEKTOR_GADGET_PODMAN_SOCKETPATH` | `podman-socketpath` | `/run/podman/podman.sock` |
+
+- **Protocol**: The protocol used to communicate with the container runtime is
+  not configurable and Inspektor Gadget always uses the [CRI
+  API](https://github.com/kubernetes/cri-api).
+
+- **Containerd namespace**: The namespace used to look for containerd containers
+  is not configurable and it is always `k8s.io`.
+
+Notice that this configuration can be only set on the server part thus, during
+the [deployment](/docs/reference/architecture.md#on-kubernetes) of Inspektor
+Gadget in Kubernetes:
+
+TODO: Do the following using the configuration file.
+
+```bash
+kubectl gadget deploy --docker-socketpath /my/custom/path/to/docker
+```
+
+Then, we can check the configuration used by Inspektor Gadget in the logs:
+
+```bash
+$ kubectl logs -l k8s-app=gadget -n gadget | grep docker-socketpath
+time="2024-09-03T21:29:34Z" level=info msg="docker-socketpath: /my/custom/path/to/docker"
+```
+
+</TabItem>
+<TabItem value="ig" label="ig">
+
+As for Kubernetes enrichment, `ig` doesn't rely on the Kubernetes API server to
+get the runtime communication configuration. The downside here is that `ig` will
+not auto-detect the runtime configuration, and you need to provide it as
+follows:
+
+- **Container Runtimes**: The container runtimes to communicate with are
+  configurable through the `runtimes` flag. Supported values are `docker`,
+  `containerd`, `cri-o`, and `podman`. If not provided, `ig` uses the default
+  values `docker,containerd,cri-o,podman`, which means it will try to
+  communicate with all the supported container runtimes to look for running
+  containers.
+
+- **Protocol**: The protocol used to communicate with the container runtime is
+  configurable through the `runtime-protocol` flag. Supported values are
+  `internal` and `cri`. By default and for the runtimes that support it, `ig`
+  uses the `internal` protocol, which means it communicates directly with the
+  container runtime API (e.g. [Docker Engine
+  API](https://docs.docker.com/reference/api/engine/)) and not the [CRI
+  API](https://github.com/kubernetes/cri-api).
+
+  :::warning
+
+  Unlike the `internal` protocol, the `cri` protocol enriches the events with
+  the labels of the Kubernetes pod. However, it increases the total number of
+  gRPC calls to the container runtime, which might have a performance impact.
+  See issue
+  [#2524](https://github.com/inspektor-gadget/inspektor-gadget/issues/2524) for
+  further information.
+
+  :::
+
+- **Container runtime socket path**: Depending on the protocol used to
+  communicate with the container runtime, the socket path can be configurable or
+  not. The following table shows the options available to set the container
+  runtime socket paths:
+
+  | Container Runtime | Protocol | Flag to configure | Default value |
+  |-------------------|----------|-------------------|---------------|
+  | Docker            | internal | `docker-socketpath` | `/run/docker.sock` |
+  | Docker            | cri      | TODO: Make configurable: [#2525](https://github.com/inspektor-gadget/inspektor-gadget/issues/2525) | `/run/cri-dockerd.sock` |
+  | Containerd        | internal | `containerd-socketpath` | `/run/containerd/containerd.sock` |
+  | Containerd        | cri      | Doesn't require configuration | `/run/containerd/containerd.sock` |
+  | CRI-O             | cri      | `crio-socketpath` | `/run/crio/crio.sock` |
+  | Podman            | internal | `podman-socketpath` | `/run/podman/podman.sock` |
+
+- **Containerd namespace**: The namespace used to look for containerd containers
+  is configurable through the `containerd-namespace` flag. If not provided, `ig`
+  uses the default value `k8s.io`.
+
+All this configuration can be only set on the server part. So, in `ig` when
+running `ig` as a [daemon](/docs/reference/architecture.md#ig-as-daemon) or when
+running `ig` [locally](/docs/reference/architecture.md#locally) directly at each
+run.
+
+It is also possible to set these values through the environment variables and
+the configuration file. To do that, we need to use the fully qualified name of
+the flag, see the [Configuration](/docs/reference/configuration.md) documentation
+for more information. The following table summarizes it:
+
+| Flag | Environment Variable | Configuration File |
+|------|----------------------|--------------------|
+| `runtimes` | `INSPEKTOR_GADGET_OPERATOR_LOCALMANAGER_RUNTIMES` | `operator.localmanager.runtimes` |
+| `docker-socketpath` | `INSPEKTOR_GADGET_OPERATOR_LOCALMANAGER_DOCKER_SOCKETPATH` | `operator.localmanager.docker-socketpath` |
+| `containerd-socketpath` | `INSPEKTOR_GADGET_OPERATOR_LOCALMANAGER_CONTAINERD_SOCKETPATH` | `operator.localmanager.containerd-socketpath` |
+| `crio-socketpath` | `INSPEKTOR_GADGET_OPERATOR_LOCALMANAGER_CRIO_SOCKETPATH` | `operator.localmanager.crio-socketpath` |
+| `podman-socketpath` | `INSPEKTOR_GADGET_OPERATOR_LOCALMANAGER_PODMAN_SOCKETPATH` | `operator.localmanager.podman-socketpath` |
+| `containerd-namespace` | `INSPEKTOR_GADGET_OPERATOR_LOCALMANAGER_CONTAINERD_NAMESPACE` | `operator.localmanager.containerd-namespace` |
+
+Let's run an example. We will create a container with containerd in the `myns`
+namespace and another one with Docker:
+
+```bash
+sudo ctr --namespace myns image pull docker.io/library/busybox:latest
+sudo ctr --namespace myns run --detach docker.io/library/busybox:latest mycontainer
+```
+
+```bash
+docker run --detach --name mycontainer busybox:latest sleep inf
+```
+
+Now, let's run the `list-container` command to see the containers running in the
+host. Notice we need to specify the `containerd-namespace` flag set to the
+namespace where our containerd container is running. Otherwise, `ig` will
+display the Docker containers and the containerd containers running in the
+`k8s.io` namespace (the default value):
+
+```bash
+$ ig run list-container --containerd-namespace myns
+RUNTIME.RUNTIMENAME    RUNTIME.CONTAIN… RUNTIME.CONTAINERNAME               RUNTIME.CONTAINER… RUNTIME.CONTAINER… RUNTIME.CONTAINERSTARTEDAT
+containerd             mycontainer      mycontainer                         docker.io/library… sha256:82742949a3… 2024-09-04T00:18:25.923509201+02:00
+docker                 5a3808ea271c66f… mycontainer                         busybox:latest     sha256:9ae97d36d2… 2024-09-04T00:20:51.103982527+02:00
+```
+
+Using the same configuration, we will be able to capture the events generated by
+both containers. To distinguish between the events generated by the Docker
+container and the containerd container, we can use the `runtime.runtimename`
+field:
+
+```bash
+$ ig run trace_exec --containerd-namespace myns --containername mycontainer --fields=runtime.runtimename,comm,pid,args
+RUNTIME.RUNTIMENAME COMM                    PID ARGS
+containerd          sh                   533319 /bin/sh
+docker              wget                 533893 /bin/wget example.com
+```
+
+</TabItem>
+</Tabs>
