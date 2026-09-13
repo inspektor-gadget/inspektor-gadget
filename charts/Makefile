@@ -28,6 +28,12 @@ else
 	sed -i "" "s/%VERSION%/$(CHART_VERSION)/g" $(CHART_DIR)/Chart.yaml
 	sed -i "" "s/%APP_VERSION%/$(APP_VERSION)/g" $(CHART_DIR)/Chart.yaml
 endif
+	@echo "Embedding public key"
+	sed 's/^/          /' ../pkg/resources/inspektor-gadget.pub > $(BUILD_DIR)/inspektor-gadget.pub.indented
+	sed -e '/%PUBLIC_KEY%/{r $(BUILD_DIR)/inspektor-gadget.pub.indented' -e 'd}' \
+		$(CHART_DIR)/values.yaml > $(BUILD_DIR)/values.yaml.new
+	mv $(BUILD_DIR)/values.yaml.new $(CHART_DIR)/values.yaml
+	rm $(BUILD_DIR)/inspektor-gadget.pub.indented
 	@echo "Preparing docs"
 	docker run --user $(shell id -u):$(shell id -g) -v $(shell pwd)/$(CHART_DIR):/helm-docs $(HELM_DOCS_IMAGE) -s file
 	@echo "Charts available at: $(CHART_DIR)"
