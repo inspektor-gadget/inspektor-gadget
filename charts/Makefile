@@ -11,6 +11,8 @@ SED_VERSION := $(shell sed --version 2>&1)
 
 .DEFAULT_GOAL := help
 
+include ../rootless.mk
+
 clean:
 	rm -rf $(BUILD_DIR)
 
@@ -29,7 +31,7 @@ else
 	sed -i "" "s/%APP_VERSION%/$(APP_VERSION)/g" $(CHART_DIR)/Chart.yaml
 endif
 	@echo "Preparing docs"
-	docker run --user $(shell id -u):$(shell id -g) -v $(shell pwd)/$(CHART_DIR):/helm-docs $(HELM_DOCS_IMAGE) -s file
+	docker run $(DOCKER_USER_FLAG) -v $(shell pwd)/$(CHART_DIR):/helm-docs $(HELM_DOCS_IMAGE) -s file
 	@echo "Charts available at: $(CHART_DIR)"
 
 # install uses 'helm upgrade --install' to make chart installation idempotent.
