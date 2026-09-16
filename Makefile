@@ -32,6 +32,12 @@ DLV ?= dlv
 
 BUILD_COMMAND ?= docker buildx build
 
+# The user flag is only needed when using rootfull docker.
+# Users with rootless docker and/or podman can set this variable on call to
+# avoid problems.
+DOCKER_USER_FLAG ?= --user $(shell id -u):$(shell id -g)
+export DOCKER_USER_FLAG
+
 KUBERNETES_ARCHITECTURE ?= $(GOHOSTARCH)
 
 ENABLE_BTFGEN ?= false
@@ -86,7 +92,7 @@ all: build ig
 phony_explicit:
 
 ebpf-objects:
-	docker run --rm --name ebpf-object-builder --user $(shell id -u):$(shell id -g) \
+	docker run --rm --name ebpf-object-builder $(DOCKER_USER_FLAG) \
 		-v $(shell pwd):/work $(GADGET_BUILDER) \
 		make ebpf-objects-outside-docker
 
@@ -348,12 +354,12 @@ lint:
 # While GOLANGCI_LINT_CACHE is used to store golangci-lint cache.
 	docker run --rm --env XDG_CACHE_HOME=/tmp/xdg_home_cache \
 		--env GOLANGCI_LINT_CACHE=/tmp/golangci_lint_cache \
-		--user $(shell id -u):$(shell id -g) -v $(shell pwd):/app -w /app \
+		$(DOCKER_USER_FLAG) -v $(shell pwd):/app -w /app \
 		linter
 
 .PHONY: clang-format
 clang-format:
-	docker run --rm --name ebpf-object-builder --user $(shell id -u):$(shell id -g) \
+	docker run --rm --name ebpf-object-builder $(DOCKER_USER_FLAG) \
 		-v $(shell pwd):/work -w /work $(GADGET_BUILDER) \
 		make clang-format-outside-docker
 

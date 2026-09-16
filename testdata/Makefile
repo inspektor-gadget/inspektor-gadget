@@ -39,7 +39,7 @@ testdata_host: $(TESTDATA)
 
 .PHONY: testdata_docker
 testdata_docker:
-	docker run --rm --name testdata-builder --user $(shell id -u):$(shell id -g) \
+	docker run --rm --name testdata-builder $(DOCKER_USER_FLAG) \
 		-v $(shell pwd):/work $(GADGET_BUILDER) \
 		bash -c "cd /work && make testdata_host"
 
