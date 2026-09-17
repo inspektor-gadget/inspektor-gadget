@@ -42,6 +42,13 @@ const (
 	// of service from a crafted section with millions of tiny valid notes.
 	// 10,000 is far more than any legitimate binary would have.
 	maxNoteCount = 10000
+
+	// maxNoteSectionSize limits the total number of bytes consumed from the
+	// note section. maxNoteFieldSize and maxNoteCount only bound each note
+	// individually, so on their own they still allow 10,000 * 1 MiB of notes.
+	// 16 MiB is far beyond any legitimate .note.stapsdt section, which is
+	// typically a few KiB.
+	maxNoteSectionSize = 16 * 1024 * 1024
 )
 
 type noteHeader struct {
@@ -118,7 +125,17 @@ func parseUsdtNotes(filepath string, attachSymbol string) (*usdtAttachInfo, erro
 	if noteSection.Type != elf.SHT_NOTE {
 		return nil, fmt.Errorf("section %q is not a note", sdtNoteSectionName)
 	}
-	notesReader := noteSection.Open()
+	// Reject compressed note sections, as pkg/utils/safeelf does for symbol
+	// and string tables. Section.Open() would transparently decompress them,
+	// letting a small file expand to an arbitrary amount of data. No toolchain
+	// compresses this section: it holds a few KiB of probe descriptors.
+	if noteSection.Flags&elf.SHF_COMPRESSED != 0 {
+		return nil, fmt.Errorf("compressed %q section not supported", sdtNoteSectionName)
+	}
+	// Bound the bytes actually read. The size declared in the section header
+	// is attacker-controlled and cannot be used for this: debug/elf does not
+	// enforce it when reading through Open(), it only uses it to seek.
+	notesReader := io.LimitReader(noteSection.Open(), maxNoteSectionSize)
 
 	baseSection := elfReader.Section(sdtBaseSectionName)
 	if baseSection == nil {
