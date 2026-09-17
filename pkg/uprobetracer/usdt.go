@@ -62,11 +62,40 @@ type usdtAttachInfo struct {
 	semaphoreAddress uint64
 }
 
+// vaddr2ElfOffset maps a virtual address to an offset in the ELF file.
+//
+// The program headers come from an untrusted file, so every field is
+// validated before use and the arithmetic is overflow-safe.
 func vaddr2ElfOffset(f *elf.File, addr uint64) (uint64, error) {
 	for _, prog := range f.Progs {
-		if prog.Vaddr <= addr && addr < (prog.Vaddr+prog.Memsz) {
-			return addr - prog.Vaddr + prog.Off, nil
+		// Only PT_LOAD segments describe the memory image. Other segment
+		// types overlap them, so a crafted one could otherwise be used to
+		// redirect the mapping to an arbitrary file offset.
+		if prog.Type != elf.PT_LOAD {
+			continue
 		}
+		if addr < prog.Vaddr {
+			continue
+		}
+
+		// Compare the offset within the segment rather than
+		// prog.Vaddr+prog.Filesz: on ELFCLASS64 both come straight from the
+		// file and their sum can wrap. On ELFCLASS32 they are widened from
+		// 32-bit fields and cannot.
+		//
+		// Filesz, not Memsz: the tail of a segment that is only memory
+		// resident, such as .bss, has no corresponding bytes in the file, so
+		// an address there has no file offset to attach to.
+		offsetInProg := addr - prog.Vaddr
+		if offsetInProg >= prog.Filesz {
+			continue
+		}
+
+		fileOffset := prog.Off + offsetInProg
+		if fileOffset < prog.Off {
+			continue
+		}
+		return fileOffset, nil
 	}
 	return 0, fmt.Errorf("malformed elf file: elf prog containing addr %x not found", addr)
 }

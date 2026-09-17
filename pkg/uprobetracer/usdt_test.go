@@ -259,3 +259,36 @@ func TestGetUsdtInfoRecoversPanic(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+// setProg64Filesz patches the p_filesz field of the single 64-bit program
+// header built by buildUsdtELF. Prog64 lays out Type(4) Flags(4) Off(8)
+// Vaddr(8) Paddr(8) Filesz(8), and the program header follows the 64-byte
+// ELF header.
+func setProg64Filesz(data []byte, filesz uint64) {
+	binary.LittleEndian.PutUint64(data[64+32:], filesz)
+}
+
+func TestGetUsdtInfoAddressOutsideFileContent(t *testing.T) {
+	t.Parallel()
+
+	// The probe sits at vaddr 0x2000 while the segment only has file content
+	// up to 0x100. The remainder is memory resident only, like .bss, so it
+	// has no file offset to attach to and must not resolve.
+	data := buildUsdtELF(elf.ELFCLASS64, usdtDesc(8, 0x2000, testStapsdtBaseAddr, 0, "prov", "probe"))
+	setProg64Filesz(data, 0x100)
+
+	_, err := getUsdtInfo(writeTestELF(t, data), "prov:probe")
+	require.ErrorContains(t, err, "not found")
+}
+
+func TestGetUsdtInfoIgnoresNonLoadSegment(t *testing.T) {
+	t.Parallel()
+
+	// Same file, but the segment is no longer PT_LOAD. Only PT_LOAD describes
+	// the memory image, so the address must not be resolved through it.
+	data := buildUsdtELF(elf.ELFCLASS64, usdtDesc(8, 0x2000, testStapsdtBaseAddr, 0, "prov", "probe"))
+	binary.LittleEndian.PutUint32(data[64:], uint32(elf.PT_NOTE))
+
+	_, err := getUsdtInfo(writeTestELF(t, data), "prov:probe")
+	require.ErrorContains(t, err, "not found")
+}
