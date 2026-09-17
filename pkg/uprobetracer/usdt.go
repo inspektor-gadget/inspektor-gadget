@@ -68,7 +68,22 @@ func alignUp[T int | int32 | int64 | uint | uint32 | uint64](n T, align T) T {
 	return (n + align - 1) / align * align
 }
 
-func getUsdtInfo(filepath string, attachSymbol string) (*usdtAttachInfo, error) {
+// getUsdtInfo parses the USDT notes of an ELF file that may come from an
+// untrusted container. Any panic escaping the parser is turned into an error
+// so that malformed input cannot terminate the privileged process: the parser
+// runs on a container-attach goroutine that has no panic recovery of its own.
+func getUsdtInfo(filepath string, attachSymbol string) (info *usdtAttachInfo, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			info = nil
+			err = fmt.Errorf("panic parsing USDT notes of %q: %v", filepath, r)
+		}
+	}()
+
+	return parseUsdtNotes(filepath, attachSymbol)
+}
+
+func parseUsdtNotes(filepath string, attachSymbol string) (*usdtAttachInfo, error) {
 	parts := strings.Split(attachSymbol, ":")
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid USDT section name: %q", attachSymbol)
@@ -116,6 +131,16 @@ func getUsdtInfo(filepath string, attachSymbol string) (*usdtAttachInfo, error) 
 	wordSize := 4
 	if elfReader.Class == elf.ELFCLASS64 {
 		wordSize = 8
+	}
+
+	// Address fields are wordSize bytes wide, so they must be read at that
+	// width. Reading them with Uint64 on an ELFCLASS32 file would read past
+	// the end of the desc slice and panic.
+	readAddr := func(b []byte) uint64 {
+		if wordSize == 8 {
+			return elfReader.ByteOrder.Uint64(b)
+		}
+		return uint64(elfReader.ByteOrder.Uint32(b))
 	}
 
 	// Minimum desc size for a stapsdt note: 3 address fields.
@@ -170,9 +195,9 @@ func getUsdtInfo(filepath string, attachSymbol string) (*usdtAttachInfo, error) 
 			return nil, fmt.Errorf("malformed stapsdt note: desc too short (%d bytes, need %d)", len(desc), minDescSize)
 		}
 
-		elfLocation := elfReader.ByteOrder.Uint64(desc[:wordSize])
-		elfBase := elfReader.ByteOrder.Uint64(desc[wordSize : 2*wordSize])
-		elfSemaphore := elfReader.ByteOrder.Uint64(desc[2*wordSize : 3*wordSize])
+		elfLocation := readAddr(desc[:wordSize])
+		elfBase := readAddr(desc[wordSize : 2*wordSize])
+		elfSemaphore := readAddr(desc[2*wordSize : 3*wordSize])
 
 		diff := baseSection.Addr - elfBase
 		location, err := vaddr2ElfOffset(elfReader.File, elfLocation+diff)
