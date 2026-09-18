@@ -84,39 +84,6 @@ func (m *KubeIPResolverInstance) PostGadgetRun() error {
 	return nil
 }
 
-func (m *KubeIPResolverInstance) enrich(ev any) {
-	endpoints := ev.(KubeIPResolverInterface).GetEndpoints()
-	for _, endpoint := range endpoints {
-		endpoint.Kind = types.EndpointKindRaw
-
-		pod := m.k8sInventory.GetPodByIp(endpoint.Addr)
-		if pod != nil {
-			if pod.Spec.HostNetwork {
-				continue
-			}
-			endpoint.Kind = types.EndpointKindPod
-			endpoint.Name = pod.Name
-			endpoint.Namespace = pod.Namespace
-			endpoint.PodLabels = pod.Labels
-			continue
-		}
-
-		svc := m.k8sInventory.GetSvcByIp(endpoint.Addr)
-		if svc != nil {
-			endpoint.Kind = types.EndpointKindService
-			endpoint.Name = svc.Name
-			endpoint.Namespace = svc.Namespace
-			endpoint.PodLabels = svc.Labels
-			endpoint.PodSelector = svc.Spec.Selector
-		}
-	}
-}
-
-func (m *KubeIPResolverInstance) EnrichEvent(ev any) error {
-	m.enrich(ev)
-	return nil
-}
-
 func (k *KubeIPResolver) GlobalParams() api.Params {
 	return nil
 }
@@ -129,6 +96,7 @@ type endpointAccessors struct {
 	root              datasource.FieldAccessor
 	subK8sKind        datasource.FieldAccessor
 	subK8sName        datasource.FieldAccessor
+	subK8sNode        datasource.FieldAccessor
 	subK8sNamespace   datasource.FieldAccessor
 	subK8sLabels      datasource.FieldAccessor
 	subK8sPodSelector datasource.FieldAccessor
@@ -171,7 +139,8 @@ func (k *KubeIPResolver) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 			if err != nil {
 				return nil, fmt.Errorf("adding field %q: %w", "k8s", err)
 			}
-			k8sKindAcc, err := k8sSubAcc.AddSubField("kind", api.Kind_String,
+			k8sKindAcc, err := k8sSubAcc.AddSubField(
+				"kind", api.Kind_String,
 				datasource.WithAnnotations(map[string]string{
 					metadatav1.ColumnsMaxWidthAnnotation: "12",
 				}),
@@ -180,7 +149,8 @@ func (k *KubeIPResolver) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 			if err != nil {
 				return nil, fmt.Errorf("adding field %q: %w", "kind", err)
 			}
-			k8sNameAcc, err := k8sSubAcc.AddSubField("name",
+			k8sNameAcc, err := k8sSubAcc.AddSubField(
+				"name",
 				api.Kind_String,
 				datasource.WithAnnotations(map[string]string{
 					metadatav1.TemplateAnnotation: "pod",
@@ -190,7 +160,19 @@ func (k *KubeIPResolver) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 			if err != nil {
 				return nil, fmt.Errorf("adding field %q: %w", "name", err)
 			}
-			k8sNamespaceAcc, err := k8sSubAcc.AddSubField("namespace",
+			k8sNodeAcc, err := k8sSubAcc.AddSubField(
+				"node",
+				api.Kind_String,
+				datasource.WithAnnotations(map[string]string{
+					metadatav1.TemplateAnnotation: "node",
+				}),
+				datasource.WithFlags(datasource.FieldFlagHidden),
+			)
+			if err != nil {
+				return nil, fmt.Errorf("adding field %q: %w", "node", err)
+			}
+			k8sNamespaceAcc, err := k8sSubAcc.AddSubField(
+				"namespace",
 				api.Kind_String,
 				datasource.WithAnnotations(map[string]string{
 					metadatav1.TemplateAnnotation: "namespace",
@@ -223,6 +205,7 @@ func (k *KubeIPResolver) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 				root:              ep,
 				subK8sKind:        k8sKindAcc,
 				subK8sName:        k8sNameAcc,
+				subK8sNode:        k8sNodeAcc,
 				subK8sNamespace:   k8sNamespaceAcc,
 				subK8sLabels:      k8sLabelsAcc,
 				subK8sPodSelector: k8sPodSelectorAcc,
@@ -279,6 +262,13 @@ func (m *KubeIPResolverInstance) PreStart(gadgetCtx operators.GadgetContext) err
 				pod := m.k8sInventory.GetPodByIp(addrStr)
 				if pod != nil {
 					if pod.Spec.HostNetwork {
+						a.subK8sKind.Set(data, []byte(types.EndpointKindHost))
+						a.subK8sNode.Set(data, []byte(pod.Spec.NodeName))
+						if a.column != nil && a.port != nil {
+							p, _ := a.port.Uint16(data)
+							v := fmt.Sprintf("n/%s:%d", addrStr, p)
+							a.column.Set(data, []byte(v))
+						}
 						continue
 					}
 					a.subK8sName.Set(data, []byte(pod.Name))
@@ -321,6 +311,17 @@ func (m *KubeIPResolverInstance) PreStart(gadgetCtx operators.GadgetContext) err
 					if a.column != nil && a.port != nil {
 						p, _ := a.port.Uint16(data)
 						v := fmt.Sprintf("s/%s/%s:%d", svc.Namespace, svc.Name, p)
+						a.column.Set(data, []byte(v))
+					}
+					continue
+				}
+
+				if node := m.k8sInventory.GetNodeByIp(addrStr); node != nil {
+					a.subK8sKind.Set(data, []byte(types.EndpointKindHost))
+					a.subK8sNode.Set(data, []byte(node.Name))
+					if a.column != nil && a.port != nil {
+						p, _ := a.port.Uint16(data)
+						v := fmt.Sprintf("n/%s:%d", addrStr, p)
 						a.column.Set(data, []byte(v))
 					}
 					continue
