@@ -90,7 +90,16 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 	case ebpf.SocketFilter:
 		i.logger.Debugf("Attaching socket filter %q to %q", p.Name, attachTo)
 		networkTracer := i.networkTracers[p.Name]
-		return nil, networkTracer.AttachProg(prog)
+		if err := networkTracer.AttachProg(prog); err != nil {
+			return nil, err
+		}
+		if i.netnsPath != "" {
+			i.logger.Debugf("Attaching network tracer %q to netns path %q", p.Name, i.netnsPath)
+			if err := networkTracer.AttachNetnsPath(i.netnsPath); err != nil {
+				return nil, fmt.Errorf("attaching %q to network namespace %q: %w", p.Name, i.netnsPath, err)
+			}
+		}
+		return nil, nil
 	case ebpf.Tracing:
 		switch {
 		case strings.HasPrefix(p.SectionName, iterPrefix):

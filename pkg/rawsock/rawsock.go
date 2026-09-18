@@ -16,11 +16,17 @@ package rawsock
 
 import (
 	"encoding/binary"
+	"errors"
+	"fmt"
+	"path/filepath"
+	"regexp"
 	"runtime"
 	"syscall"
 	"unsafe"
 
+	pathrs "github.com/cyphar/filepath-securejoin/pathrs-lite"
 	"github.com/vishvananda/netns"
+	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 	netnsig "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/netns"
@@ -38,32 +44,252 @@ func htons(i uint16) uint16 {
 }
 
 // OpenRawSock opens a raw socket in the network namespace used by the pid
-// passed as parameter.
+// passed as parameter. A pid of 0 means the current network namespace.
 // Returns the sock fd and an error.
 func OpenRawSock(pid uint32) (int, error) {
-	if pid != 0 {
-		// Lock the OS Thread so we don't accidentally switch namespaces
-		runtime.LockOSThread()
-		defer runtime.UnlockOSThread()
-
-		// Save the current network namespace
-		origns, _ := netns.Get()
-		defer origns.Close()
-
-		netnsHandle, err := netnsig.GetFromPidWithAltProcfs(int(pid), host.HostProcFs)
-		if err != nil {
-			return -1, err
-		}
-		defer netnsHandle.Close()
-		err = netns.Set(netnsHandle)
-		if err != nil {
-			return -1, err
-		}
-
-		// Switch back to the original namespace
-		defer netns.Set(origns)
+	if pid == 0 {
+		return openRawSock()
 	}
 
+	netnsHandle, err := netnsig.GetFromPidWithAltProcfs(int(pid), host.HostProcFs)
+	if err != nil {
+		return -1, err
+	}
+	defer netnsHandle.Close()
+
+	return OpenRawSockInNetns(netnsHandle)
+}
+
+// OpenNetnsPath opens the network namespace at the given filesystem path, e.g.
+// a bind mount created by "ip netns add" (/run/netns/<name>) or a procfs
+// namespace link (/proc/<pid>/ns/net). It returns a handle and the namespace
+// inode, both taken from the same file descriptor, so the two cannot end up
+// describing different namespaces. The caller owns the handle and must close it.
+//
+// The path comes from the user and is interpreted inside the host filesystem,
+// which is mounted elsewhere in a container, so it is confined to
+// host.HostRoot: no symlink along the way may escape it.
+//
+// It must also live on nsfs. Callers key attachments by inode, and inodes are
+// only comparable within one filesystem, so without the check an unrelated file
+// could alias an existing attachment.
+func OpenNetnsPath(path string) (netns.NsHandle, uint64, error) {
+	if isProcfsPath(path) {
+		return openProcfsNetnsPath(path)
+	}
+	return openConfinedNetnsPath(path)
+}
+
+// openConfinedNetnsPath resolves path below the host root and opens it as one
+// operation, with openat2(RESOLVE_IN_ROOT|RESOLVE_NO_MAGICLINKS) where the
+// kernel supports it.
+//
+// Resolving to a string first and opening it afterwards - what
+// securejoin.SecureJoin() does - is only safe at the instant the string is
+// returned: anyone able to write to a directory along the way can replace a
+// component with a symlink before the open and redirect it out of the host
+// root.
+func openConfinedNetnsPath(path string) (netns.NsHandle, uint64, error) {
+	// The handle is O_PATH, which is enough for the checks below and has none
+	// of the side effects of a real open: opening a FIFO blocks until a writer
+	// appears, and some device nodes act on open.
+	pathHandle, err := pathrs.OpenInRoot(host.HostRoot, path)
+	if err != nil {
+		return netns.None(), 0, fmt.Errorf("resolving %q below host root %q: %w", path, host.HostRoot, err)
+	}
+	defer pathHandle.Close()
+
+	// Refuse anything that is not a namespace before reopening it for real.
+	if err := checkNsfs(int(pathHandle.Fd()), path); err != nil {
+		return netns.None(), 0, err
+	}
+
+	// setns(2) rejects an O_PATH descriptor, so the handle has to be upgraded.
+	// Reopening goes through /proc/thread-self/fd/<n>, which the kernel
+	// resolves to the descriptor rather than walking the path again, so it
+	// lands on the file just checked. It does mean procfs has to be mounted.
+	file, err := pathrs.Reopen(pathHandle, unix.O_RDONLY)
+	if err != nil {
+		return netns.None(), 0, fmt.Errorf("reopening %q: %w", path, err)
+	}
+
+	// Hand the descriptor over to netns.NsHandle, so the os.File and the handle
+	// never own the same one. F_DUPFD_CLOEXEC rather than dup(2), which does not
+	// copy the close-on-exec flag - a namespace descriptor surviving into an
+	// exec'd child would hand it a namespace it was never given.
+	fd, err := unix.FcntlInt(file.Fd(), unix.F_DUPFD_CLOEXEC, 0)
+	file.Close()
+	if err != nil {
+		return netns.None(), 0, fmt.Errorf("duplicating descriptor for %q: %w", path, err)
+	}
+	netnsHandle := netns.NsHandle(fd)
+
+	inode, err := netnsInode(fd, path)
+	if err != nil {
+		netnsHandle.Close()
+		return netns.None(), 0, err
+	}
+
+	return netnsHandle, inode, nil
+}
+
+// openProcfsNetnsPath opens a namespace link below /proc.
+//
+// /proc/<pid>/ns/net is a magic link, which no userspace path resolution can
+// follow: securejoin turns it into the literal string "net:[4026531840]", and
+// openat2(RESOLVE_NO_MAGICLINKS) refuses to traverse it at all. Only the
+// directory can be resolved; the last component is left to the kernel, which
+// resolves it on open.
+//
+// Two checks make that safe, and both are needed. isProcfsPath() admits nothing
+// but the exact shape of a namespace link, so the unresolved component is
+// always a name procfs itself provides; checkProcfs() requires the directory to
+// be on procfs, so those names are the kernel's and not an attacker's. Without
+// the second, a directory below <host root>/proc that an attacker can write to
+// would do, since the last component is opened following symlinks.
+//
+// The directory is resolved once, to a descriptor, and both the check and the
+// open go through it, so they cannot land on different inodes.
+func openProcfsNetnsPath(path string) (netns.NsHandle, uint64, error) {
+	dir, base := filepath.Split(path)
+	if base == "" {
+		return netns.None(), 0, fmt.Errorf("%q must point at a network namespace", path)
+	}
+
+	// Confined like any other path: only the last component needs the kernel.
+	dirHandle, err := pathrs.OpenInRoot(host.HostRoot, dir)
+	if err != nil {
+		return netns.None(), 0, fmt.Errorf("resolving %q below host root %q: %w", path, host.HostRoot, err)
+	}
+	defer dirHandle.Close()
+
+	if err := checkProcfs(int(dirHandle.Fd()), path); err != nil {
+		return netns.None(), 0, err
+	}
+
+	// O_PATH is not an option here, unlike in the confined case: setns(2)
+	// rejects it, and there is nothing to reopen through, since re-resolving is
+	// what this avoids.
+	fd, err := unix.Openat(int(dirHandle.Fd()), base, unix.O_RDONLY|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return netns.None(), 0, fmt.Errorf("getting network namespace from path %q: %w", path, err)
+	}
+	netnsHandle := netns.NsHandle(fd)
+
+	inode, err := netnsInode(fd, path)
+	if err != nil {
+		netnsHandle.Close()
+		return netns.None(), 0, err
+	}
+
+	return netnsHandle, inode, nil
+}
+
+// procfsNetnsLink matches the paths a namespace magic link can have, and
+// nothing else. "self" and "thread-self" are names procfs provides just as much
+// as the numeric ones, so refusing them would send a legitimate path to a
+// resolution that cannot follow it.
+var procfsNetnsLink = regexp.MustCompile(`^/proc/(?:\d+|self|thread-self)(?:/task/\d+)?/ns/[a-z_]+$`)
+
+// isProcfsPath reports whether path is a procfs namespace link, whose last
+// component is a magic link that only the kernel can resolve. Everything else
+// goes through the confined open, since only namespace links need the carve-out
+// in openProcfsNetnsPath().
+func isProcfsPath(path string) bool {
+	return procfsNetnsLink.MatchString(filepath.Clean(path))
+}
+
+// checkProcfs returns an error unless the given file descriptor refers to a
+// directory on procfs. path is only used for error messages.
+func checkProcfs(fd int, path string) error {
+	var statfs unix.Statfs_t
+	if err := unix.Fstatfs(fd, &statfs); err != nil {
+		return fmt.Errorf("statfs %q: %w", path, err)
+	}
+	if statfs.Type != unix.PROC_SUPER_MAGIC {
+		return fmt.Errorf("%q is not on procfs", path)
+	}
+	return nil
+}
+
+// checkNsfs returns an error unless the given file descriptor refers to a file
+// on nsfs. path is only used for error messages.
+func checkNsfs(fd int, path string) error {
+	var statfs unix.Statfs_t
+	if err := unix.Fstatfs(fd, &statfs); err != nil {
+		return fmt.Errorf("statfs %q: %w", path, err)
+	}
+	if statfs.Type != unix.NSFS_MAGIC {
+		return fmt.Errorf("%q does not refer to a namespace", path)
+	}
+	return nil
+}
+
+// netnsInode returns the inode number of the namespace the given file
+// descriptor refers to, after checking that it lives on nsfs. path is only used
+// for error messages.
+func netnsInode(fd int, path string) (uint64, error) {
+	if err := checkNsfs(fd, path); err != nil {
+		return 0, err
+	}
+
+	var stat unix.Stat_t
+	if err := unix.Fstat(fd, &stat); err != nil {
+		return 0, fmt.Errorf("stat %q: %w", path, err)
+	}
+	return stat.Ino, nil
+}
+
+// OpenRawSockInNetns opens a raw socket in the network namespace referred to by
+// the given handle, restoring the calling thread's original network namespace
+// before returning. Returns the sock fd and an error.
+func OpenRawSockInNetns(netnsHandle netns.NsHandle) (sock int, err error) {
+	sock = -1
+
+	// Lock the OS thread: setns(2) affects the calling thread only, so the
+	// goroutine must not be migrated to another thread while we are in the
+	// target network namespace.
+	runtime.LockOSThread()
+	unlockOSThread := true
+	defer func() {
+		if unlockOSThread {
+			runtime.UnlockOSThread()
+		}
+	}()
+
+	origns, err := netns.Get()
+	if err != nil {
+		return -1, fmt.Errorf("getting current network namespace: %w", err)
+	}
+	defer origns.Close()
+
+	if err := netns.Set(netnsHandle); err != nil {
+		return -1, fmt.Errorf("entering network namespace: %w", err)
+	}
+	defer func() {
+		if restoreErr := netns.Set(origns); restoreErr != nil {
+			// The thread is stuck in the wrong network namespace. Leave it
+			// locked to this goroutine so the Go runtime never hands it to
+			// another one: the thread is destroyed when the goroutine exits.
+			// Unlocking here would silently taint unrelated code.
+			// See https://github.com/inspektor-gadget/inspektor-gadget/issues/5439
+			unlockOSThread = false
+
+			// The socket, if any, was opened in the wrong namespace from the
+			// caller's point of view; do not hand back a fd we cannot vouch for.
+			if sock != -1 {
+				syscall.Close(sock)
+				sock = -1
+			}
+			err = errors.Join(err, fmt.Errorf("restoring network namespace: %w", restoreErr))
+		}
+	}()
+
+	return openRawSock()
+}
+
+// openRawSock opens a raw socket in the current network namespace.
+func openRawSock() (int, error) {
 	sock, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW|syscall.SOCK_NONBLOCK|syscall.SOCK_CLOEXEC, int(htons(syscall.ETH_P_ALL)))
 	if err != nil {
 		return -1, err
@@ -73,6 +299,7 @@ func OpenRawSock(pid uint32) (int, error) {
 		Protocol: htons(syscall.ETH_P_ALL),
 	}
 	if err := syscall.Bind(sock, &sll); err != nil {
+		syscall.Close(sock)
 		return -1, err
 	}
 	return sock, nil
