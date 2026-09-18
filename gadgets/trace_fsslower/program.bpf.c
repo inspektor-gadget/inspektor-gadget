@@ -39,6 +39,34 @@ struct event {
 const volatile __u64 min_lat_us = 0;
 GADGET_PARAM(min_lat_us);
 
+const volatile char filesystem[32] = "ext4";
+GADGET_PARAM(filesystem);
+
+// The filesystem param must name a supported filesystem; otherwise the fs table
+// below falls back to a fully-disabled row and this assert fails early with a
+// clear error instead of silently attaching nothing.
+GADGET_ASSERT(
+	fs_supported,
+	"params.filesystem in ['btrfs','ext4','fuse','nfs','ntfs3','xfs']");
+
+// fs maps the selected filesystem to the concrete kernel symbols each probe
+// attaches to. A filesystem that does not implement an operation (fuse/ntfs3
+// statfs), or an unsupported filesystem, maps that op to program.disabled so
+// the attach_to expression always yields a string, never nil. This replaces the
+// former WASM pre-start shim (go/program.go), which built the same table.
+GADGET_EXPR_DEFINE(
+	fs,
+	"let table = {"
+	"  'btrfs': {read: 'btrfs_file_read_iter', write: 'btrfs_file_write_iter', open: 'btrfs_file_open', fsync: 'btrfs_sync_file', statfs: 'btrfs_statfs'},"
+	"  'ext4':  {read: 'ext4_file_read_iter', write: 'ext4_file_write_iter', open: 'ext4_file_open', fsync: 'ext4_sync_file', statfs: 'ext4_statfs'},"
+	"  'fuse':  {read: 'fuse_file_read_iter', write: 'fuse_file_write_iter', open: 'fuse_open', fsync: 'fuse_fsync', statfs: program.disabled},"
+	"  'nfs':   {read: 'nfs_file_read', write: 'nfs_file_write', open: 'nfs_file_open', fsync: 'nfs_file_fsync', statfs: 'nfs_statfs'},"
+	"  'ntfs3': {read: 'ntfs_file_read_iter', write: 'ntfs_file_write_iter', open: 'ntfs_file_open', fsync: 'generic_file_fsync', statfs: program.disabled},"
+	"  'xfs':   {read: 'xfs_file_read_iter', write: 'xfs_file_write_iter', open: 'xfs_file_open', fsync: 'xfs_file_fsync', statfs: 'xfs_fs_statfs'}"
+	"};"
+	"let disabled = {read: program.disabled, write: program.disabled, open: program.disabled, fsync: program.disabled, statfs: program.disabled};"
+	"params.filesystem in table ? table[params.filesystem] : disabled");
+
 GADGET_TRACER_MAP(events, 1024 * 256);
 GADGET_TRACER(malloc, events, event);
 
@@ -131,6 +159,7 @@ static int probe_exit(void *ctx, enum fs_file_op op, ssize_t size)
 }
 
 SEC("kprobe/dummy_file_read")
+GADGET_PROG_ATTACH_TO("fs.read")
 int BPF_KPROBE(ig_fssl_read_e, struct kiocb *iocb)
 {
 	struct dentry *dentry = BPF_CORE_READ(iocb, ki_filp, f_path.dentry);
@@ -140,12 +169,14 @@ int BPF_KPROBE(ig_fssl_read_e, struct kiocb *iocb)
 }
 
 SEC("kretprobe/dummy_file_read")
+GADGET_PROG_ATTACH_TO("fs.read")
 int BPF_KRETPROBE(ig_fssl_read_x, ssize_t ret)
 {
 	return probe_exit(ctx, F_READ, ret);
 }
 
 SEC("kprobe/dummy_file_write")
+GADGET_PROG_ATTACH_TO("fs.write")
 int BPF_KPROBE(ig_fssl_wr_e, struct kiocb *iocb)
 {
 	struct dentry *dentry = BPF_CORE_READ(iocb, ki_filp, f_path.dentry);
@@ -155,12 +186,14 @@ int BPF_KPROBE(ig_fssl_wr_e, struct kiocb *iocb)
 }
 
 SEC("kretprobe/dummy_file_write")
+GADGET_PROG_ATTACH_TO("fs.write")
 int BPF_KRETPROBE(ig_fssl_wr_x, ssize_t ret)
 {
 	return probe_exit(ctx, F_WRITE, ret);
 }
 
 SEC("kprobe/dummy_file_open")
+GADGET_PROG_ATTACH_TO("fs.open")
 int BPF_KPROBE(ig_fssl_open_e, struct inode *inode, struct file *file)
 {
 	struct dentry *dentry = BPF_CORE_READ(file, f_path.dentry);
@@ -168,12 +201,14 @@ int BPF_KPROBE(ig_fssl_open_e, struct inode *inode, struct file *file)
 }
 
 SEC("kretprobe/dummy_file_open")
+GADGET_PROG_ATTACH_TO("fs.open")
 int BPF_KRETPROBE(ig_fssl_open_x)
 {
 	return probe_exit(ctx, F_OPEN, 0);
 }
 
 SEC("kprobe/dummy_file_sync")
+GADGET_PROG_ATTACH_TO("fs.fsync")
 int BPF_KPROBE(ig_fssl_sync_e, struct file *file, loff_t start, loff_t end)
 {
 	struct dentry *dentry = BPF_CORE_READ(file, f_path.dentry);
@@ -181,18 +216,21 @@ int BPF_KPROBE(ig_fssl_sync_e, struct file *file, loff_t start, loff_t end)
 }
 
 SEC("kretprobe/dummy_file_sync")
+GADGET_PROG_ATTACH_TO("fs.fsync")
 int BPF_KRETPROBE(ig_fssl_sync_x)
 {
 	return probe_exit(ctx, F_FSYNC, 0);
 }
 
 SEC("kprobe/dummy_file_statfs")
+GADGET_PROG_ATTACH_TO("fs.statfs")
 int BPF_KPROBE(ig_fssl_statfs_e, struct dentry *dentry, struct kstatfs *buf)
 {
 	return probe_entry(dentry, F_STATFS, 0, 0);
 }
 
 SEC("kretprobe/dummy_file_statfs")
+GADGET_PROG_ATTACH_TO("fs.statfs")
 int BPF_KRETPROBE(ig_fssl_statfs_x)
 {
 	return probe_exit(ctx, F_STATFS, 0);

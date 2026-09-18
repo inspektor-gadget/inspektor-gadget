@@ -20,9 +20,10 @@ const volatile bool show_threads = false;
 
 GADGET_PARAM(show_threads);
 
-GADGET_ITER(processes, gadget_process, ig_snap_proc);
+GADGET_ITER(processes, gadget_process);
 
 SEC("iter/task")
+GADGET_ITER_MEMBER(processes)
 int ig_snap_proc(struct bpf_iter__task *ctx)
 {
 	struct seq_file *seq = ctx->meta->seq;
