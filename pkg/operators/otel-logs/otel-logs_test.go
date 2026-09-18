@@ -20,6 +20,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/attribute"
 	otellog "go.opentelemetry.io/otel/log"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 
@@ -90,21 +91,21 @@ func TestPreStart_NoAnnotations(t *testing.T) {
 	rec := exporter.records[0]
 
 	// Check body is empty (fallback behavior)
-	assert.Equal(t, otellog.StringValue(""), rec.Body())
+	assert.Equal(t, attribute.StringValue(""), rec.Body())
 
 	// Check attributes (fallback behavior: all fields as attributes)
-	attrMap := make(map[string]otellog.Value)
-	rec.WalkAttributes(func(kv otellog.KeyValue) bool {
-		attrMap[kv.Key] = kv.Value
+	attrMap := make(map[string]attribute.Value)
+	rec.WalkAttributes(func(kv attribute.KeyValue) bool {
+		attrMap[string(kv.Key)] = kv.Value
 		return true
 	})
 
 	require.Contains(t, attrMap, "foo")
-	assert.Equal(t, otellog.StringValue("hello"), attrMap["foo"])
+	assert.Equal(t, attribute.StringValue("hello"), attrMap["foo"])
 
 	require.Contains(t, attrMap, "bar")
 	// Int32 is converted to Int64Value
-	assert.Equal(t, otellog.Int64Value(42), attrMap["bar"])
+	assert.Equal(t, attribute.Int64Value(42), attrMap["bar"])
 }
 
 func TestPreStart_WithAnnotations(t *testing.T) {
@@ -160,18 +161,18 @@ func TestPreStart_WithAnnotations(t *testing.T) {
 	rec := exporter.records[0]
 
 	// Check body is empty (default if not set)
-	assert.Equal(t, otellog.StringValue(""), rec.Body())
+	assert.Equal(t, attribute.StringValue(""), rec.Body())
 
 	// Check attributes
-	attrMap := make(map[string]otellog.Value)
-	rec.WalkAttributes(func(kv otellog.KeyValue) bool {
-		attrMap[kv.Key] = kv.Value
+	attrMap := make(map[string]attribute.Value)
+	rec.WalkAttributes(func(kv attribute.KeyValue) bool {
+		attrMap[string(kv.Key)] = kv.Value
 		return true
 	})
 
 	// "custom.foo" should be present
 	require.Contains(t, attrMap, "custom.foo")
-	assert.Equal(t, otellog.StringValue("hello"), attrMap["custom.foo"])
+	assert.Equal(t, attribute.StringValue("hello"), attrMap["custom.foo"])
 
 	// "bar" should NOT be present because we have at least one annotated field, so fallback is disabled.
 	require.NotContains(t, attrMap, "bar")
@@ -227,12 +228,12 @@ func TestPreStart_BodyAnnotation(t *testing.T) {
 	rec := exporter.records[0]
 
 	// Check body is set
-	assert.Equal(t, otellog.StringValue("body-content"), rec.Body())
+	assert.Equal(t, attribute.StringValue("body-content"), rec.Body())
 
 	// Check attributes
-	attrMap := make(map[string]otellog.Value)
-	rec.WalkAttributes(func(kv otellog.KeyValue) bool {
-		attrMap[kv.Key] = kv.Value
+	attrMap := make(map[string]attribute.Value)
+	rec.WalkAttributes(func(kv attribute.KeyValue) bool {
+		attrMap[string(kv.Key)] = kv.Value
 		return true
 	})
 
@@ -287,18 +288,18 @@ func TestPreStart_BytesField(t *testing.T) {
 	rec := exporter.records[0]
 
 	// Check body is empty (fallback behavior)
-	assert.Equal(t, otellog.StringValue(""), rec.Body())
+	assert.Equal(t, attribute.StringValue(""), rec.Body())
 
 	// Check attributes (fallback behavior: all fields as attributes)
-	attrMap := make(map[string]otellog.Value)
-	rec.WalkAttributes(func(kv otellog.KeyValue) bool {
-		attrMap[kv.Key] = kv.Value
+	attrMap := make(map[string]attribute.Value)
+	rec.WalkAttributes(func(kv attribute.KeyValue) bool {
+		attrMap[string(kv.Key)] = kv.Value
 		return true
 	})
 
 	require.Contains(t, attrMap, "foo")
 	// Bytes are preserved as BytesValue
-	assert.Equal(t, otellog.BytesValue([]byte("hello-bytes")), attrMap["foo"])
+	assert.Equal(t, attribute.ByteSliceValue([]byte("hello-bytes")), attrMap["foo"])
 }
 
 func TestPreStart_BoolField(t *testing.T) {
@@ -345,17 +346,17 @@ func TestPreStart_BoolField(t *testing.T) {
 	rec := exporter.records[0]
 
 	// Check body is empty (fallback behavior)
-	assert.Equal(t, otellog.StringValue(""), rec.Body())
+	assert.Equal(t, attribute.StringValue(""), rec.Body())
 
 	// Check attributes (fallback behavior: all fields as attributes)
-	attrMap := make(map[string]otellog.Value)
-	rec.WalkAttributes(func(kv otellog.KeyValue) bool {
-		attrMap[kv.Key] = kv.Value
+	attrMap := make(map[string]attribute.Value)
+	rec.WalkAttributes(func(kv attribute.KeyValue) bool {
+		attrMap[string(kv.Key)] = kv.Value
 		return true
 	})
 
 	require.Contains(t, attrMap, "flag")
-	assert.Equal(t, otellog.BoolValue(true), attrMap["flag"])
+	assert.Equal(t, attribute.BoolValue(true), attrMap["flag"])
 }
 
 func TestPreStart_ParentWithChildren_NotEmitted(t *testing.T) {
@@ -416,9 +417,9 @@ func TestPreStart_ParentWithChildren_NotEmitted(t *testing.T) {
 	require.Len(t, exporter.records, 1)
 	rec := exporter.records[0]
 
-	attrMap := make(map[string]otellog.Value)
-	rec.WalkAttributes(func(kv otellog.KeyValue) bool {
-		attrMap[kv.Key] = kv.Value
+	attrMap := make(map[string]attribute.Value)
+	rec.WalkAttributes(func(kv attribute.KeyValue) bool {
+		attrMap[string(kv.Key)] = kv.Value
 		return true
 	})
 
