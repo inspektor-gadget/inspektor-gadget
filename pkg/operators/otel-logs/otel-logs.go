@@ -22,6 +22,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
 	otellog "go.opentelemetry.io/otel/log"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
@@ -200,19 +201,19 @@ func (o *otelLogsOperatorInstance) init(gadgetCtx operators.GadgetContext) error
 	return nil
 }
 
-// copyBytesToLogValue copies the bytes and returns an otellog.Value.
-// This complies with otellog.BytesValue docs which state that the
+// copyBytesToLogValue copies the bytes and returns an attribute.Value.
+// This complies with attribute.ByteSliceValue docs which state that the
 // passed slice must not be modified after the call.
-func copyBytesToLogValue(b []byte) otellog.Value {
+func copyBytesToLogValue(b []byte) attribute.Value {
 	cp := make([]byte, len(b))
 	copy(cp, b)
-	return otellog.BytesValue(cp)
+	return attribute.ByteSliceValue(cp)
 }
 
-// makeAttrPrep returns a function that will produce an otellog.KeyValue for the provided field.
+// makeAttrPrep returns a function that will produce an attribute.KeyValue for the provided field.
 // It handles Bytes (raw string if valid UTF-8, base64 otherwise) and Bool (Int64Value 0/1) specially and falls back
 // to datasource.GetKeyValueFunc for supported scalar kinds.
-func makeAttrPrep(f datasource.FieldAccessor, nameOverride string) (func(data datasource.Data) otellog.KeyValue, error) {
+func makeAttrPrep(f datasource.FieldAccessor, nameOverride string) (func(data datasource.Data) attribute.KeyValue, error) {
 	name := f.FullName()
 	if nameOverride != "" {
 		name = nameOverride
@@ -223,13 +224,13 @@ func makeAttrPrep(f datasource.FieldAccessor, nameOverride string) (func(data da
 		return nil, nil
 	}
 
-	kvf, err := datasource.GetKeyValueFunc[string, otellog.Value](f, name, otellog.Int64Value, otellog.Float64Value, otellog.StringValue, otellog.BoolValue, copyBytesToLogValue)
+	kvf, err := datasource.GetKeyValueFunc[string, attribute.Value](f, name, attribute.Int64Value, attribute.Float64Value, attribute.StringValue, attribute.BoolValue, copyBytesToLogValue)
 	if err != nil {
 		return nil, err
 	}
-	return func(data datasource.Data) otellog.KeyValue {
+	return func(data datasource.Data) attribute.KeyValue {
 		key, val := kvf(data)
-		return otellog.KeyValue{Key: key, Value: val}
+		return attribute.KeyValue{Key: attribute.Key(key), Value: val}
 	}, nil
 }
 
@@ -242,7 +243,7 @@ func (o *otelLogsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) e
 		fields := ds.Accessors(false)
 		annotations := ds.Annotations()
 
-		prep := make([]func(data datasource.Data) otellog.KeyValue, 0)
+		prep := make([]func(data datasource.Data) attribute.KeyValue, 0)
 		kvCount := 0
 
 		var bodySet bool
@@ -271,7 +272,7 @@ func (o *otelLogsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) e
 				if err != nil {
 					return
 				}
-				record.SetBody(otellog.StringValue(s.(string)))
+				record.SetBody(attribute.StringValue(s.(string)))
 			})
 			bodySet = true
 		}
@@ -300,7 +301,7 @@ func (o *otelLogsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) e
 			case FieldNameBody:
 				fns = append(fns, func(data datasource.Data, record *otellog.Record) {
 					str, _ := f.String(data)
-					record.SetBody(otellog.StringValue(str))
+					record.SetBody(attribute.StringValue(str))
 				})
 				bodySet = true
 				continue
@@ -363,7 +364,7 @@ func (o *otelLogsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) e
 			var rec otellog.Record
 
 			// Collect attributes
-			attribs := make([]otellog.KeyValue, 0, kvCount)
+			attribs := make([]attribute.KeyValue, 0, kvCount)
 			for _, p := range prep {
 				attribs = append(attribs, p(data))
 			}
@@ -378,7 +379,7 @@ func (o *otelLogsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) e
 			// (empty string). This makes the exporter emit the event encoded via
 			// attributes even when `logs.body` isn't set.
 			if !bodySet {
-				rec.SetBody(otellog.StringValue(""))
+				rec.SetBody(attribute.StringValue(""))
 			}
 
 			rec.SetTimestamp(time.Now())
