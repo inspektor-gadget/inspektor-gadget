@@ -114,14 +114,15 @@ In order to compile the in-tree gadgets (gadgets shipped in the Inspektor gadget
 repository) that use Wasm, it's necessary to define the `IG_SOURCE_PATH` env
 variable with the absolute path to the root of the Inspektor Gadget source code.
 This is needed to use the latest changes to the Wasm API when building the gadget.
-Also, `sudo` needs to be run with `-E` to pass this variable.
+Since `sudo` resets the environment, the variable has to be passed on the `sudo`
+command line.
 
 ```bash
 # Path where the inspektor-gadget folder is
 $ export IG_SOURCE_PATH=/home/ig/inspektor-gadget
 
 # Build an in-tree gadget that uses Wasm
-$ sudo -E ig image build $IG_SOURCE_PATH/gadgets/trace_open -t trace_open
+$ sudo IG_SOURCE_PATH=$IG_SOURCE_PATH ig image build $IG_SOURCE_PATH/gadgets/trace_open -t trace_open
 Pulling builder image ghcr.io/inspektor-gadget/gadget-builder:%IG_TAG%
 latest: Pulling from inspektor-gadget/gadget-builder
 Digest: sha256:5deec444ea81b866f135430f62b2a580374b7bbcfa5961298cb292546395e3b4

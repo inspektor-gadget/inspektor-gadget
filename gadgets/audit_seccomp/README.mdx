@@ -152,7 +152,7 @@ minikube-docker   default         mypod           container1      unshare     60
 <TabItem value="ig" label="ig">
 
 ```bash
-$ sudo -E ig run audit_seccomp:%IG_TAG%
+$ sudo ig run audit_seccomp:%IG_TAG%
 RUNTIME.CONTAINERNAME COMM                  PID         TID         CODE          SYSCALL
 test-audit-seccomp    unshare            485855      485855         …_KILL_THREAD SYS_UNSHARE
 test-audit-seccomp    unshare            485865      485865         …_KILL_THREAD SYS_UNSHARE
@@ -188,7 +188,7 @@ $ kubectl gadget run audit_seccomp:%IG_TAG% --collect-ustack -o jsonpretty
 <TabItem value="ig" label="ig">
 
 ```bash
-$ sudo -E ig run audit_seccomp:%IG_TAG% --collect-ustack -o jsonpretty
+$ sudo ig run audit_seccomp:%IG_TAG% --collect-ustack -o jsonpretty
 ...
   "ustack": {
     "addresses": "[0]0x000000000040332e; [1]0x00000000004771e6; [2]0x000000000047752e; [3]0x000000000048250b; [4]0x00000000004829ae; [5]0x0000000000482a7e; [6]0x0000000000482afe; [7]0x0000000000482b7e; [8]0x0000000000435a9d; [9]0x00000000004625a1; ",

@@ -17,6 +17,29 @@ and you haven't specified one using either the `--authfile PATH` parameter for e
 command or the environment variable `REGISTRY_AUTH_FILE`, your docker credentials
 (`~/.docker/config.json`) will be used as fallback.
 
+Note that `ig` needs to run as root and that `sudo` resets `HOME` to `/root`, so
+the docker credentials fallback resolves to `/root/.docker/config.json` rather
+than to those of the user invoking `sudo`. To use your own credentials, ask
+`sudo` to preserve `HOME`, and `DOCKER_CONFIG` too if you set it: it overrides
+`~/.docker` and is likewise dropped by `sudo`. Variables of the list that are
+not set are simply ignored.
+
+```bash
+$ sudo --preserve-env=HOME,DOCKER_CONFIG ig image push ghcr.io/my-org/my-gadget:latest
+```
+
+Alternatively, point `ig` at the file explicitly. This does not depend on the
+`sudo` configuration at all:
+
+```bash
+$ sudo ig image push --authfile $HOME/.docker/config.json ghcr.io/my-org/my-gadget:latest
+```
+
+Do not use `sudo -E` for this: it is silently ignored by
+[sudo-rs](https://github.com/trifectatechfoundation/sudo-rs), the default `sudo`
+implementation since Ubuntu 25.10, so `HOME` stays `/root` and the credentials
+are not found.
+
 ## Commands
 
 ### `login`
