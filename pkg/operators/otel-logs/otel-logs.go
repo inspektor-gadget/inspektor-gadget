@@ -224,13 +224,13 @@ func makeAttrPrep(f datasource.FieldAccessor, nameOverride string) (func(data da
 		return nil, nil
 	}
 
-	kvf, err := datasource.GetKeyValueFunc[string, attribute.Value](f, name, attribute.Int64Value, attribute.Float64Value, attribute.StringValue, attribute.BoolValue, copyBytesToLogValue)
+	kvf, err := datasource.GetKeyValueFunc[attribute.Key, attribute.Value](f, name, attribute.Int64Value, attribute.Float64Value, attribute.StringValue, attribute.BoolValue, copyBytesToLogValue)
 	if err != nil {
 		return nil, err
 	}
 	return func(data datasource.Data) attribute.KeyValue {
 		key, val := kvf(data)
-		return attribute.KeyValue{Key: attribute.Key(key), Value: val}
+		return attribute.KeyValue{Key: key, Value: val}
 	}, nil
 }
 
