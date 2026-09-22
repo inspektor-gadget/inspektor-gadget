@@ -23,10 +23,19 @@
 // The trace_event_raw_selinux_audited struct is absent from the arm64
 // vmlinux.h shipped with Inspektor Gadget (that BTF was generated from a kernel
 // built without CONFIG_SECURITY_SELINUX). Define it manually for arm64 so the
-// gadget still compiles for that architecture. The layout matches the stable
-// tracepoint format. Tracepoint context fields are read directly from the
-// in-memory record, so no CO-RE relocation is performed against this struct.
+// gadget still compiles for that architecture.
+//
+// Apply preserve_access_index the same way vmlinux.h does for the structs it
+// defines, so that field accesses are CO-RE relocated against the BTF of the
+// running kernel rather than using the offsets hardcoded below. Without this,
+// arm64 would be the only architecture reading this tracepoint at fixed
+// offsets, since amd64 gets the struct from vmlinux.h and is already relocated.
 #ifdef __TARGET_ARCH_arm64
+#ifndef BPF_NO_PRESERVE_ACCESS_INDEX
+#pragma clang attribute push(__attribute__((preserve_access_index)), \
+			     apply_to = record)
+#endif
+
 struct trace_event_raw_selinux_audited {
 	struct trace_entry ent;
 	u32 requested;
@@ -38,6 +47,10 @@ struct trace_event_raw_selinux_audited {
 	u32 __data_loc_tclass;
 	char __data[0];
 };
+
+#ifndef BPF_NO_PRESERVE_ACCESS_INDEX
+#pragma clang attribute pop
+#endif
 #endif /* __TARGET_ARCH_arm64 */
 
 struct event {
