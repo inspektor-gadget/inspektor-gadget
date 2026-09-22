@@ -134,3 +134,39 @@ Prometheus scrape port
 {{- $listenAddress := dig "otel-metrics" "otel-metrics-listen-address" "" $operator -}}
 {{- regexFind ":[0-9]+$" (toString $listenAddress) | trimPrefix ":" | default "2224" -}}
 {{- end }}
+
+{{/*
+Returns "true" if the target cluster supports the securityContext.appArmorProfile
+field (Kubernetes >= 1.30), "false" otherwise. Before 1.30, the AppArmor profile
+has to be set via the now-deprecated
+container.apparmor.security.beta.kubernetes.io/<container> annotation instead:
+https://kubernetes.io/docs/tutorials/security/apparmor/#securing-a-pod
+*/}}
+{{- define "gadget.supportsAppArmorField" -}}
+{{- semverCompare ">=1.30-0" .Capabilities.KubeVersion.Version -}}
+{{- end }}
+
+{{/*
+Translates an AppArmor profile string, as accepted by the deprecated
+container.apparmor.security.beta.kubernetes.io/<container> annotation (e.g.
+"unconfined", "runtime/default" or "localhost/my-profile"), into the
+securityContext.appArmorProfile structure introduced in Kubernetes v1.30.
+Mirrors createAppArmorProfile() in cmd/kubectl-gadget/deploy.go.
+*/}}
+{{- define "gadget.appArmorProfile" -}}
+{{- $parts := splitList "/" . -}}
+{{- $type := first $parts -}}
+{{- if eq $type "unconfined" -}}
+type: Unconfined
+{{- else if eq $type "runtime" -}}
+type: RuntimeDefault
+{{- else if eq $type "localhost" -}}
+{{- if ne (len $parts) 2 -}}
+{{- fail (printf "AppArmor profile malformed: localhost/profile expected, got %q" .) -}}
+{{- end -}}
+type: Localhost
+localhostProfile: {{ index $parts 1 }}
+{{- else -}}
+{{- fail (printf "AppArmor profile badly named: expected unconfined, runtime or localhost, got %q" $type) -}}
+{{- end -}}
+{{- end -}}
