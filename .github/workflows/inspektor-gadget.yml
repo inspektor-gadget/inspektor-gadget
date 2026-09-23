@@ -2194,6 +2194,9 @@ jobs:
         DNSTESTER_IMAGE: ${{ needs.build-helper-images.outputs.dnstester_image }}
       run: |
           set -o pipefail
+          # Pull the gadget images before the tests rather than during them
+          # to avoid requiring long timeouts in tests due to slow OCI registries.
+          make -C gadgets/ pull
           make \
           IG_FLAGS="--verify-image=$VERIFY_IMAGE" \
           IG_RUNTIME=${{ matrix.runtime }} \
