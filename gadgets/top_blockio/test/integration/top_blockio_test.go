@@ -113,7 +113,7 @@ func TestTopBlockio(t *testing.T) {
 		igrunner.WithValidateOutput(
 			func(t *testing.T, output string) {
 				expectedEntry := &topBlockioEntry{
-					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+					CommonData: utils.BuildCommonData(t, containerName, commonDataOpts...),
 					Proc:       utils.BuildProc("dd", 0, 0),
 					Bytes:      expectedBytes,
 					Rw:         "write",

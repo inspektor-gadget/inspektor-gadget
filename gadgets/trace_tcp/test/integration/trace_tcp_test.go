@@ -92,7 +92,7 @@ func TestTraceTCP(t *testing.T) {
 		func(t *testing.T, output string) {
 			expectedEntries := []*traceTCPEvent{
 				{
-					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+					CommonData: utils.BuildCommonData(t, containerName, commonDataOpts...),
 					Proc:       utils.BuildProc("curl", 0, 0),
 					Src: utils.L4Endpoint{
 						Addr:    "127.0.0.1",
@@ -116,7 +116,7 @@ func TestTraceTCP(t *testing.T) {
 					Fd:        utils.NormalizedInt,
 				},
 				{
-					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+					CommonData: utils.BuildCommonData(t, containerName, commonDataOpts...),
 					Proc:       utils.BuildProc("nginx", 101, 101),
 					Src: utils.L4Endpoint{
 						Addr:    "127.0.0.1",
@@ -140,7 +140,7 @@ func TestTraceTCP(t *testing.T) {
 					AcceptFd:  utils.NormalizedInt,
 				},
 				{
-					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+					CommonData: utils.BuildCommonData(t, containerName, commonDataOpts...),
 					Proc:       utils.BuildProc("curl", 0, 0),
 					Src: utils.L4Endpoint{
 						Addr:    "127.0.0.1",

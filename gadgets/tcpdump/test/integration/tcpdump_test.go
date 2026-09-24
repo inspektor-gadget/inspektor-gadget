@@ -106,14 +106,14 @@ func newTCPDumpStep(t *testing.T, tc testCase) (igtesting.TestStep, []igtesting.
 			expectedEntries := []*tcpdumpEvent{
 				// A DNS request
 				{
-					CommonData: utils.BuildCommonData(clientContainerName, commonDataOpts...),
+					CommonData: utils.BuildCommonData(t, clientContainerName, commonDataOpts...),
 
 					Timestamp:  utils.NormalizedStr,
 					PacketType: 0,
 				},
 				// A DNS response
 				{
-					CommonData: utils.BuildCommonData(clientContainerName, commonDataOpts...),
+					CommonData: utils.BuildCommonData(t, clientContainerName, commonDataOpts...),
 
 					Timestamp:  utils.NormalizedStr,
 					PacketType: 1,
