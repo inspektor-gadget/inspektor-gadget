@@ -15,6 +15,7 @@ TEST_ARTIFACTS = \
 	perf \
 	kallsyms \
 	filtering \
+	handleoverflow \
 	#
 
 all: $(TEST_ARTIFACTS)
