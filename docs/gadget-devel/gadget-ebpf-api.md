@@ -830,3 +830,20 @@ on a field according to the `ebpf.rest.name` datasource annotation. The
 field that contains the length of the trailing data. If the gadget doesn't
 provide this annotation, the whole remaining data will be used as the trailing
 data.
+
+### BPF Map Max Entries
+
+Gadget authors can change the maximum number of entries (`max_entries`) of any BPF map configurable at runtime using the `GADGET_MAP_MAX_ENTRIES` macro defined in `include/gadget/buffer.h`:
+
+```c
+GADGET_MAP_MAX_ENTRIES(my_map, 10240);
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(key_size, sizeof(__u32));
+	__uint(value_size, sizeof(__u64));
+	__uint(max_entries, 10240);
+} my_map SEC(".maps");
+```
+
+This automatically declares a parameter named `<mapname>_max_entries` (e.g. `--my-map-max-entries`) that users can override at runtime without recompiling the gadget. All tracer maps created via `GADGET_TRACER_MAP(name, size)` automatically support this parameter.
