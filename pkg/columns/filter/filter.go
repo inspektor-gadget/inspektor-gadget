@@ -62,7 +62,8 @@ func getValueFromFilterSpec[T any](fs *FilterSpec[T], column *columns.Column[T])
 		value = reflect.ValueOf(int64(duration))
 		return value, nil
 	}
-	switch fs.column.Kind() {
+
+	switch column.Kind() {
 	case reflect.Int,
 		reflect.Int8,
 		reflect.Int16,
@@ -73,6 +74,7 @@ func getValueFromFilterSpec[T any](fs *FilterSpec[T], column *columns.Column[T])
 			return value, fmt.Errorf("tried to compare %q to int column %q", fs.value, column.Name)
 		}
 		value = reflect.ValueOf(number).Convert(column.Type())
+
 	case reflect.Uint,
 		reflect.Uint8,
 		reflect.Uint16,
@@ -83,17 +85,21 @@ func getValueFromFilterSpec[T any](fs *FilterSpec[T], column *columns.Column[T])
 			return value, fmt.Errorf("tried to compare %q to uint column %q", fs.value, column.Name)
 		}
 		value = reflect.ValueOf(number).Convert(column.Type())
+
 	case reflect.Float32, reflect.Float64:
 		number, err := strconv.ParseFloat(fs.value, 64)
 		if err != nil {
 			return value, fmt.Errorf("tried to compare %q to float column %q", fs.value, column.Name)
 		}
 		value = reflect.ValueOf(number).Convert(column.Type())
+
 	case reflect.String, reflect.Array, reflect.Slice:
 		value = reflect.ValueOf(fs.value)
+
 	default:
 		return reflect.Value{}, fmt.Errorf("tried to match %q on unsupported column %q", fs.value, column.Name)
 	}
+
 	return value, nil
 }
 
@@ -310,7 +316,7 @@ func (fs *FilterSpecs[T]) MatchAny(entry *T) bool {
 // Match matches a single entry against the FilterSpec and returns true if it matches
 func (fs *FilterSpec[T]) Match(entry *T) bool {
 	if entry == nil {
-		return fs.negate
+		return false
 	}
 	return fs.compareFunc(entry)
 }
@@ -321,6 +327,10 @@ func FilterEntries[T any](cols columns.ColumnMap[T], entries []*T, filters []str
 		return nil, nil
 	}
 
+	if len(filters) == 0 {
+		return entries, nil
+	}
+
 	var outEntries []*T
 
 	for _, filter := range filters {
@@ -329,12 +339,10 @@ func FilterEntries[T any](cols columns.ColumnMap[T], entries []*T, filters []str
 			return nil, fmt.Errorf("applying filter %q: %w", filter, err)
 		}
 
-		outEntries = make([]*T, 0)
+		outEntries = make([]*T, 0, len(entries))
 
-		// Iterate over entries and push them to their corresponding map key
 		for _, entry := range entries {
 			if entry == nil {
-				// Skip nil entries
 				continue
 			}
 
