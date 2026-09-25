@@ -279,6 +279,14 @@ func (m *KubeIPResolverInstance) PreStart(gadgetCtx operators.GadgetContext) err
 				pod := m.k8sInventory.GetPodByIp(addrStr)
 				if pod != nil {
 					if pod.Spec.HostNetwork {
+						// Host-network pods cannot be selected by pod selectors in
+						// NetworkPolicies, so treat them as raw IP endpoints.
+						a.subK8sKind.Set(data, []byte("raw"))
+						if a.column != nil && a.port != nil {
+							p, _ := a.port.Uint16(data)
+							v := fmt.Sprintf("r/%s:%d", addrStr, p)
+							a.column.Set(data, []byte(v))
+						}
 						continue
 					}
 					a.subK8sName.Set(data, []byte(pod.Name))
