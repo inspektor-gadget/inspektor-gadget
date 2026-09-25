@@ -42,6 +42,13 @@ const (
 	// of service from a crafted section with millions of tiny valid notes.
 	// 10,000 is far more than any legitimate binary would have.
 	maxNoteCount = 10000
+
+	// maxNoteSectionSize limits the total number of bytes consumed from the
+	// note section. maxNoteFieldSize and maxNoteCount only bound each note
+	// individually, so on their own they still allow 10,000 * 1 MiB of notes.
+	// 16 MiB is far beyond any legitimate .note.stapsdt section, which is
+	// typically a few KiB.
+	maxNoteSectionSize = 16 * 1024 * 1024
 )
 
 type noteHeader struct {
@@ -55,11 +62,40 @@ type usdtAttachInfo struct {
 	semaphoreAddress uint64
 }
 
+// vaddr2ElfOffset maps a virtual address to an offset in the ELF file.
+//
+// The program headers come from an untrusted file, so every field is
+// validated before use and the arithmetic is overflow-safe.
 func vaddr2ElfOffset(f *elf.File, addr uint64) (uint64, error) {
 	for _, prog := range f.Progs {
-		if prog.Vaddr <= addr && addr < (prog.Vaddr+prog.Memsz) {
-			return addr - prog.Vaddr + prog.Off, nil
+		// Only PT_LOAD segments describe the memory image. Other segment
+		// types overlap them, so a crafted one could otherwise be used to
+		// redirect the mapping to an arbitrary file offset.
+		if prog.Type != elf.PT_LOAD {
+			continue
 		}
+		if addr < prog.Vaddr {
+			continue
+		}
+
+		// Compare the offset within the segment rather than
+		// prog.Vaddr+prog.Filesz: on ELFCLASS64 both come straight from the
+		// file and their sum can wrap. On ELFCLASS32 they are widened from
+		// 32-bit fields and cannot.
+		//
+		// Filesz, not Memsz: the tail of a segment that is only memory
+		// resident, such as .bss, has no corresponding bytes in the file, so
+		// an address there has no file offset to attach to.
+		offsetInProg := addr - prog.Vaddr
+		if offsetInProg >= prog.Filesz {
+			continue
+		}
+
+		fileOffset := prog.Off + offsetInProg
+		if fileOffset < prog.Off {
+			continue
+		}
+		return fileOffset, nil
 	}
 	return 0, fmt.Errorf("malformed elf file: elf prog containing addr %x not found", addr)
 }
@@ -68,7 +104,22 @@ func alignUp[T int | int32 | int64 | uint | uint32 | uint64](n T, align T) T {
 	return (n + align - 1) / align * align
 }
 
-func getUsdtInfo(filepath string, attachSymbol string) (*usdtAttachInfo, error) {
+// getUsdtInfo parses the USDT notes of an ELF file that may come from an
+// untrusted container. Any panic escaping the parser is turned into an error
+// so that malformed input cannot terminate the privileged process: the parser
+// runs on a container-attach goroutine that has no panic recovery of its own.
+func getUsdtInfo(filepath string, attachSymbol string) (info *usdtAttachInfo, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			info = nil
+			err = fmt.Errorf("panic parsing USDT notes of %q: %v", filepath, r)
+		}
+	}()
+
+	return parseUsdtNotes(filepath, attachSymbol)
+}
+
+func parseUsdtNotes(filepath string, attachSymbol string) (*usdtAttachInfo, error) {
 	parts := strings.Split(attachSymbol, ":")
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid USDT section name: %q", attachSymbol)
@@ -103,7 +154,17 @@ func getUsdtInfo(filepath string, attachSymbol string) (*usdtAttachInfo, error) 
 	if noteSection.Type != elf.SHT_NOTE {
 		return nil, fmt.Errorf("section %q is not a note", sdtNoteSectionName)
 	}
-	notesReader := noteSection.Open()
+	// Reject compressed note sections, as pkg/utils/safeelf does for symbol
+	// and string tables. Section.Open() would transparently decompress them,
+	// letting a small file expand to an arbitrary amount of data. No toolchain
+	// compresses this section: it holds a few KiB of probe descriptors.
+	if noteSection.Flags&elf.SHF_COMPRESSED != 0 {
+		return nil, fmt.Errorf("compressed %q section not supported", sdtNoteSectionName)
+	}
+	// Bound the bytes actually read. The size declared in the section header
+	// is attacker-controlled and cannot be used for this: debug/elf does not
+	// enforce it when reading through Open(), it only uses it to seek.
+	notesReader := io.LimitReader(noteSection.Open(), maxNoteSectionSize)
 
 	baseSection := elfReader.Section(sdtBaseSectionName)
 	if baseSection == nil {
@@ -116,6 +177,16 @@ func getUsdtInfo(filepath string, attachSymbol string) (*usdtAttachInfo, error) 
 	wordSize := 4
 	if elfReader.Class == elf.ELFCLASS64 {
 		wordSize = 8
+	}
+
+	// Address fields are wordSize bytes wide, so they must be read at that
+	// width. Reading them with Uint64 on an ELFCLASS32 file would read past
+	// the end of the desc slice and panic.
+	readAddr := func(b []byte) uint64 {
+		if wordSize == 8 {
+			return elfReader.ByteOrder.Uint64(b)
+		}
+		return uint64(elfReader.ByteOrder.Uint32(b))
 	}
 
 	// Minimum desc size for a stapsdt note: 3 address fields.
@@ -170,9 +241,9 @@ func getUsdtInfo(filepath string, attachSymbol string) (*usdtAttachInfo, error) 
 			return nil, fmt.Errorf("malformed stapsdt note: desc too short (%d bytes, need %d)", len(desc), minDescSize)
 		}
 
-		elfLocation := elfReader.ByteOrder.Uint64(desc[:wordSize])
-		elfBase := elfReader.ByteOrder.Uint64(desc[wordSize : 2*wordSize])
-		elfSemaphore := elfReader.ByteOrder.Uint64(desc[2*wordSize : 3*wordSize])
+		elfLocation := readAddr(desc[:wordSize])
+		elfBase := readAddr(desc[wordSize : 2*wordSize])
+		elfSemaphore := readAddr(desc[2*wordSize : 3*wordSize])
 
 		diff := baseSection.Addr - elfBase
 		location, err := vaddr2ElfOffset(elfReader.File, elfLocation+diff)
