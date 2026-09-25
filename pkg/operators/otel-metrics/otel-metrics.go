@@ -18,6 +18,7 @@ package otelmetrics
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -64,13 +65,15 @@ const (
 	MetricTypeGauge     = "gauge"
 	MetricTypeHistogram = "histogram"
 
-	AnnotationMetricsCollect     = "metrics.collect"
-	AnnotationMetricsPrint       = "metrics.print"
-	AnnotationMetricsType        = "metrics.type"
-	AnnotationMetricsName        = "metrics.name"
-	AnnotationMetricsDescription = "metrics.description"
-	AnnotationMetricsUnit        = "metrics.unit"
-	AnnotationMetricsBoundaries  = "metrics.boundaries"
+	AnnotationMetricsCollect         = "metrics.collect"
+	AnnotationMetricsSnapshot        = "metrics.snapshot"
+	AnnotationMetricsSnapshotTimeout = "metrics.snapshot-timeout"
+	AnnotationMetricsPrint           = "metrics.print"
+	AnnotationMetricsType            = "metrics.type"
+	AnnotationMetricsName            = "metrics.name"
+	AnnotationMetricsDescription     = "metrics.description"
+	AnnotationMetricsUnit            = "metrics.unit"
+	AnnotationMetricsBoundaries      = "metrics.boundaries"
 
 	AnnotationImplicitCounterName        = "metrics.implicit-counter.name"
 	AnnotationImplicitCounterDescription = "metrics.implicit-counter.description"
@@ -363,14 +366,42 @@ func (m *otelMetricsOperatorInstance) Name() string {
 }
 
 type metricsCollector struct {
-	meter             metric.Meter
-	keys              []func(datasource.Data) attribute.KeyValue
-	values            []func(context.Context, datasource.Data, attribute.Set)
-	mappedName        string
-	output            bool
-	exporter          *otelprometheus.Exporter
-	meterProvider     *sdkmetric.MeterProvider
-	useGlobalProvider bool
+	meter               metric.Meter
+	keys                []func(datasource.Data) attribute.KeyValue
+	values              []func(context.Context, datasource.Data, attribute.Set)
+	snapshotIntValues   []snapshotIntValue
+	snapshotFloatValues []snapshotFloatValue
+	snapshotMode        bool
+	snapshotTimeout     time.Duration
+	snapshotMu          sync.RWMutex
+	snapshot            *metricsSnapshot
+	registration        metric.Registration
+	mappedName          string
+	output              bool
+	exporter            *otelprometheus.Exporter
+	meterProvider       *sdkmetric.MeterProvider
+	useGlobalProvider   bool
+}
+
+type snapshotIntValue struct {
+	instrument metric.Int64ObservableGauge
+	value      func(datasource.Data) int64
+}
+
+type snapshotFloatValue struct {
+	instrument metric.Float64ObservableGauge
+	value      func(datasource.Data) float64
+}
+
+type snapshotPoint struct {
+	attributes  attribute.Set
+	intValues   []int64
+	floatValues []float64
+}
+
+type metricsSnapshot struct {
+	updatedAt time.Time
+	points    []snapshotPoint
 }
 
 func bytesToAttributeValue(b []byte) attribute.Value {
@@ -475,6 +506,60 @@ func (mc *metricsCollector) addValFunc(f datasource.FieldAccessor, metricType st
 				ctr.Record(ctx, asFloatFn(data), metric.WithAttributeSet(set))
 			})
 		}
+		return nil
+	}
+}
+
+func (mc *metricsCollector) addSnapshotValFunc(f datasource.FieldAccessor) error {
+	metricName := getMetricName(f)
+
+	var options []metric.InstrumentOption
+	if description := f.Annotations()[AnnotationMetricsDescription]; description != "" {
+		options = append(options, metric.WithDescription(description))
+	}
+	if unit := f.Annotations()[AnnotationMetricsUnit]; unit != "" {
+		options = append(options, metric.WithUnit(unit))
+	}
+
+	switch f.Type() {
+	default:
+		return fmt.Errorf("unsupported field type for snapshot gauge %q: %s", metricName, f.Type())
+	case api.Kind_Uint8,
+		api.Kind_Uint16,
+		api.Kind_Uint32,
+		api.Kind_Uint64,
+		api.Kind_Int8,
+		api.Kind_Int16,
+		api.Kind_Int32,
+		api.Kind_Int64:
+		tOptions := make([]metric.Int64ObservableGaugeOption, len(options))
+		for i, option := range options {
+			tOptions[i] = option
+		}
+		gauge, err := mc.meter.Int64ObservableGauge(metricName, tOptions...)
+		if err != nil {
+			return fmt.Errorf("adding snapshot gauge %q: %w", metricName, err)
+		}
+		asIntFn, _ := datasource.AsInt64(f)
+		mc.snapshotIntValues = append(mc.snapshotIntValues, snapshotIntValue{
+			instrument: gauge,
+			value:      asIntFn,
+		})
+		return nil
+	case api.Kind_Float32, api.Kind_Float64:
+		tOptions := make([]metric.Float64ObservableGaugeOption, len(options))
+		for i, option := range options {
+			tOptions[i] = option
+		}
+		gauge, err := mc.meter.Float64ObservableGauge(metricName, tOptions...)
+		if err != nil {
+			return fmt.Errorf("adding snapshot gauge %q: %w", metricName, err)
+		}
+		asFloatFn, _ := datasource.AsFloat64(f)
+		mc.snapshotFloatValues = append(mc.snapshotFloatValues, snapshotFloatValue{
+			instrument: gauge,
+			value:      asFloatFn,
+		})
 		return nil
 	}
 }
@@ -611,9 +696,130 @@ func (mc *metricsCollector) Collect(ctx context.Context, data datasource.Data) {
 		kvs = append(kvs, kf(data))
 	}
 	kset := attribute.NewSet(kvs...)
+	mc.collectWithAttributeSet(ctx, data, kset)
+}
+
+func (mc *metricsCollector) collectWithAttributeSet(ctx context.Context, data datasource.Data, set attribute.Set) {
 	for _, vf := range mc.values {
-		vf(ctx, data, kset)
+		vf(ctx, data, set)
 	}
+}
+
+func (mc *metricsCollector) buildSnapshot(data datasource.DataArray, now time.Time) (*metricsSnapshot, error) {
+	snapshot := &metricsSnapshot{
+		updatedAt: now,
+		points:    make([]snapshotPoint, 0, data.Len()),
+	}
+	seen := make(map[attribute.Distinct]struct{}, data.Len())
+
+	for i := 0; i < data.Len(); i++ {
+		row := data.Get(i)
+		kvs := make([]attribute.KeyValue, 0, len(mc.keys))
+		for _, key := range mc.keys {
+			kvs = append(kvs, key(row))
+		}
+		keySet := attribute.NewSet(kvs...)
+		identity := keySet.Equivalent()
+		if _, ok := seen[identity]; ok {
+			return nil, fmt.Errorf("duplicate metric key set in snapshot: %s", keySet.Encoded(attribute.DefaultEncoder()))
+		}
+		seen[identity] = struct{}{}
+
+		point := snapshotPoint{
+			attributes:  keySet,
+			intValues:   make([]int64, len(mc.snapshotIntValues)),
+			floatValues: make([]float64, len(mc.snapshotFloatValues)),
+		}
+		for j, value := range mc.snapshotIntValues {
+			point.intValues[j] = value.value(row)
+		}
+		for j, value := range mc.snapshotFloatValues {
+			point.floatValues[j] = value.value(row)
+		}
+		snapshot.points = append(snapshot.points, point)
+	}
+
+	return snapshot, nil
+}
+
+func (mc *metricsCollector) replaceSnapshot(snapshot *metricsSnapshot) {
+	mc.snapshotMu.Lock()
+	mc.snapshot = snapshot
+	mc.snapshotMu.Unlock()
+}
+
+func (mc *metricsCollector) registerSnapshotCallback() error {
+	instruments := make([]metric.Observable, 0, len(mc.snapshotIntValues)+len(mc.snapshotFloatValues))
+	for _, value := range mc.snapshotIntValues {
+		instruments = append(instruments, value.instrument)
+	}
+	for _, value := range mc.snapshotFloatValues {
+		instruments = append(instruments, value.instrument)
+	}
+	if len(instruments) == 0 {
+		return nil
+	}
+
+	registration, err := mc.meter.RegisterCallback(func(_ context.Context, observer metric.Observer) error {
+		mc.snapshotMu.RLock()
+		snapshot := mc.snapshot
+		mc.snapshotMu.RUnlock()
+		if snapshot == nil || time.Since(snapshot.updatedAt) >= mc.snapshotTimeout {
+			return nil
+		}
+
+		for _, point := range snapshot.points {
+			options := metric.WithAttributeSet(point.attributes)
+			for i, value := range point.intValues {
+				observer.ObserveInt64(mc.snapshotIntValues[i].instrument, value, options)
+			}
+			for i, value := range point.floatValues {
+				observer.ObserveFloat64(mc.snapshotFloatValues[i].instrument, value, options)
+			}
+		}
+		return nil
+	}, instruments...)
+	if err != nil {
+		return fmt.Errorf("registering snapshot callback: %w", err)
+	}
+	mc.registration = registration
+	return nil
+}
+
+func snapshotTimeout(ds datasource.DataSource) (time.Duration, error) {
+	annotations := ds.Annotations()
+	if configured := annotations[AnnotationMetricsSnapshotTimeout]; configured != "" {
+		timeout, err := time.ParseDuration(configured)
+		if err != nil {
+			return 0, fmt.Errorf("parsing %s: %w", AnnotationMetricsSnapshotTimeout, err)
+		}
+		if timeout <= 0 {
+			return 0, fmt.Errorf("%s must be greater than zero", AnnotationMetricsSnapshotTimeout)
+		}
+		if configuredInterval := annotations[api.FetchIntervalAnnotation]; configuredInterval != "" {
+			interval, err := time.ParseDuration(configuredInterval)
+			if err != nil {
+				return 0, fmt.Errorf("parsing %s: %w", api.FetchIntervalAnnotation, err)
+			}
+			if interval > 0 && timeout/2 < interval {
+				return 0, fmt.Errorf("%s (%s) must be at least twice %s (%s)",
+					AnnotationMetricsSnapshotTimeout, timeout, api.FetchIntervalAnnotation, interval)
+			}
+		}
+		return timeout, nil
+	}
+
+	fetchInterval := annotations[api.FetchIntervalAnnotation]
+	interval, err := time.ParseDuration(fetchInterval)
+	if err != nil {
+		return 0, fmt.Errorf("snapshot metrics require %s or a valid %s annotation: %w",
+			AnnotationMetricsSnapshotTimeout, api.FetchIntervalAnnotation, err)
+	}
+	if interval <= 0 {
+		return 0, fmt.Errorf("snapshot metrics require %s when %s is not greater than zero",
+			AnnotationMetricsSnapshotTimeout, api.FetchIntervalAnnotation)
+	}
+	return 3 * interval, nil
 }
 
 func (m *otelMetricsOperatorInstance) init(gadgetCtx operators.GadgetContext) error {
@@ -626,6 +832,18 @@ func (m *otelMetricsOperatorInstance) init(gadgetCtx operators.GadgetContext) er
 		// Neither collecting nor printing, do nothing for this data source
 		if !metricsCollect && !metricsPrint {
 			continue
+		}
+
+		snapshot := annotations[AnnotationMetricsSnapshot] == "true"
+		if snapshot {
+			if !metricsCollect {
+				return fmt.Errorf("%s=%s requires %s=true for data source %q",
+					AnnotationMetricsSnapshot, "true", AnnotationMetricsCollect, ds.Name())
+			}
+			if ds.Type() != datasource.TypeArray {
+				return fmt.Errorf("%s=%s requires an array data source, got %q",
+					AnnotationMetricsSnapshot, "true", ds.Name())
+			}
 		}
 
 		if metricsPrint {
@@ -681,6 +899,7 @@ func (m *otelMetricsOperatorInstance) init(gadgetCtx operators.GadgetContext) er
 		m.collectors[ds] = &metricsCollector{
 			output:            metricsPrint,
 			mappedName:        mappedName,
+			snapshotMode:      snapshot,
 			useGlobalProvider: useGlobal,
 		}
 	}
@@ -755,10 +974,23 @@ func (m *otelMetricsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext
 				if err != nil {
 					return fmt.Errorf("adding key for %q: %w", fieldName, err)
 				}
-			case MetricTypeCounter, MetricTypeGauge:
+			case MetricTypeCounter:
 				err := collector.addValFunc(f, metricsType)
 				if err != nil {
 					return fmt.Errorf("adding %s for %q: %w", metricsType, fieldName, err)
+				}
+				hasValueFields = true
+			case MetricTypeGauge:
+				if collector.snapshotMode {
+					err := collector.addSnapshotValFunc(f)
+					if err != nil {
+						return fmt.Errorf("adding %s for %q: %w", metricsType, fieldName, err)
+					}
+				} else {
+					err := collector.addValFunc(f, metricsType)
+					if err != nil {
+						return fmt.Errorf("adding %s for %q: %w", metricsType, fieldName, err)
+					}
 				}
 				hasValueFields = true
 			case MetricTypeHistogram:
@@ -775,12 +1007,46 @@ func (m *otelMetricsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext
 			continue
 		}
 
-		err := ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
-			collector.Collect(gadgetCtx.Context(), data)
-			return nil
-		}, Priority)
-		if err != nil {
-			return err
+		hasSnapshotValues := len(collector.snapshotIntValues)+len(collector.snapshotFloatValues) > 0
+		if hasSnapshotValues {
+			timeout, err := snapshotTimeout(ds)
+			if err != nil {
+				return fmt.Errorf("configuring snapshot metrics for data source %q: %w", ds.Name(), err)
+			}
+			collector.snapshotTimeout = timeout
+			if err := collector.registerSnapshotCallback(); err != nil {
+				return fmt.Errorf("registering snapshot callback for data source %q: %w", ds.Name(), err)
+			}
+			err = ds.SubscribeArray(func(_ datasource.DataSource, data datasource.DataArray) error {
+				snapshot, err := collector.buildSnapshot(data, time.Now())
+				if err != nil {
+					gadgetCtx.Logger().Warnf("rejecting metrics snapshot for data source %q: %v", ds.Name(), err)
+					for i := 0; i < data.Len(); i++ {
+						collector.Collect(gadgetCtx.Context(), data.Get(i))
+					}
+					return nil
+				}
+				for i := 0; i < data.Len(); i++ {
+					collector.collectWithAttributeSet(
+						gadgetCtx.Context(),
+						data.Get(i),
+						snapshot.points[i].attributes,
+					)
+				}
+				collector.replaceSnapshot(snapshot)
+				return nil
+			}, Priority)
+			if err != nil {
+				return err
+			}
+		} else {
+			err := ds.Subscribe(func(_ datasource.DataSource, data datasource.Data) error {
+				collector.Collect(gadgetCtx.Context(), data)
+				return nil
+			}, Priority)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -884,7 +1150,14 @@ func (m *otelMetricsOperatorInstance) Close(gadgetCtx operators.GadgetContext) e
 	gadgetCtx.Logger().Debug("shutting down metrics")
 	close(m.done)
 	ctx := context.Background()
+	var errs []error
 	for _, collector := range m.collectors {
+		if collector.registration != nil {
+			if err := collector.registration.Unregister(); err != nil {
+				errs = append(errs, fmt.Errorf("unregistering snapshot metrics callback: %w", err))
+			}
+			collector.registration = nil
+		}
 		if collector.meterProvider != nil {
 			collector.meterProvider.Shutdown(ctx)
 			collector.meterProvider = nil
@@ -895,7 +1168,7 @@ func (m *otelMetricsOperatorInstance) Close(gadgetCtx operators.GadgetContext) e
 		}
 	}
 	m.wg.Wait()
-	return nil
+	return errors.Join(errs...)
 }
 
 var Operator = &otelMetricsOperator{}
