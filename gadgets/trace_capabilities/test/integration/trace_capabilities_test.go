@@ -17,6 +17,7 @@ package tests
 import (
 	"encoding/base64"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -91,6 +92,7 @@ int main() {
 	var ns string
 	containerOpts := []containers.ContainerOption{
 		containers.WithContainerImage(containerImage),
+		containers.WithStartAndStop(),
 	}
 
 	if utils.CurrentTestComponent == utils.KubectlGadgetTestComponent {
@@ -109,42 +111,48 @@ int main() {
 		"gcc -Wall -o /bin/mychroot8 -Wl,--build-id -static -fPIE -pie chroot.c && "+
 		"true",
 		progBase64)
-	innerCmd := "while true; do " +
-		"/bin/mychroot1 ; /bin/mychroot2 ; /bin/mychroot3 ; " +
+	workloadCmd := "/bin/mychroot1 ; /bin/mychroot2 ; /bin/mychroot3 ; " +
 		"/bin/mychroot4 ; /bin/mychroot5 ; /bin/mychroot6 ; " +
 		"/bin/mychroot7 ; /bin/mychroot8 ; " +
-		"nice -n -20 echo; sleep 0.05; " +
-		"done"
+		"nice -n -20 echo; sleep infinity"
 	testContainer := containerFactory.NewContainer(
 		containerName,
-		fmt.Sprintf("%s ; %s", buildCmd, innerCmd),
+		fmt.Sprintf("start=$(date +%%s%%3N); { %s; }; status=$?; "+
+			"echo \"chroot build took $(($(date +%%s%%3N) - start))ms (exit status: $status)\"; "+
+			"[ \"$status\" -eq 0 ] && %s", buildCmd, workloadCmd),
 		containerOpts...,
 	)
 
-	testContainer.Start(t)
-	t.Cleanup(func() {
-		testContainer.Stop(t)
-	})
-
 	var runnerOpts []igrunner.Option
 	var testingOpts []igtesting.Option
-	commonDataOpts := []utils.CommonDataOption{utils.WithContainerImageName(containerImage), utils.WithContainerID(testContainer.ID())}
+	commonDataOpts := []utils.CommonDataOption{
+		utils.WithContainerImageName(containerImage),
+	}
 
-	ustackFlag := "--collect-ustack=true"
 	switch utils.CurrentTestComponent {
 	case utils.IgLocalTestComponent:
-		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-r=%s", utils.Runtime), ustackFlag))
+		runnerOpts = append(runnerOpts, igrunner.WithFlags(
+			fmt.Sprintf("-r=%s", utils.Runtime),
+			"--collect-ustack=true",
+			"--audit-only=true",
+		))
 	case utils.KubectlGadgetTestComponent:
-		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-n=%s", ns), ustackFlag))
+		runnerOpts = append(runnerOpts, igrunner.WithFlags(
+			fmt.Sprintf("-n=%s", ns),
+			"--collect-ustack=true",
+			"--audit-only=true",
+		))
 		testingOpts = append(testingOpts, igtesting.WithCbBeforeCleanup(utils.PrintLogsFn(ns)))
 		commonDataOpts = append(commonDataOpts, utils.WithK8sNamespace(ns))
 	}
 
 	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
 		func(t *testing.T, output string) {
+			dataOpts := append(slices.Clone(commonDataOpts), utils.WithContainerID(testContainer.ID()))
+
 			makeChrootEntry := func(i int) *traceCapabilitiesEvent {
 				return &traceCapabilitiesEvent{
-					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+					CommonData: utils.BuildCommonData(containerName, dataOpts...),
 					Proc:       utils.BuildProc(fmt.Sprintf("mychroot%d", i), 0, 0),
 					Cap:        "CAP_SYS_CHROOT",
 					Syscall:    "SYS_CHROOT",
@@ -171,7 +179,7 @@ int main() {
 				makeChrootEntry(7),
 				makeChrootEntry(8),
 				{
-					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+					CommonData: utils.BuildCommonData(containerName, dataOpts...),
 					Proc:       utils.BuildProc("nice", 0, 0),
 					Cap:        "CAP_SYS_NICE",
 					Syscall:    "SYS_SETPRIORITY",
@@ -232,6 +240,7 @@ int main() {
 
 	steps := []igtesting.TestStep{
 		traceCapabilitiesCmd,
+		testContainer,
 	}
 	igtesting.RunTestSteps(steps, t, testingOpts...)
 }
