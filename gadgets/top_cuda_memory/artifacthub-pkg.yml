@@ -1,10 +1,10 @@
 # Artifact Hub package metadata file
-version: 0.56.0
+version: 0.56.1
 name: "top cuda memory"
 category: monitoring-logging
 displayName: "top cuda memory"
-createdAt: "2026-09-07T14:16:59Z"
-digest: "2026-09-07T14:16:59Z"
+createdAt: "2026-09-25T09:16:23Z"
+digest: "2026-09-25T09:16:23Z"
 description: "Periodically report CUDA memory allocation and free activity per process"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""
