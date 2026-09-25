@@ -15,15 +15,54 @@
 package tests
 
 import (
+	"net"
+	"os"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
 )
+
+type ExpectedSnapshotSocketEvent struct {
+	NetNsID     uint64           `json:"netns_id"`
+	InodeNumber uint64           `json:"ino"`
+	SrcEndpoint utils.L4Endpoint `json:"src"`
+	DstEndpoint utils.L4Endpoint `json:"dst"`
+	Status      uint64           `json:"status"`
+	Path        string           `json:"path"`
+}
 
 func TestSnapshotSocket(t *testing.T) {
 	gadgettesting.MinimumKernelVersion(t, "5.8")
+	gadgettesting.InitUnitTest(t)
 
-	// TODO: This is a dummy test to check that the gadget runs without errors.
-	// It should be extended to check that the gadget produces correct data.
-	gadgettesting.DummyGadgetTest(t, "snapshot_socket")
+	socketPath := "/tmp/test-ig-snapshot-unix.sock"
+	os.Remove(socketPath)
+
+	l, err := net.Listen("unix", socketPath)
+	require.NoError(t, err, "failed to create unix socket listener")
+	defer l.Close()
+	defer os.Remove(socketPath)
+
+	opts := gadgetrunner.GadgetRunnerOpts[ExpectedSnapshotSocketEvent]{
+		Image:   "snapshot_socket",
+		Timeout: 3 * time.Second,
+	}
+
+	gadgetRunner := gadgetrunner.NewGadgetRunner(t, opts)
+	gadgetRunner.RunGadget()
+
+	found := false
+	for _, event := range gadgetRunner.CapturedEvents {
+		if event.Path == socketPath {
+			found = true
+			break
+		}
+	}
+
+	require.True(t, found, "expected unix socket path %s to be captured by snapshot_socket", socketPath)
 }
