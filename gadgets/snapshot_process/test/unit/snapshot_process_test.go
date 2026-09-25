@@ -145,7 +145,7 @@ func TestSnapshotProcessGadget(t *testing.T) {
 }
 
 func generateEvent() (int, error) {
-	cmd := exec.Command("/bin/sleep", "30")
+	cmd := exec.Command("/bin/sleep", "2")
 	if err := cmd.Start(); err != nil {
 		return 0, err
 	}
