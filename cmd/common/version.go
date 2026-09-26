@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2026 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package common
 
 import (
+	"encoding/json"
 	"fmt"
 
 	log "github.com/sirupsen/logrus"
@@ -23,13 +24,49 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 )
 
+// VersionInfo is the structure used for the JSON output of the version
+// command. It matches the output of kubectl-gadget so all the clients can be
+// parsed the same way.
+type VersionInfo struct {
+	ClientVersion *Version `json:"clientVersion,omitempty"`
+}
+
+// Version contains detailed version information
+type Version struct {
+	Version string `json:"version"`
+}
+
 func NewVersionCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "version",
-		Short: "Show version",
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("v%s\n", version.Version().String())
+	var outputFormat string
+
+	cmd := &cobra.Command{
+		Use:          "version",
+		Short:        "Show version",
+		SilenceUsage: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			switch outputFormat {
+			case "json":
+				versionInfo := &VersionInfo{
+					ClientVersion: &Version{
+						Version: version.Version().String(),
+					},
+				}
+				output, err := json.MarshalIndent(versionInfo, "", "  ")
+				if err != nil {
+					return fmt.Errorf("marshaling version info: %w", err)
+				}
+				fmt.Fprintln(cmd.OutOrStdout(), string(output))
+			case "":
+				fmt.Fprintf(cmd.OutOrStdout(), "v%s\n", version.Version().String())
+			default:
+				return fmt.Errorf("invalid output format: %s", outputFormat)
+			}
 			log.Debugf("Inspektor Gadget User Agent: %s\n", version.UserAgent())
+			return nil
 		},
 	}
+
+	cmd.Flags().StringVarP(&outputFormat, "output", "o", "", "Output format. One of: json|''")
+
+	return cmd
 }
