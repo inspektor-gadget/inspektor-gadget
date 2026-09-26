@@ -43,6 +43,7 @@
 #include <gadget/macros.h>
 #include <gadget/buffer.h>
 #include <gadget/user_stack_map.h>
+#define GADGET_KERNEL_STACK_MAP_ONLY_IF_EXPR "params.collect_kstack"
 #include <gadget/kernel_stack_map.h>
 
 /* ---- bridge schema + pinned maps (shared with the other GPU gadgets) ---- */
@@ -258,6 +259,9 @@ gpu_holder(__u32 tgid, __u64 now, struct gpu_pid_metrics_aggregated **gm_out,
 }
 
 SEC("kprobe/finish_task_switch")
+GADGET_PROG_ATTACH_TO(
+	"kallsyms.first('finish_task_switch.isra.0', 'finish_task_switch',"
+	" 'finish_task_switch.constprop.0', 'finish_task_switch.isra.0.constprop.0')")
 int BPF_KPROBE(ig_finish_task_switch, struct task_struct *prev)
 {
 	__u64 now = bpf_ktime_get_boot_ns();

@@ -168,6 +168,11 @@ GADGET_PARAM(tracee_pid);
 GADGET_PARAM(inotify_only);
 GADGET_PARAM(fanotify_only);
 
+// inotify_only and fanotify_only are mutually exclusive: setting both filters
+// out inotify events (as non-fanotify) and fanotify events (as non-inotify),
+// leaving no output. Reject the combination early with a clear error.
+GADGET_ASSERT(notify_mode, "!(params.inotify_only && params.fanotify_only)");
+
 struct gadget_event {
 	gadget_timestamp timestamp_raw;
 
@@ -301,6 +306,8 @@ fanotify_get_path(struct fanotify_event *fae)
 // Probes for the tracees
 
 SEC("kprobe/inotify_handle_inode_event")
+GADGET_PROG_ATTACH_TO(
+	"kallsyms.exists('inotify_handle_inode_event') ? 'inotify_handle_inode_event' : program.disabled")
 int BPF_KPROBE(inotify_handle_inode_event_e, struct fsnotify_mark *inode_mark,
 	       u32 mask, struct inode *inode, struct inode *dir,
 	       const struct qstr *name, u32 cookie)
@@ -322,6 +329,8 @@ int BPF_KPROBE(inotify_handle_inode_event_e, struct fsnotify_mark *inode_mark,
 }
 
 SEC("kretprobe/inotify_handle_inode_event")
+GADGET_PROG_ATTACH_TO(
+	"kallsyms.exists('inotify_handle_inode_event') ? 'inotify_handle_inode_event' : program.disabled")
 int BPF_KRETPROBE(inotify_handle_inode_event_x, int ret)
 {
 	if (!fanotify_only) {
@@ -334,6 +343,8 @@ int BPF_KRETPROBE(inotify_handle_inode_event_x, int ret)
 // Linux < 5.11 does not have inotify_handle_inode_event but inotify_handle_event
 // https://github.com/torvalds/linux/commit/1a2620a99803ad660edc5d22fd9c66cce91ceb1c
 SEC("kprobe/inotify_handle_event")
+GADGET_PROG_ATTACH_TO(
+	"kallsyms.exists('inotify_handle_event') ? 'inotify_handle_event' : program.disabled")
 int BPF_KPROBE(inotify_handle_event_e, struct fsnotify_group *group,
 	       struct inode *inode)
 {
@@ -354,6 +365,8 @@ int BPF_KPROBE(inotify_handle_event_e, struct fsnotify_group *group,
 }
 
 SEC("kretprobe/inotify_handle_event")
+GADGET_PROG_ATTACH_TO(
+	"kallsyms.exists('inotify_handle_event') ? 'inotify_handle_event' : program.disabled")
 int BPF_KRETPROBE(inotify_handle_event_x, int ret)
 {
 	if (!fanotify_only) {
@@ -387,6 +400,8 @@ int BPF_KRETPROBE(fanotify_handle_event_x, int ret)
 }
 
 SEC("kprobe/fsnotify_insert_event")
+GADGET_PROG_ATTACH_TO(
+	"kallsyms.first('fsnotify_insert_event', 'fsnotify_add_event')")
 int BPF_KPROBE(fsnotify_insert_event_e, struct fsnotify_group *group,
 	       struct fsnotify_event *event)
 {

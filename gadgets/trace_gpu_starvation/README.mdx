@@ -39,8 +39,8 @@ work is only flagged if the GPU is genuinely idle.
   the gadget starts but never emits events.
 - `finish_task_switch` must be attachable as a kprobe. On most kernels
   the symbol is emitted with a compiler suffix (e.g.
-  `finish_task_switch.isra.0`); the gadget's WASM module resolves the
-  right name at startup via `/proc/kallsyms`.
+  `finish_task_switch.isra.0`); the gadget resolves the right name at startup
+  via `/proc/kallsyms`.
 
 ## Getting started
 
