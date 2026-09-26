@@ -170,3 +170,14 @@ selectors:
 - `topology.kubernetes.io/zone`
 - `failure-domain.beta.kubernetes.io/region`
 - `failure-domain.beta.kubernetes.io/zone`
+
+Traffic to/from a peer running with `hostNetwork: true` (or a node's own address)
+can't be reliably attributed to a specific pod, since that IP is shared by the
+node and possibly other host-network pods. Traffic from the pod's own resident
+node, including kubelet health checks, is ignored because Kubernetes
+NetworkPolicy always allows it. For remote or unidentified node peers, no
+portable ingress/egress rule is generated; instead, the generated policy carries
+a `network-policy.inspektor-gadget.io/host-network-note` annotation explaining
+the limitation. If you know which application(s) that traffic belongs to, add a
+`podSelector`/`namespaceSelector` rule if your CNI supports selectors for
+host-network pods, or use a CNI-specific host/node policy.
