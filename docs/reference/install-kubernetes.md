@@ -556,6 +556,96 @@ It is possible to deploy with a narrower, explicitly enumerated set of permissio
 Such a role must hold the union of everything granted by Inspektor Gadget's own ClusterRole and Role, plus create/delete rights on the objects the deployment creates.
 Note that this is not meaningfully less privileged than `cluster-admin` but it merely makes the permission set auditable.
 
+### Permissions required to use
+
+Deploying Inspektor Gadget and *using* it require different permissions.
+Reaching the gadget instances requires:
+
+- `list` on `daemonsets` cluster-wide, so that `kubectl gadget` can discover the namespace Inspektor Gadget is deployed in;
+- `get` and `list` on `pods` in the gadget namespace, to locate the gadget pod to talk to;
+- `create` on `pods/portforward` in the gadget namespace, as the gRPC connection to the gadget service is tunnelled through the API server;
+
+:::warning
+Unless [multi-tenancy](../devel/multitenancy.md) is enabled, being able to reach
+Inspektor Gadget means being able to observe the whole cluster and every node.
+Granting the permissions below is therefore close to granting node-level access,
+even though the permission set itself looks small.
+:::
+
+Both objects can be created for you:
+
+```bash
+# With Helm:
+helm upgrade --install gadget ./charts/gadget \
+  --namespace gadget --create-namespace \
+  --set clientRole.create=true
+
+# With kubectl gadget:
+kubectl gadget deploy --create-client-role
+```
+
+No binding is created on purpose: deciding who may use Inspektor Gadget is a
+cluster policy decision.
+
+#### Assigning the role to a user
+
+Bind both objects to the subject of your choice, a user, a group or a
+ServiceAccount:
+
+```bash
+# For a user:
+kubectl create clusterrolebinding gadget-client \
+  --clusterrole=gadget-client-cluster-role \
+  --user=alice
+kubectl create rolebinding gadget-client --namespace gadget \
+  --role=gadget-client-role \
+  --user=alice
+
+# For a group, e.g. the one carried by your OIDC provider:
+kubectl create clusterrolebinding gadget-client \
+  --clusterrole=gadget-client-cluster-role --group=sre
+kubectl create rolebinding gadget-client --namespace gadget \
+  --role=gadget-client-role --group=sre
+
+# For a ServiceAccount, e.g. for a CI job:
+kubectl create clusterrolebinding gadget-client \
+  --clusterrole=gadget-client-cluster-role \
+  --serviceaccount=ci:gadget-runner
+kubectl create rolebinding gadget-client --namespace gadget \
+  --role=gadget-client-role \
+  --serviceaccount=ci:gadget-runner
+```
+
+Verify the result with:
+
+```bash
+kubectl auth can-i create pods/portforward --namespace gadget --as alice
+kubectl auth can-i list daemonsets --all-namespaces --as alice
+```
+
+Note that whoever creates these bindings must themselves hold the granted
+permissions, or hold the `bind` verb on the role, because of Kubernetes
+[privilege escalation prevention](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#privilege-escalation-prevention).
+
+#### Scoping what a client can actually see
+
+The role above only grants the right to *connect*. It grants no visibility by
+itself when [multi-tenancy](../devel/multitenancy.md) is enabled: the gadget
+daemon then resolves each client's accessible namespaces with a
+`SubjectAccessReview`, and rejects any selector that would reach beyond them. If
+you want to hand out Inspektor Gadget access to teams without handing out the
+whole cluster, enable multi-tenancy and grant the client role together with a
+per-namespace permission:
+
+```bash
+helm upgrade --install gadget ./charts/gadget \
+  --namespace gadget --create-namespace \
+  --set config.experimental=true \
+  --set config.multiTenancy.enabled=true \
+  --set clientRole.create=true \
+  --set clientRole.tokenServiceAccounts={gadget-client}
+```
+
 ## Uninstalling from the cluster
 
 Depending on your installation method, use one of the following command to
