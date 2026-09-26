@@ -154,6 +154,44 @@ spec:
 $ kubectl gadget deploy --seccomp-profile 'gadget-profile.yaml'
 ```
 
+##### Deploying without `CAP_SYS_ADMIN`
+
+By default, the gadget pod runs with `CAP_SYS_ADMIN`, which is a very broad
+capability. On modern kernels (5.8 and later), loading and attaching eBPF
+programs only requires `CAP_BPF` and `CAP_PERFMON`. The `--drop-cap-sys-admin`
+flag replaces `CAP_SYS_ADMIN` with these two finer-grained capabilities:
+
+```bash
+$ kubectl gadget deploy --drop-cap-sys-admin
+...
+WARN[0007] CAP_SYS_ADMIN dropped: new-container detection via fanotify is disabled
+Creating DaemonSet/gadget...
+...
+Inspektor Gadget successfully deployed
+```
+
+Be aware of the following limitations when using this flag:
+
+- The [`fanotify` and `fanotify+ebpf` hook modes](#hook-mode) require
+  `CAP_SYS_ADMIN` and will not work. Inspektor Gadget falls back to another
+  hook mode (`podinformer`, `nri` or `crio`) to detect new containers, which is
+  fine in a Kubernetes context. You can still select one explicitly with
+  `--hook-mode`:
+
+  ```bash
+  $ kubectl gadget deploy --drop-cap-sys-admin --hook-mode=podinformer
+  ```
+
+- Kernels older than 5.8 do not have `CAP_BPF`/`CAP_PERFMON`, so the gadget pod
+  will fail to load eBPF programs on such nodes.
+
+You can verify the capabilities actually granted to the gadget container with:
+
+```bash
+$ kubectl get daemonset -n gadget gadget \
+    -o jsonpath='{.spec.template.spec.containers[0].securityContext.capabilities}'
+```
+
 ##### Verifying the Inspektor Gadget Image
 
 When deploying Inspektor Gadget using `kubectl gadget deploy`, the image will be automatically verified if the `policy-controller` is deployed on your Kubernetes cluster.
