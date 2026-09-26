@@ -28,7 +28,7 @@ datasources:
       cpuUsage:
         annotations:
           columns.alias: '%CPU'
-      cpuUsageRelative:
+      cpuRelative:
         annotations:
           columns.alias: '%RELCPU'
       memoryRelative:
