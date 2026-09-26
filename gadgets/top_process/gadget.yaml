@@ -78,3 +78,12 @@ params:
           process:
             count: >-
               {{call .getParamValue "custom.count"}}
+    no-initial-snapshot:
+      description: "Disable the fast initial snapshot"
+      defaultValue: false
+      patch:
+        operator:
+          process:
+            first-interval: >-
+              {{ if (call .getParamValue "custom.no-initial-snapshot") }}0{{ else }}{{call .getParamValue "operator.process.first-interval"}}{{ end }}
+
