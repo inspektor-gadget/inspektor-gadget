@@ -303,7 +303,7 @@ int BPF_KPROBE(ig_finish_task_switch, struct task_struct *prev)
 							collect_kstack ?
 								gadget_get_kernel_stack(
 									ctx) :
-								-1;
+								GADGET_KERNEL_STACK_ID_NONE;
 						ev->cpu_time_ns =
 							ta->cpu_time_ns;
 						ev->idle_ns = idle_ns;
