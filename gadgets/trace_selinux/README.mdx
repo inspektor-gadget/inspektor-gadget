@@ -28,6 +28,31 @@ containers, the gadget reports the offending container directly.
 - The node must have SELinux enabled (`CONFIG_SECURITY_SELINUX=y`) and the
   `avc:selinux_audited` tracepoint available (upstream Linux 5.10+; older vendor kernels may backport it).
 
+## Limitations
+
+### Denials suppressed by `dontaudit` are not reported
+
+SELinux policies use `dontaudit` rules to silence denials that are known to be
+harmless. For such a permission the kernel leaves the `audited` mask empty, so
+`avc_audit()` never reaches the `avc:selinux_audited` tracepoint this gadget
+hooks. The access is still denied, but neither the host audit log nor this
+gadget reports it.
+
+If an expected event is missing, disable the `dontaudit` rules on the node to
+check whether they are the reason:
+
+```bash
+$ sudo semodule -DB   # disable dontaudit rules (rebuilds the policy)
+$ sudo semodule -B    # restore them afterwards
+```
+
+### Unconfined domains produce no denials
+
+A process in an unconfined domain such as `unconfined_t` is allowed nearly
+everything, so it generates no denial and the gadget stays silent. Observing a
+denial requires a confined domain: a container, or a command run under
+`runcon`.
+
 ## Getting started
 
 Running the gadget:
