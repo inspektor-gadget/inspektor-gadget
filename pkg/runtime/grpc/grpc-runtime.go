@@ -376,12 +376,7 @@ func (r *Runtime) SetAuthToken(token string) {
 }
 
 func (r *Runtime) dialContext(dialCtx context.Context, target target, timeout time.Duration) (*grpc.ClientConn, error) {
-	opts := []grpc.DialOption{
-		//nolint:staticcheck
-		grpc.WithBlock(),
-		//nolint:staticcheck
-		grpc.WithReturnConnectionError(),
-	}
+	opts := []grpc.DialOption{}
 
 	if r.authToken != "" {
 		opts = append(opts, grpc.WithPerRPCCredentials(&bearerCreds{
@@ -456,13 +451,13 @@ All these options should be set at the same time to enable TLS connection`,
 			return NewK8SPortFwdConn(ctx, r.restConfig, gadgetNamespace, target, port, timeout)
 		}))
 	} else {
-		newCtx, cancel := context.WithTimeout(dialCtx, timeout)
+		_, cancel := context.WithTimeout(dialCtx, timeout)
 		defer cancel()
-		dialCtx = newCtx
+
 	}
 
 	//nolint:staticcheck
-	conn, err := grpc.DialContext(dialCtx, "passthrough:///"+target.addressOrPod, opts...)
+	conn, err := grpc.NewClient("dns:///"+target.addressOrPod, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("dialing %q (%q): %w", target.addressOrPod, target.node, err)
 	}
