@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/cilium/ebpf/btf"
+	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -200,6 +201,24 @@ func (i *ebpfInstance) initStackConverter(gadgetCtx operators.GadgetContext) err
 			converter := func(ds datasource.DataSource, data datasource.Data) error {
 				inBytes := in.Get(data)
 				stackId := ds.ByteOrder().Uint32(inBytes)
+
+				// The gadget did not collect a stack for this
+				// event: there is nothing to look up and nothing
+				// to report. Tested before the errno case below,
+				// see GADGET_KERNEL_STACK_ID_NONE.
+				if stackId == ebpftypes.KernelStackIDNone {
+					out.Set(data, []byte{})
+					return nil
+				}
+
+				// bpf_get_stackid() failed and its negative errno
+				// was stored in this unsigned field.
+				if errno := int32(stackId); errno < 0 {
+					i.logger.Warnf("kernel stack not collected, bpf_get_stackid failed: %s", unix.Errno(-errno))
+					out.Set(data, []byte{})
+					return nil
+				}
+
 				outString, err := fetchAndFormatStackTrace(stackId, i.kernelStackMap.Lookup, kernelSymbolResolver.LookupByInstructionPointer)
 				if err != nil {
 					i.logger.Warnf("stack with ID %d is lost: %s", stackId, err.Error())
