@@ -100,7 +100,7 @@ func NewBuildCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&opts.outputDir, "output", "o", "", "Path to a folder to store generated files while building")
 	cmd.Flags().StringVarP(&opts.image, "tag", "t", "", "Name for the built image (format name:tag)")
 	cmd.Flags().StringVar(&opts.builderImage, "builder-image", builderImage, "Builder image to use")
-	cmd.Flags().StringVar(&opts.builderImagePull, "builder-image-pull", "always", "Specify when the builder image should be pulled [always, missing, never]")
+	cmd.Flags().StringVar(&opts.builderImagePull, "builder-image-pull", "missing", "Specify when the builder image should be pulled [always, missing, never]")
 	cmd.Flags().BoolVar(&opts.updateMetadata, "update-metadata", false, "Update the metadata according to the eBPF code")
 	cmd.Flags().BoolVar(&opts.validateMetadata, "validate-metadata", true, "Validate the metadata file before building the gadget image")
 
