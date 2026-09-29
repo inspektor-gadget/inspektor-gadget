@@ -39,14 +39,13 @@ type topProcessEntry struct {
 	Priority    int32  `json:"priority"`
 	Nice        int32  `json:"nice"`
 
-	CpuUsage         float64 `json:"cpuUsage"`
-	CpuUsageRelative float64 `json:"cpuUsageRelative"`
+	CpuUsage         float64 `json:"cpu"`
+	CpuUsageRelative float64 `json:"cpuRelative"`
 	CpuTimeStr       string  `json:"cpuTimeStr"`
-
-	MemoryRSS      string  `json:"memoryRSS"`
-	MemoryVirtual  string  `json:"memoryVirtual" `
-	MemoryShared   string  `json:"memoryShared"`
-	MemoryRelative float64 `json:"memoryRelative"`
+	MemoryRSS        string  `json:"memRSS"`
+	MemoryVirtual    string  `json:"memVirtual"`
+	MemoryShared     string  `json:"memShared"`
+	MemoryRelative   float64 `json:"memRelative"`
 }
 
 func TestTopProcess(t *testing.T) {
