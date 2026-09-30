@@ -22,6 +22,7 @@
 #include <gadget/maps.bpf.h>
 #include <gadget/mntns_filter.h>
 #include <gadget/types.h>
+#include <gadget/sockets.h>
 
 #define GADGET_TYPE_TRACING
 #include <gadget/sockets-map.h>
@@ -56,10 +57,6 @@ struct event {
 	enum type type_raw;
 };
 
-/* Define here, because there are conflicts with include files */
-#define AF_INET 2
-#define AF_INET6 10
-
 GADGET_TRACER_MAP(events, 1024 * 256);
 GADGET_TRACER(tcpretrans, events, event);
 
@@ -67,10 +64,8 @@ static __always_inline int __trace_tcp_retrans(void *ctx, const struct sock *sk,
 					       const struct sk_buff *skb,
 					       enum type type)
 {
-	struct inet_sock *sockp;
 	struct tcp_skb_cb *tcb;
 	struct event *event;
-	unsigned int family;
 
 	if (sk == NULL)
 		return 0;
@@ -82,49 +77,25 @@ static __always_inline int __trace_tcp_retrans(void *ctx, const struct sock *sk,
 	if (!event)
 		return 0;
 
-	event->src.proto_raw = event->dst.proto_raw = IPPROTO_TCP;
-
-	sockp = (struct inet_sock *)sk;
-
 	event->type_raw = type;
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
 
-	family = BPF_CORE_READ(sk, __sk_common.skc_family);
-	switch (family) {
-	case AF_INET:
-		event->src.version = event->dst.version = 4;
+	if (gadget_l4endpoints_from_sock(&event->src, &event->dst, sk) < 0)
+		goto cleanup;
 
-		BPF_CORE_READ_INTO(&event->src.addr_raw.v4, sk,
-				   __sk_common.skc_rcv_saddr);
-		if (event->src.addr_raw.v4 == 0)
+	if (event->src.port == 0 || event->dst.port == 0)
+		goto cleanup;
+
+	if (event->src.version == 4) {
+		if (event->src.addr_raw.v4 == 0 || event->dst.addr_raw.v4 == 0)
 			goto cleanup;
-
-		BPF_CORE_READ_INTO(&event->dst.addr_raw.v4, sk,
-				   __sk_common.skc_daddr);
-		if (event->dst.addr_raw.v4 == 0)
-			goto cleanup;
-		break;
-
-	case AF_INET6:
-		event->src.version = event->dst.version = 6;
-
-		BPF_CORE_READ_INTO(
-			&event->src.addr_raw.v6, sk,
-			__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
+	} else {
 		if (((u64 *)event->src.addr_raw.v6)[0] == 0 &&
 		    ((u64 *)event->src.addr_raw.v6)[1] == 0)
 			goto cleanup;
-
-		BPF_CORE_READ_INTO(&event->dst.addr_raw.v6, sk,
-				   __sk_common.skc_v6_daddr.in6_u.u6_addr32);
 		if (((u64 *)event->dst.addr_raw.v6)[0] == 0 &&
 		    ((u64 *)event->dst.addr_raw.v6)[1] == 0)
 			goto cleanup;
-		break;
-
-	default:
-		// drop
-		goto cleanup;
 	}
 
 	event->state = BPF_CORE_READ(sk, __sk_common.skc_state);
@@ -140,18 +111,6 @@ static __always_inline int __trace_tcp_retrans(void *ctx, const struct sock *sk,
 				      sizeof(event->tcpflags_raw),
 				      &tcb->tcp_flags);
 	}
-
-	BPF_CORE_READ_INTO(&event->dst.port, sk, __sk_common.skc_dport);
-	event->dst.port = bpf_ntohs(
-		event->dst.port); // host expects data in host byte order
-	if (event->dst.port == 0)
-		goto cleanup;
-
-	BPF_CORE_READ_INTO(&event->src.port, sockp, inet_sport);
-	event->src.port = bpf_ntohs(
-		event->src.port); // host expects data in host byte order
-	if (event->src.port == 0)
-		goto cleanup;
 
 	BPF_CORE_READ_INTO(&event->netns_id, sk, __sk_common.skc_net.net,
 			   ns.inum);
