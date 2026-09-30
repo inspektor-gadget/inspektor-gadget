@@ -13,6 +13,7 @@
 #include <gadget/filter.h>
 #include <gadget/macros.h>
 #include <gadget/types.h>
+#include <gadget/sockets.h>
 
 enum bind_options_set : __u8 {
 	FREEBIND = 0x1,
@@ -184,21 +185,7 @@ static int probe_exit(struct pt_regs *ctx, short ver)
 	event->bound_dev_if = BPF_CORE_READ(sock, __sk_common.skc_bound_dev_if);
 	event->error_raw = -ret;
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
-	event->addr.port = sport;
-	event->addr.version = ver;
-	event->addr.proto_raw =
-		BPF_CORE_READ_BITFIELD_PROBED(sock, sk_protocol);
-
-	if (ver == 4) {
-		bpf_probe_read_kernel(&event->addr.addr_raw.v4,
-				      sizeof(event->addr.addr_raw.v4),
-				      &inet_sock->inet_saddr);
-	} else { /* ver == 6 */
-		bpf_probe_read_kernel(
-			&event->addr.addr_raw.v6,
-			sizeof(event->addr.addr_raw.v6),
-			sock->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
-	}
+	gadget_l4endpoint_src_from_sock(&event->addr, sock);
 
 	/* emit event */
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
