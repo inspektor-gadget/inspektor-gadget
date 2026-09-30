@@ -15,6 +15,7 @@ TEST_ARTIFACTS = \
 	filtering \
 	baderrptr \
 	badguest \
+	noretval \
 
 all: $(TEST_ARTIFACTS)
 

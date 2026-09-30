@@ -7,6 +7,7 @@ TEST_ARTIFACTS = \
 	dataemit \
 	badguest \
 	baderrptr \
+	noretval \
 	params \
 	config \
 	map \
