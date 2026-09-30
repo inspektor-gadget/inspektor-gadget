@@ -1,5 +1,6 @@
 ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 IG ?= ig
+SUDO ?= sudo
 
 TEST_ARTIFACTS = \
 	dataemit \
@@ -23,14 +24,14 @@ all: $(TEST_ARTIFACTS)
 
 $(TEST_ARTIFACTS):
 	@echo "Building $@"
-	@sudo IG_SOURCE_PATH=$(realpath $(ROOT_DIR)/../../../..) $(IG) image build -t $@:latest $@
-	@sudo $(IG) image export $@:latest $@.tar
+	@$(SUDO) IG_SOURCE_PATH=$(realpath $(ROOT_DIR)/../../../..) $(IG) image build -t $@:latest $@
+	@$(SUDO) $(IG) image export $@:latest $@.tar
 	# TODO: This fails with "Error: removing gadget image: unable to reload index:"
 	# @sudo $(IG) image remove $@:latest
 
 clean:
 	for ARTIFACT in $(TEST_ARTIFACTS); do \
-		sudo rm -f $$ARTIFACT.tar; \
-		sudo rm -rf $$ARTIFACT/target; \
-		sudo rm -f $$ARTIFACT/Cargo.lock; \
+		$(SUDO) rm -f $$ARTIFACT.tar; \
+		$(SUDO) rm -rf $$ARTIFACT/target; \
+		$(SUDO) rm -f $$ARTIFACT/Cargo.lock; \
 	done
