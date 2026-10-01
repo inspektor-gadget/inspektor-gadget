@@ -147,6 +147,12 @@ func TestProfileCpuOtelStacks(t *testing.T) {
 
 	runnerOpts = append(runnerOpts,
 		igrunner.WithStartAndStop(),
+		// Like ci/stacks, this is an OTel eBPF profiler gadget: it does not emit
+		// the standard "running..." readiness marker in a usable way (the
+		// profiler samples over a window and has its own ~tens-of-seconds
+		// initialization), so disable the readiness gate and rely on the
+		// explicit Sleep before the workload instead.
+		igrunner.WithoutReadinessGate(),
 		igrunner.WithValidateOutput(func(t *testing.T, output string) {
 			// The container ID is only known once the container has been
 			// started, which happens after the gadget: resolve it here.
