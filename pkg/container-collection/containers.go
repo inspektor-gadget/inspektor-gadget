@@ -147,6 +147,12 @@ func (c *Container) GetOwnerReference(kubeconfigPath string) (*metav1.OwnerRefer
 	return c.K8s.ownerReference, nil
 }
 
+// maxOwnerReferenceDepth caps how many owner-reference hops the enricher will
+// follow before giving up. Legitimate Kubernetes controller chains are shallow
+// (Pod -> ReplicaSet -> Deployment, Pod -> Job -> CronJob: depth 3); this cap
+// is a defensive backstop paired with the visited-set cycle check below.
+const maxOwnerReferenceDepth = 8
+
 func ownerReferenceEnrichment(
 	dynamicClient dynamic.Interface,
 	container *Container,
@@ -159,10 +165,24 @@ func ownerReferenceEnrichment(
 
 	var highestOwnerRef *metav1.OwnerReference
 
+	// Kubernetes tolerates cycles in metadata.ownerReferences (the garbage
+	// collector declines to delete them rather than rejecting them at
+	// admission), so an unprivileged namespaced user can craft a cyclic
+	// ownership graph. Without a visited set this loop walks the graph as
+	// if it were a tree and never terminates, hammering the apiserver and
+	// wedging the caller (the container-hook FAN_ACCESS_PERM permission
+	// response is deferred until AddContainer returns).
+	type visitedKey struct {
+		namespace, kind, name string
+	}
+	visited := map[visitedKey]struct{}{
+		{resNamespace, resKind, resName}: {},
+	}
+
 	// Iterate until we reach the highest level of reference with one of the
 	// expected resource kind. Take into account that if this logic is changed,
 	// the gadget cluster role needs to be updated accordingly.
-	for {
+	for depth := 0; depth < maxOwnerReferenceDepth; depth++ {
 		if len(ownerReferences) == 0 {
 			var err error
 			ownerReferences, err = getOwnerReferences(dynamicClient,
@@ -190,6 +210,15 @@ func ownerReferenceEnrichment(
 		resKind = strings.ToLower(ownerRef.Kind) + "s"
 		resName = ownerRef.Name
 		ownerReferences = nil
+
+		next := visitedKey{resNamespace, resKind, resName}
+		if _, seen := visited[next]; seen {
+			// Cycle in ownerReferences; stop walking and keep the last
+			// valid owner we saw. Returning an error would just make the
+			// caller log and continue, dropping the partial enrichment.
+			break
+		}
+		visited[next] = struct{}{}
 	}
 
 	// Update container's owner reference (If any)
