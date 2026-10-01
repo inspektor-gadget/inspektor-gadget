@@ -75,6 +75,24 @@ datasources:
           columns.width: 10
           columns.alignment: right
           columns.hidden: true
+      denied_unknown:
+        annotations:
+          description: Bitmask of the denied permissions whose name could not be resolved
+          columns.width: 10
+          columns.alignment: right
+          columns.hidden: true
+      requested_unknown:
+        annotations:
+          description: Bitmask of the requested permissions whose name could not be resolved
+          columns.width: 10
+          columns.alignment: right
+          columns.hidden: true
+      audited_unknown:
+        annotations:
+          description: Bitmask of the audited permissions whose name could not be resolved
+          columns.width: 10
+          columns.alignment: right
+          columns.hidden: true
       result:
         annotations:
           description: AVC result (0 means allowed, non-zero means denied)
