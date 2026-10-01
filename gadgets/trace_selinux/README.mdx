@@ -26,7 +26,19 @@ containers, the gadget reports the offending container directly.
 ## Requirements
 
 - The node must have SELinux enabled (`CONFIG_SECURITY_SELINUX=y`) and the
-  `avc:selinux_audited` tracepoint available (upstream Linux 5.10+; older vendor kernels may backport it).
+  `avc:selinux_audited` tracepoint available. The tracepoint was added in Linux
+  5.10 by commit [`dd8166212d9a`](https://git.kernel.org/torvalds/c/dd8166212d9a)
+  ("selinux: add tracepoint on audited events"), so **5.10 is the minimum
+  upstream version**; older vendor kernels may backport it.
+- The kernel must be built with `CONFIG_KALLSYMS_ALL=y`. `secclass_map` is a
+  data symbol, and without this option `/proc/kallsyms` lists only function
+  symbols. It depends on `CONFIG_DEBUG_KERNEL` and defaults to `n` upstream,
+  but the major distributions (including Ubuntu and Fedora) enable it.
+- The kernel symbol `secclass_map` must be readable from `/proc/kallsyms`, i.e.
+  `kernel.kptr_restrict` must not be `2`. The gadget reads the permission names
+  from that table in the running kernel rather than shipping its own copy, so
+  the names always match the node's kernel. See
+  [Permission names require access to kallsyms](#permission-names-require-access-to-kallsyms).
 
 ## Limitations
 
@@ -45,6 +57,48 @@ check whether they are the reason:
 $ sudo semodule -DB   # disable dontaudit rules (rebuilds the policy)
 $ sudo semodule -B    # restore them afterwards
 ```
+
+### Permission names require access to kallsyms
+
+The `*_perms` fields are decoded using the kernel's own `secclass_map` table,
+whose address is resolved from `/proc/kallsyms` when the gadget is loaded. This
+is deliberate: the permission lists change between kernel versions, so a copy
+shipped with the gadget would silently decode the wrong names on some kernels.
+
+If `kernel.kptr_restrict` is set to `2`, kernel addresses are hidden from all
+users including root, the symbol cannot be resolved and **the gadget fails to
+load**:
+
+```
+Error: ... creating eBPF collection: populating kallsyms caches: getting
+addresses from kallsyms: loading symbol addresses: symbol secclass_map:
+restricted by kernel.kptr_restrict and/or net.core.bpf_jit_harden sysctls
+```
+
+This is intentional: failing to load is preferable to silently reporting
+permission names that may be wrong. Check and relax the setting with:
+
+```bash
+$ sysctl kernel.kptr_restrict           # 2 means addresses are hidden
+$ sudo sysctl -w kernel.kptr_restrict=1 # until the next reboot
+```
+
+To persist it, add `kernel.kptr_restrict = 1` to a file in `/etc/sysctl.d/`.
+`1` is enough: it hides kernel addresses from unprivileged users but still
+lets the privileged reader loading the gadget resolve them. As the error
+message suggests, `net.core.bpf_jit_harden` can restrict symbol resolution
+too, so check it as well if the problem persists.
+
+A kernel built without `CONFIG_KALLSYMS_ALL=y` fails differently: the symbol is
+not merely hidden, it is absent from `/proc/kallsyms` altogether, and no sysctl
+brings it back.
+
+```
+Error: ... creating eBPF collection: program ig_selinux: resolve .ksyms:
+kernel is missing symbol: secclass_map
+```
+
+Such a kernel must be rebuilt to run this gadget.
 
 ### Unconfined domains produce no denials
 
