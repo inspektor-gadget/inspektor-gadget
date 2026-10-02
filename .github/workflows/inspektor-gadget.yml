@@ -2062,6 +2062,7 @@ jobs:
       fail-fast: false
       matrix:
         kernel:
+          - "7.2"
           - "6.18"
           - "6.12"
           - "6.6"
@@ -2112,6 +2113,11 @@ jobs:
         GADGET_TAG: '${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}'
         IG_VERIFY_IMAGE: 'false'
         KERNEL_VERSION: '${{ matrix.kernel }}'
+        # DO NOT MERGE: temporary override pointing at a personal registry so
+        # this branch can be validated before inspektor-gadget/ci-kernels#2 is
+        # merged. Drop this line once it is merged and the official images have
+        # been rebuilt; the tags are mutable, so nothing else needs to change.
+        KERNEL_REPOSITORY: 'ghcr.io/alban/ci-kernels'
       run: |
         set -o pipefail
         export VIMTO=$(go env GOPATH)/bin/vimto
