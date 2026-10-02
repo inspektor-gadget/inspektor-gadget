@@ -17,6 +17,7 @@
 #include <gadget/buffer.h>
 #include <gadget/types.h>
 #include <gadget/macros.h>
+#include <gadget/sockets.h>
 #include <gadget/mntns_filter.h>
 #include <gadget/core_fixes.bpf.h>
 #include <gadget/kernel_stack_map.h>
@@ -113,8 +114,6 @@ static __always_inline int __trace_tcp_drop(void *ctx, struct sock *sk,
 		(struct tcphdr_with_flags *)(BPF_CORE_READ(skb, head) +
 					     BPF_CORE_READ(skb,
 							   transport_header));
-	struct inet_sock *sockp = (struct inet_sock *)sk;
-
 	struct event *event;
 	event = gadget_reserve_buf(&events, sizeof(*event));
 	if (!event)
@@ -127,46 +126,19 @@ static __always_inline int __trace_tcp_drop(void *ctx, struct sock *sk,
 	bpf_probe_read_kernel(&event->tcpflags_raw, sizeof(event->tcpflags_raw),
 			      &tcphdr->flags);
 
-	event->dst.port = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
-	if (event->dst.port == 0)
+	if (gadget_l4endpoints_from_sock(&event->src, &event->dst, sk) < 0)
 		goto cleanup;
 
-	event->src.port = bpf_ntohs(BPF_CORE_READ(sockp, inet_sport));
-	if (event->src.port == 0)
+	if (event->src.port == 0 || event->dst.port == 0)
 		goto cleanup;
 
-	unsigned int family = BPF_CORE_READ(sk, __sk_common.skc_family);
-	switch (family) {
-	case AF_INET:
-		event->src.version = event->dst.version = 4;
-
-		BPF_CORE_READ_INTO(&event->dst.addr_raw.v4, sk,
-				   __sk_common.skc_daddr);
-		if (event->dst.addr_raw.v4 == 0)
+	if (event->src.version == 4) {
+		if (event->src.addr_raw.v4 == 0 || event->dst.addr_raw.v4 == 0)
 			goto cleanup;
-		BPF_CORE_READ_INTO(&event->src.addr_raw.v4, sk,
-				   __sk_common.skc_rcv_saddr);
-		if (event->src.addr_raw.v4 == 0)
+	} else {
+		if (event->src.addr_raw.v6_raw == 0 ||
+		    event->dst.addr_raw.v6_raw == 0)
 			goto cleanup;
-		break;
-
-	case AF_INET6:
-		event->src.version = event->dst.version = 6;
-
-		BPF_CORE_READ_INTO(
-			&event->src.addr_raw.v6_raw, sk,
-			__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
-		if (event->src.addr_raw.v6_raw == 0)
-			goto cleanup;
-		BPF_CORE_READ_INTO(&event->dst.addr_raw.v6_raw, sk,
-				   __sk_common.skc_v6_daddr.in6_u.u6_addr32);
-		if (event->dst.addr_raw.v6_raw == 0)
-			goto cleanup;
-		break;
-
-	default:
-		// drop
-		goto cleanup;
 	}
 
 	BPF_CORE_READ_INTO(&event->netns_id, sk, __sk_common.skc_net.net,
