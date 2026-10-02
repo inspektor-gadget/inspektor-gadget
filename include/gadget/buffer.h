@@ -11,18 +11,23 @@
 #define GADGET_MAX_EVENT_SIZE 10240
 #endif
 
-#define GADGET_TRACER_MAP(name, size)                                 \
-	struct {                                                      \
-		__uint(type, BPF_MAP_TYPE_RINGBUF);                   \
-		__uint(max_entries, size);                            \
-	} name SEC(".maps");                                          \
-	const void *gadget_map_tracer_##name __attribute__((unused)); \
-                                                                      \
-	struct {                                                      \
-		__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);              \
-		__uint(max_entries, 1);                               \
-		__uint(key_size, sizeof(__u32));                      \
-		__uint(value_size, sizeof(__u64));                    \
+// GADGET_TRACER_MAP defines the ring buffer map a tracer writes events into,
+// together with a companion per-CPU lost-samples map. The ring buffer map is
+// tagged with ig:tracer_map so IG can find it (and downgrade it to a perf event
+// array when BPF ring buffers are unavailable). The legacy gadget_map_tracer_
+// name-encoding is still read for pre-built images (see
+// pkg/operators/ebpf/types.go).
+#define GADGET_TRACER_MAP(name, size)                                       \
+	struct {                                                            \
+		__uint(type, BPF_MAP_TYPE_RINGBUF);                         \
+		__uint(max_entries, size);                                  \
+	} name __attribute__((btf_decl_tag("ig:tracer_map"))) SEC(".maps"); \
+                                                                            \
+	struct {                                                            \
+		__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);                    \
+		__uint(max_entries, 1);                                     \
+		__uint(key_size, sizeof(__u32));                            \
+		__uint(value_size, sizeof(__u64));                          \
 	} name##_lost_samples SEC(".maps");
 
 #ifndef GADGET_NO_BUF_RESERVE

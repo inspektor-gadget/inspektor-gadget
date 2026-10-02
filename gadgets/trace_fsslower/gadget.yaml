@@ -42,7 +42,6 @@ params:
       title: Minimum Latency
       defaultValue: "10000"
       description: Minimum latency in µs to trace
-  wasm:
     filesystem:
       key: filesystem
       defaultValue: ext4

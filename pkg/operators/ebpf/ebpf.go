@@ -51,6 +51,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/exprgate"
 	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/socketenricher"
@@ -141,6 +142,9 @@ func (o *ebpfOperator) InstantiateImageOperator(
 
 		vars: make(map[string]*ebpfVar),
 
+		mapOnlyIf:    make(map[string]*exprgate.Program),
+		progAttachTo: make(map[string]*exprgate.Program),
+
 		networkTracers: make(map[string]*networktracer.Tracer[api.GadgetData]),
 		tcHandlers:     make(map[string]*tchandler.Handler),
 		uprobeTracers:  make(map[string]*uprobetracer.Tracer[api.GadgetData]),
@@ -200,6 +204,14 @@ type ebpfInstance struct {
 
 	// map from ebpf variable name to ebpfVar struct
 	vars map[string]*ebpfVar
+
+	// Compiled ig: decl-tag expressions (see exprtags.go / package exprgate).
+	exprEval     *exprgate.Evaluator
+	mapOnlyIf    map[string]*exprgate.Program // map name -> GADGET_MAP_ONLY_IF expr
+	progAttachTo map[string]*exprgate.Program // program name -> GADGET_PROG_ATTACH_TO expr
+	exprDefines  []exprBinding                // GADGET_EXPR_DEFINE, in source order
+	exprAsserts  []exprBinding                // GADGET_ASSERT
+	gatedMaps    []gatedMap                   // maps dropped by GADGET_MAP_ONLY_IF
 
 	links   []link.Link
 	perfFds []int
@@ -338,10 +350,24 @@ func (i *ebpfInstance) analyze(gadgetCtx operators.GadgetContext, paramValues ap
 		}
 	}
 
+	// Read the migrated ig: decl tags (new encoding of the legacy magic
+	// globals, e.g. GADGET_PARAM -> ig:param) before defaults are filled, so
+	// tag-encoded params are registered in time. Runs alongside the legacy
+	// prefix walk above; see readMigratedDeclTags.
+	if err := i.readMigratedDeclTags(gadgetCtx); err != nil {
+		return fmt.Errorf("reading migrated ig: decl tags: %w", err)
+	}
+
 	// Fill param defaults
 	err := i.fillParamDefaults()
 	if err != nil {
 		i.logger.Debugf("error extracting default values for params: %v", err)
+	}
+
+	// Read and compile the ig: decl-tag expressions (GADGET_MAP_ONLY_IF,
+	// GADGET_PROG_ATTACH_TO, GADGET_ASSERT, GADGET_EXPR_DEFINE).
+	if err := i.readExprTags(gadgetCtx); err != nil {
+		return fmt.Errorf("reading ig: decl tags: %w", err)
 	}
 
 	// Iterate over programs
@@ -781,6 +807,13 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		}
 	}
 
+	// Evaluate the ig: decl-tag expressions now that params are resolved, and
+	// before the collection is loaded (map gating poisons instructions and
+	// drops maps, which must happen before NewCollectionWithOptions).
+	if err := i.evaluateExprTags(gadgetCtx, paramMap); err != nil {
+		return err
+	}
+
 	opts := ebpf.CollectionOptions{
 		MapReplacements: mapReplacements,
 		Cache:           i.bpfOperator.btfCache,
@@ -888,6 +921,9 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 			gadgetCtx.Logger().Debugf("running gadget: verifier error: %+v\n", verifierErr)
 		}
 
+		if hint := i.gatedMapHint(err); hint != "" {
+			return fmt.Errorf("creating eBPF collection: %w\n%s", err, hint)
+		}
 		return fmt.Errorf("creating eBPF collection: %w", err)
 	}
 	i.collection = collection

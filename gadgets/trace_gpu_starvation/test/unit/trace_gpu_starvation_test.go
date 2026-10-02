@@ -28,5 +28,14 @@ import (
 // event emission) is covered by the integration test, which mocks the
 // gpu-ebpf-bridge maps.
 func TestTraceGpuStarvation(t *testing.T) {
-	gadgettesting.DummyGadgetTest(t, "trace_gpu_starvation")
+	t.Run("without kernel stacks", func(t *testing.T) {
+		gadgettesting.DummyGadgetTest(t, "trace_gpu_starvation")
+	})
+
+	t.Run("with kernel stacks", func(t *testing.T) {
+		gadgettesting.DummyGadgetTest(t, "trace_gpu_starvation",
+			gadgettesting.WithParamValues(map[string]string{
+				"operator.oci.ebpf.collect-kstack": "true",
+			}))
+	})
 }
