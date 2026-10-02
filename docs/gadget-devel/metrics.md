@@ -67,6 +67,42 @@ datasources:
 This will increase the counter of that metrics by whatever value the `count` field has. Use `metrics.type: gauge`, if
 you always just want to set the metric to the latest value.
 
+By default, a gauge retains its latest value for every key set. This is useful
+when the last observation remains authoritative until it changes. If an array
+data source instead emits a complete snapshot on every refresh, set
+`metrics.snapshot: "true"` on the data source:
+
+```yaml
+datasources:
+  processes:
+    annotations:
+      metrics.collect: "true"
+      metrics.snapshot: "true"
+      metrics.snapshot-timeout: 5s
+    fields:
+      pid:
+        annotations:
+          metrics.type: key
+      memory:
+        annotations:
+          metrics.type: gauge
+```
+
+Every emitted array then replaces the previous gauge snapshot. Keys absent
+from the new array disappear from the next metrics collection, and an empty
+array removes all gauge series. If the data source stops refreshing, the last
+snapshot expires after `metrics.snapshot-timeout`. When the timeout is omitted,
+it defaults to three times a positive `fetch-interval`. Prefer this derived
+timeout when the fetch interval is configurable. An explicit timeout must be at
+least twice the positive `fetch-interval`.
+
+Snapshot mode only changes gauges. Counters and histograms in the same data
+source continue accumulating normally. Each row in a snapshot must have a
+unique set of metric keys; aggregate rows explicitly before export if several
+rows should contribute to one series. When duplicate keys are present, the
+operator keeps the previous gauge snapshot while other operators and retained
+metrics continue processing the rows.
+
 If you later on want to differentiate the count by their different `name` contents, you can annotate the `name` field
 with key `metrics.type` and value `key`. This creates a key (or label) from that field that is associated with each
 metric afterward - e.g.: this lets you later on filter the values of `count` according to the corresponding `name`
