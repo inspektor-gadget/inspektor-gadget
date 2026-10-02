@@ -34,7 +34,7 @@ The export target uses the same `GADGETS`, `GADGET_REPOSITORY`, and `GADGET_TAG`
 settings as the build. It only exports existing images and does not rebuild them.
 
 For Kubernetes gadget tests, the PR job starts a GitHub Actions registry service
-with port 5000 published on the runner. The `setup-minikube` composite action
+with port 5000 published on the runner. The `setup-and-prepare-minikube` composite action
 resolves `host.minikube.internal` from the selected minikube node and uses the
 resulting IPv4 address for both publishing and pulling. This avoids hostname
 resolution differences between the runner and pods and does not require the

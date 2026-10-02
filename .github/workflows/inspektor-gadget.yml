@@ -1676,7 +1676,7 @@ jobs:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
     - name: Setup and prepare minikube
-      uses: ./.github/actions/setup-minikube
+      uses: ./.github/actions/setup-and-prepare-minikube
       with:
         runtime: "docker"
         container-image-artifact: gadget-container-image-linux-amd64.tar
@@ -1899,7 +1899,7 @@ jobs:
           tar zxvf /home/runner/work/inspektor-gadget/ig-linux-amd64.tar.gz
           mv ig ig-linux-amd64
       - name: Setup and prepare minikube
-        uses: ./.github/actions/setup-minikube
+        uses: ./.github/actions/setup-and-prepare-minikube
         with:
           runtime: ${{ matrix.runtime }}
       - name: Run integration for container runtime ${{ matrix.runtime }}
@@ -2717,7 +2717,7 @@ jobs:
         container-image: ${{ env.CONTAINER_REPO }}
     - name: Setup and prepare minikube
       id: minikube
-      uses: ./.github/actions/setup-minikube
+      uses: ./.github/actions/setup-and-prepare-minikube
       with:
         runtime: ${{ matrix.runtime }}
         multi-node: true
