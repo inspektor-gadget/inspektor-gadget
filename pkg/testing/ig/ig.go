@@ -144,6 +144,9 @@ func New(image string, opts ...Option) igtesting.TestStep {
 		split := strings.Split(flags, " ")
 		factoryRunner.flags = append(factoryRunner.flags, split...)
 	}
+	if publicKey := os.Getenv("IG_PUBLIC_KEY"); publicKey != "" {
+		factoryRunner.flags = append(factoryRunner.flags, "--public-keys="+publicKey)
+	}
 
 	for _, opt := range opts {
 		opt(factoryRunner)

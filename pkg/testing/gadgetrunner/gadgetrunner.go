@@ -108,6 +108,13 @@ func NewGadgetRunner[T any](t *testing.T, opts GadgetRunnerOpts[T]) *GadgetRunne
 		}
 	}
 
+	if publicKey := os.Getenv("IG_PUBLIC_KEY"); publicKey != "" {
+		if opts.GlobalParamsValues == nil {
+			opts.GlobalParamsValues = make(api.ParamValues)
+		}
+		opts.GlobalParamsValues["operator.oci.public-keys"] = publicKey
+	}
+
 	gadgetImage := GetGadgetImageName(opts.Image)
 	return &GadgetRunner[T]{
 		image:             gadgetImage,

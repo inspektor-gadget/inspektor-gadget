@@ -67,6 +67,9 @@ func TestDaemonHeadless(t *testing.T) {
 	if flags != "" {
 		igDaemonFlags = append(igDaemonFlags, strings.Split(flags, " ")...)
 	}
+	if publicKey := os.Getenv("IG_PUBLIC_KEY"); publicKey != "" {
+		igDaemonFlags = append(igDaemonFlags, "--public-keys="+publicKey)
+	}
 	igtesting.RunTestSteps([]igtesting.TestStep{
 		&command.Command{
 			Name:           "Start Daemon",

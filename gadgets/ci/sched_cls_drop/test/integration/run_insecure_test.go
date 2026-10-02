@@ -21,10 +21,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/registry/remote"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
@@ -89,15 +88,12 @@ func TestRunInsecure(t *testing.T) {
 	srcImage := gadgetrunner.GetGadgetImageName("ci/sched_cls_drop")
 	destImage := registry + "/sched_cls_drop:latest"
 
-	srcRepo, err := remote.NewRepository(srcImage)
+	_, err = oci.TagGadgetImage(t.Context(), srcImage, destImage)
 	require.NoError(t, err)
 
-	destRepo, err := remote.NewRepository(destImage)
-	require.NoError(t, err)
-	destRepo.PlainHTTP = true // Enable plain HTTP for insecure registry
-
-	// Copy the image
-	desc, err := oras.Copy(t.Context(), srcRepo, srcImage, destRepo, destImage, oras.DefaultCopyOptions)
+	desc, err := oci.PushGadgetImage(t.Context(), destImage, &oci.AuthOptions{
+		InsecureRegistries: []string{registry},
+	})
 	require.NoError(t, err)
 	require.NotNil(t, desc)
 
