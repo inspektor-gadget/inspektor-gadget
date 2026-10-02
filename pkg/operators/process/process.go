@@ -76,6 +76,8 @@ const (
 	fieldStartTime        = "startTime"
 	fieldStartTimeStr     = "startTimeStr"
 	fieldMountNsID        = "mountnsid"
+	fieldCPUWait          = "CPUWait"
+	fieldCPUPressure      = "CPUPressure"
 )
 
 type processOperator struct{}
@@ -148,6 +150,8 @@ func (p *processOperator) InstantiateDataOperator(gadgetCtx operators.GadgetCont
 			fieldUid,
 			fieldStartTime,
 			fieldCPUTime,
+			fieldCPUWait,
+			fieldCPUPressure,
 		}
 	}
 
@@ -336,6 +340,23 @@ func (p *processOperator) InstantiateDataOperator(gadgetCtx operators.GadgetCont
 			if err != nil {
 				return nil, fmt.Errorf("adding startTimeStr field: %w", err)
 			}
+		case fieldCPUWait:
+			instance.CPUWaitField, err = ds.AddField(fieldCPUWait, api.Kind_Float64, datasource.WithAnnotations(map[string]string{
+				metadatav1.ColumnsAlignmentAnnotation: "right",
+				metadatav1.DescriptionAnnotation:      "Time the process spent waiting on the runqueue (schedstat field 2).",
+			}))
+			if err != nil {
+				return nil, fmt.Errorf("adding cpu_wait field: %w", err)
+			}
+
+		case fieldCPUPressure:
+			instance.CPUPressureField, err = ds.AddField(fieldCPUPressure, api.Kind_Float64, datasource.WithAnnotations(map[string]string{
+				metadatav1.ColumnsAlignmentAnnotation: "right",
+				metadatav1.DescriptionAnnotation:      "System-wide CPU pressure (avg60 from /proc/pressure/cpu).",
+			}))
+			if err != nil {
+				return nil, fmt.Errorf("adding cpu_pressure field: %w", err)
+			}
 		}
 	}
 
@@ -386,6 +407,8 @@ type processOperatorInstance struct {
 	startTimeField      datasource.FieldAccessor
 	startTimeStrField   datasource.FieldAccessor
 	mountNsIDField      datasource.FieldAccessor
+	CPUWaitField        datasource.FieldAccessor
+	CPUPressureField    datasource.FieldAccessor
 	// For relative memory
 	totalMemory uint64
 	// For CPU usage calculation
@@ -414,6 +437,14 @@ func (p *processOperatorInstance) Start(gadgetCtx operators.GadgetContext) error
 	go p.monitorProcesses(gadgetCtx)
 
 	return nil
+}
+
+func (p *processOperatorInstance) WithCPUWait() bool {
+	return true // Enable CPU wait collection
+}
+
+func (p *processOperatorInstance) WithCPUPressure() bool {
+	return true // Enable CPU pressure collection
 }
 
 func getBootTime() (time.Time, error) {
@@ -667,6 +698,13 @@ func (p *processOperatorInstance) collectProcessInfo(gadgetCtx operators.GadgetC
 			secs := int(d.Seconds()) % 60
 			ms := int(d.Milliseconds() % 1000)
 			p.cpuTimeStrField.PutString(packet, strconv.Itoa(mins)+":"+pad2(secs)+"."+pad3(ms))
+		}
+
+		if p.CPUWaitField != nil {
+			p.CPUWaitField.PutFloat64(packet, proc.CPUWait)
+		}
+		if p.CPUPressureField != nil {
+			p.CPUPressureField.PutFloat64(packet, proc.CPUPressure)
 		}
 
 		// Always emit mount namespace ID
