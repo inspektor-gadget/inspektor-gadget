@@ -187,8 +187,15 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 	}
 
 	done := make(chan bool)
+	var pump sync.WaitGroup
 	defer func() {
 		close(done)
+		// Wait for the message pump below to return before leaving the handler.
+		// gRPC writes the RPC status as soon as the handler returns and the
+		// stream must not be used afterwards, so letting the pump outlive us
+		// would race its Send() against that status. Waiting also flushes the
+		// events still sitting in outputBuffer.
+		pump.Wait()
 	}()
 
 	// Build a simple operator that subscribes to all events and forwards them
@@ -213,18 +220,6 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 						return
 					default:
 						s.logger.Warn("received unexpected request")
-					}
-				}
-			}()
-
-			go func() {
-				// Message pump to handle slow readers
-				for {
-					select {
-					case ev := <-outputBuffer:
-						runGadget.Send(ev)
-					case <-done:
-						return
 					}
 				}
 			}()
@@ -284,6 +279,29 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 				s.logger.Warnf("sending gadgetInfo: %v", err)
 			}
 			s.logger.Debugf("sent gadget info")
+
+			// gRPC forbids calling Send() on a stream from several goroutines
+			// at once. Therefore start message pump after sending GadgetInfo.
+			pump.Add(1)
+			go func() {
+				// Message pump to handle slow readers
+				defer pump.Done()
+				for {
+					select {
+					case ev := <-outputBuffer:
+						if err := runGadget.Send(ev); err != nil {
+							// Send aborts the stream on error, so every
+							// following one would fail too. Log to the
+							// daemon's own logger: the gadget logger writes
+							// to the stream that just failed.
+							s.logger.Warnf("sending event: %v", err)
+							return
+						}
+					case <-done:
+						return
+					}
+				}
+			}()
 
 			return nil
 		}),
