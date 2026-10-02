@@ -15,6 +15,7 @@
 package columns
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -476,5 +477,80 @@ func TestColumnTemplatesRegisterExisting(t *testing.T) {
 		require.Panics(t, func() {
 			MustRegisterTemplate("abc", "width:123")
 		}, "expected panic")
+	})
+}
+
+func TestColumnGetAttributes(t *testing.T) {
+	col := &Column[struct{}]{}
+	attrs := col.GetAttributes()
+
+	attrs.Name = "testName"
+	require.Equal(t, "testName", col.Name)
+}
+
+func TestColumnApplyTemplateParseError(t *testing.T) {
+	tplName := "coverage_apply_template_parse_error"
+	err := RegisterTemplate(tplName, "align")
+	require.NoError(t, err)
+
+	col := &Column[struct{}]{
+		Attributes: Attributes{
+			Name:     "field",
+			Template: tplName,
+		},
+		rawColumnType: reflect.TypeOf(struct{ Field int }{}).Field(0).Type,
+	}
+
+	err = col.applyTemplate()
+	require.Error(t, err)
+	require.ErrorContains(t, err, fmt.Sprintf("applying template %q", tplName))
+	require.ErrorContains(t, err, "missing alignment value")
+}
+
+func TestColumnParseTagInfoAdditionalBranches(t *testing.T) {
+	t.Run("hex", func(t *testing.T) {
+		col := &Column[struct{}]{
+			Attributes: Attributes{Name: "field"},
+		}
+
+		err := col.parseTagInfo([]string{"hex"})
+		require.NoError(t, err)
+		require.True(t, col.Hex)
+
+		err = col.parseTagInfo([]string{"hex:bad"})
+		require.Error(t, err)
+		require.ErrorContains(t, err, "must not have a value")
+	})
+
+	t.Run("noembed on non-struct", func(t *testing.T) {
+		col := &Column[struct{}]{
+			Attributes: Attributes{Name: "field"},
+			kind:       reflect.Int,
+			columnType: reflect.TypeOf(int(0)),
+		}
+
+		err := col.parseTagInfo([]string{"noembed"})
+		require.Error(t, err)
+		require.ErrorContains(t, err, "only valid for struct types")
+	})
+
+	t.Run("stringer", func(t *testing.T) {
+		colWithExtractor := &Column[struct{}]{
+			Attributes: Attributes{Name: "field"},
+			Extractor:  func(_ *struct{}) any { return "preset" },
+			columnType: reflect.TypeOf(""),
+		}
+
+		err := colWithExtractor.parseTagInfo([]string{"stringer"})
+		require.NoError(t, err)
+
+		colWithoutStringer := &Column[struct{}]{
+			Attributes: Attributes{Name: "field"},
+			columnType: reflect.TypeOf(int(0)),
+		}
+
+		err = colWithoutStringer.parseTagInfo([]string{"stringer"})
+		require.Error(t, err)
+		require.ErrorContains(t, err, "doesn't implement fmt.Stringer")
 	})
 }
