@@ -38,6 +38,16 @@ datasources:
           description: Full file path after symlink resolution (require --paths flag)
           columns.width: 32
           columns.minwidth: 24
+      bytes_written:
+        annotations:
+          description: Total bytes written to the file
+          columns.minwidth: 10
+          columns.alignment: right
+      write_count:
+        annotations:
+          description: Total number of write syscalls
+          columns.minwidth: 8
+          columns.alignment: right
 params:
   ebpf:
     targ_failed:
