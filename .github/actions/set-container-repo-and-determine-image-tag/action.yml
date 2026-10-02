@@ -62,8 +62,6 @@ runs:
       env:
         REGISTRY: ${{ inputs.registry }}
         REPOSITORY_OWNER: ${{ github.repository_owner }}
-        EVENT_NAME: ${{ github.event_name }}
-        SHA: ${{ github.sha }}
       run: |
         if [ -z "${REGISTRY}" ]; then
           echo 'inputs.registry should not be empty! Set it before calling this action' 1>&2
@@ -71,9 +69,6 @@ runs:
         fi
 
         gadget_repository="${REGISTRY}/${REPOSITORY_OWNER}/gadget"
-        if [ "${EVENT_NAME}" == 'pull_request' ]; then
-          gadget_repository="ttl.sh/${SHA}"
-        fi
 
         echo "gadget-repository=${gadget_repository}" >> $GITHUB_OUTPUT
     - name: Output gadgets image tag

@@ -1,0 +1,94 @@
+name: "Setup and prepare minikube environment"
+description: "Setup and prepare a minikube environment with different runtimes"
+
+inputs:
+  runtime:
+    description: "The container runtime to use for minikube."
+    required: true
+  multi-node:
+    description: "Whether to run minikube with multiple nodes."
+    required: false
+    default: false
+  gadget-images:
+    description: "Download the gadget-images artifact and publish it to the runner's registry service on port 5000."
+    default: 'false'
+  ig:
+    description: "Path to the ig binary used to import and push gadget images."
+    default: 'ig'
+  gadget-repository:
+    description: "Source repository of the gadget images in the archive."
+    required: false
+  gadget-tag:
+    description: "Tag of the gadget images in the archive."
+    required: false
+  container-image-artifact:
+    description: "Optional Docker tar artifact to load on every minikube node; the filename must match the artifact name."
+    required: false
+  container-image:
+    description: "Tagged container image reference to load from the Docker archive."
+    required: false
+
+outputs:
+  gadget-repository:
+    description: "Registry repository reachable from the runner and minikube, when gadget provisioning is enabled."
+    value: ${{ steps.gadgets.outputs.registry }}
+  gadget-insecure-registry:
+    description: "HTTP registry endpoint to allow when pulling the provisioned gadgets."
+    value: ${{ steps.gadgets.outputs.registry }}
+  gadget-public-key:
+    description: "Public key used to verify the provisioned gadgets."
+    value: ${{ steps.gadget-images.outputs.gadget-public-key }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Start minikube
+      shell: bash
+      run: |
+        make minikube-start-"${RUNTIME}"
+      env:
+        RUNTIME: ${{ inputs.runtime }}
+        # When using multi-node, run the integration tests on two nodes.
+        # As GitHub Runner has only 2 CPU and 7 GB of DRAM, we cannot use a big
+        # number here
+        MINIKUBE_PARAMS: ${{ inputs.multi-node == 'true' && '-n 2' || '' }}
+    - name: Get the registry address reachable from minikube
+      id: gadgets
+      if: inputs.gadget-images == 'true'
+      shell: bash
+      env:
+        MINIKUBE_PROFILE: minikube-${{ inputs.runtime }}
+      run: |
+        host_ip="$(make -s minikube-host-ip)"
+        registry="${host_ip:?Minikube host IP is empty}:5000"
+        curl --fail --silent --show-error --max-time 5 \
+          --retry 30 --retry-all-errors --retry-delay 2 \
+          "http://${registry}/v2/" > /dev/null
+        echo "registry=${registry}" >> "${GITHUB_OUTPUT}"
+    - name: Prepare gadget images
+      id: gadget-images
+      if: inputs.gadget-images == 'true'
+      uses: ./.github/actions/prepare-gadget-images
+      with:
+        ig: ${{ inputs.ig }}
+        gadget-repository: ${{ inputs.gadget-repository }}
+        gadget-tag: ${{ inputs.gadget-tag }}
+        registry: ${{ steps.gadgets.outputs.registry }}
+    - name: Download container image
+      if: inputs.container-image-artifact != ''
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      with:
+        name: ${{ inputs.container-image-artifact }}
+        path: ${{ runner.temp }}/minikube-container-image
+    - name: Load container image on minikube nodes
+      if: inputs.container-image-artifact != ''
+      shell: bash
+      env:
+        MINIKUBE_PROFILE: minikube-${{ inputs.runtime }}
+        CONTAINER_ARCHIVE: ${{ runner.temp }}/minikube-container-image/${{ inputs.container-image-artifact }}
+        CONTAINER_IMAGE: ${{ inputs.container-image }}
+      run: |
+        : "${CONTAINER_IMAGE:?container-image is required}"
+        # Load by tagged reference: some runtimes lose image names when loading an archive directly.
+        docker load -i "${CONTAINER_ARCHIVE}"
+        make minikube-image-load

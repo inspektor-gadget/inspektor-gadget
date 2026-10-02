@@ -37,6 +37,10 @@ func TestMultiTenancyTokenReviewNamespacePolicy(t *testing.T) {
 	teamB := GenerateTestNamespaceName("mt-team-b")
 	instanceName := GenerateTestNamespaceName("mt-snapshot")
 	gadgetImage := fmt.Sprintf("%s/snapshot_process:%s", *gadgetRepository, *gadgetTag)
+	daemonConfigFlag := ""
+	if configFile := os.Getenv("GADGET_DAEMON_CONFIG"); configFile != "" {
+		daemonConfigFlag = "--daemon-config=" + q(configFile)
+	}
 
 	cleanupCommands := []TestStep{
 		&Command{
@@ -51,8 +55,8 @@ func TestMultiTenancyTokenReviewNamespacePolicy(t *testing.T) {
 %[1]s deploy --experimental --debug \
   --image="$ig_image" \
   --image-pull-policy=IfNotPresent \
-  --set-daemon-config=operator.oci.verify-image=false`,
-				q(kubectlGadget),
+  --set-daemon-config=operator.oci.verify-image=false %[2]s`,
+				q(kubectlGadget), daemonConfigFlag,
 			),
 			Cleanup: true,
 		},
@@ -77,13 +81,13 @@ func TestMultiTenancyTokenReviewNamespacePolicy(t *testing.T) {
   --image="$ig_image" \
   --image-pull-policy=IfNotPresent \
   --set-daemon-config=operator.oci.verify-image=false \
-  --set-daemon-config=multi-tenancy=true
+  --set-daemon-config=multi-tenancy=true %[2]s
 kubectl create clusterrolebinding gadget-multitenancy-test-auth-delegator \
   --clusterrole=system:auth-delegator \
   --serviceaccount=gadget:gadget \
   --dry-run=client -o yaml | kubectl apply -f -
 kubectl rollout status daemonset/gadget -n gadget --timeout=120s`,
-				q(kubectlGadget),
+				q(kubectlGadget), daemonConfigFlag,
 			),
 		},
 		CreateTestNamespaceCommand(teamA),

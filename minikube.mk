@@ -16,12 +16,24 @@ phony_explicit:
 # minikube
 
 MINIKUBE = $(MINIKUBE_DIR)/minikube-$(MINIKUBE_VERSION)
+MINIKUBE_PROFILE_FLAGS = $(if $(MINIKUBE_PROFILE),--profile="$(MINIKUBE_PROFILE)")
+
 .PHONY: minikube-install
 minikube-install:
 	mkdir -p $(MINIKUBE_DIR)
 	test -e $(MINIKUBE_DIR)/minikube-$(MINIKUBE_VERSION) || \
 	(cd $(MINIKUBE_DIR) && curl -Lo ./minikube-$(MINIKUBE_VERSION) https://github.com/kubernetes/minikube/releases/download/$(MINIKUBE_VERSION)/minikube-linux-$(shell go env GOHOSTARCH))
 	chmod +x $(MINIKUBE_DIR)/minikube-$(MINIKUBE_VERSION)
+
+.PHONY: minikube-host-ip
+minikube-host-ip:
+	@addresses="$$($(MINIKUBE) $(MINIKUBE_PROFILE_FLAGS) ssh -- 'getent ahostsv4 host.minikube.internal')" && \
+		printf '%s\n' "$$addresses" | awk 'NR == 1 { print $$1 }'
+
+.PHONY: minikube-image-load
+minikube-image-load:
+	@test -n "$(CONTAINER_IMAGE)" || { echo "CONTAINER_IMAGE is required" >&2; exit 1; }
+	$(MINIKUBE) $(MINIKUBE_PROFILE_FLAGS) image load "$(CONTAINER_IMAGE)"
 
 # clean
 
@@ -49,4 +61,3 @@ minikube-start-%: minikube-install
 	$(MINIKUBE) status -p minikube-$* -f {{.APIServer}} >/dev/null || \
 	$(MINIKUBE) start -p minikube-$* --driver=$(MINIKUBE_DRIVER) --kubernetes-version=$(KUBERNETES_VERSION) --container-runtime=$* --wait=all $${MINIKUBE_PARAMS}
 	$(MINIKUBE) profile minikube-$*
-
