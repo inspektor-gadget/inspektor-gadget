@@ -33,7 +33,7 @@ type ExpectedSnapshotProcessEvent utils.Process
 
 type testDef struct {
 	runnerConfig   *utils.RunnerConfig
-	generateEvent  func() (int, error)
+	generateEvent  func(t *testing.T) (int, error)
 	validateEvent  func(t *testing.T, info *utils.RunnerInfo, sleepPid int, events []ExpectedSnapshotProcessEvent)
 	mntnsFilterMap func(info *utils.RunnerInfo) *ebpf.Map
 }
@@ -120,7 +120,7 @@ func TestSnapshotProcessGadget(t *testing.T) {
 			beforeGadgetRun := func() error {
 				// Use the runner to generate an event
 				utils.RunWithRunner(t, runner, func() error {
-					pid, err := testCase.generateEvent()
+					pid, err := testCase.generateEvent(t)
 					if err != nil {
 						return err
 					}
@@ -144,11 +144,18 @@ func TestSnapshotProcessGadget(t *testing.T) {
 	}
 }
 
-func generateEvent() (int, error) {
+func generateEvent(t *testing.T) (int, error) {
 	cmd := exec.Command("/bin/sleep", "30")
 	if err := cmd.Start(); err != nil {
 		return 0, err
 	}
+
+	t.Cleanup(func() {
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+		}
+		_ = cmd.Wait()
+	})
 
 	return cmd.Process.Pid, nil
 }
