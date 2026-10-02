@@ -113,6 +113,16 @@ resources: {}
 # -- Skip Helm labels
 skipLabels: false
 
+# -- RBAC granted to *users* of Inspektor Gadget (kubectl-gadget, gadgetctl).
+# This is not the RBAC used by the gadget DaemonSet itself.
+clientRole:
+  # -- Create the client ClusterRole/Role. No binding is created: you must bind
+  # it yourself to your users, groups or ServiceAccounts.
+  create: false
+  # -- ServiceAccounts in the gadget namespace whose audience-scoped tokens
+  # clients may mint. Only used when config.multiTenancy.enabled is true.
+  tokenServiceAccounts: []
+
 # -- Labels to be added to all other resources.
 additionalLabels:
   labels: {}
