@@ -127,6 +127,8 @@ func (k *KubeIPResolver) InstanceParams() api.Params {
 
 type endpointAccessors struct {
 	root              datasource.FieldAccessor
+	ip                datasource.FieldAccessor
+	version           datasource.FieldAccessor
 	subK8sKind        datasource.FieldAccessor
 	subK8sName        datasource.FieldAccessor
 	subK8sNamespace   datasource.FieldAccessor
@@ -221,6 +223,8 @@ func (k *KubeIPResolver) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 
 			ea := endpointAccessors{
 				root:              ep,
+				ip:                ips[0],
+				version:           version[0],
 				subK8sKind:        k8sKindAcc,
 				subK8sName:        k8sNameAcc,
 				subK8sNamespace:   k8sNamespaceAcc,
@@ -268,9 +272,7 @@ func (m *KubeIPResolverInstance) PreStart(gadgetCtx operators.GadgetContext) err
 		ds.Subscribe(func(source datasource.DataSource, data datasource.Data) error {
 			var errs error
 			for _, a := range acc {
-				ip := a.root.GetSubFieldsWithTag("type:" + ipAddrType)[0]
-				version := a.root.GetSubFieldsWithTag("name:version")[0]
-				addrStr, err := common.GetIPForVersion(data, version, ip)
+				addrStr, err := common.GetIPForVersion(data, a.version, a.ip)
 				if err != nil {
 					errors.Join(errs, fmt.Errorf("%s: getting IP: %w", a.root.Name(), err))
 					continue
