@@ -92,6 +92,12 @@ affinity: {}
 # -- Capabilities used by `gadget` container
 capabilities: {}
 
+# -- Drop CAP_SYS_ADMIN from the `gadget` container and add CAP_BPF and
+# CAP_PERFMON instead. This disables fanotify-based container detection, so
+# `config.operator.kubemanager.hook-mode` must not be "fanotify+ebpf".
+# Ignored if `capabilities` is set.
+dropCapSysAdmin: false
+
 # -- Skip the default `NoSchedule` and `NoExecute` tolerations that use the
 # `Exists` operator and allow the DaemonSet to run on every node.
 skipDefaultTolerations: false
