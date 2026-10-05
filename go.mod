@@ -13,8 +13,8 @@ require (
 	github.com/cyphar/filepath-securejoin v0.7.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/distribution/reference v0.6.0
-	github.com/docker/cli v29.6.2+incompatible
-	github.com/docker/go-connections v0.7.0 // indirect
+	github.com/docker/cli v29.8.2+incompatible
+	github.com/docker/go-connections v0.8.1 // indirect
 	github.com/docker/go-units v0.5.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/expr-lang/expr v1.17.8
@@ -27,8 +27,8 @@ require (
 	github.com/gopacket/gopacket v1.7.3
 	github.com/in-toto/attestation v1.2.0
 	github.com/kr/pretty v0.3.1
-	github.com/moby/moby/api v1.55.0
-	github.com/moby/moby/client v0.5.0
+	github.com/moby/moby/api v1.56.1
+	github.com/moby/moby/client v0.6.1
 	github.com/notaryproject/notation-go v1.3.2
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/opencontainers/runtime-spec v1.2.1
