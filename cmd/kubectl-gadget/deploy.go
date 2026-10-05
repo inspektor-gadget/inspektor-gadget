@@ -112,6 +112,7 @@ var (
 	otelMetricsListenAddr string
 	daemonConfig          string
 	setDaemonConfig       []string
+	createClientRole      bool
 )
 
 var clusterImagePolicyKind = schema.GroupVersionKind{
@@ -133,6 +134,37 @@ spec:
         hashAlgorithm: sha256
         data: !!binary |
           %s
+`
+
+// clientRoleFormat is the RBAC needed by clients (kubectl-gadget, gadgetctl) to
+// reach the gadget pods. It is intentionally not bound to any subject: binding
+// it is a cluster policy decision left to the administrator.
+var clientRoleFormat = `
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: gadget-client-cluster-role
+  labels:
+    k8s-app: gadget
+rules:
+  - apiGroups: ["apps"]
+    resources: ["daemonsets"]
+    verbs: ["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: gadget-client-role
+  namespace: %s
+  labels:
+    k8s-app: gadget
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/portforward"]
+    verbs: ["create"]
 `
 
 func init() {
@@ -263,6 +295,10 @@ func init() {
 	deployCmd.PersistentFlags().StringVar(
 		&daemonConfig,
 		"daemon-config", "", "Path to a config file to override the daemon configuration values. The file must be in YAML format")
+	deployCmd.PersistentFlags().BoolVar(
+		&createClientRole,
+		"create-client-role", false,
+		"create a ClusterRole/Role granting the permissions needed to use Inspektor Gadget. No binding is created, you must bind it to your users yourself")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -716,6 +752,15 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		}
 	} else {
 		log.Warnf("You used --verify-image=false, the container image will not be verified")
+	}
+
+	if createClientRole {
+		clientRoleObjects, err := parseK8sYaml(fmt.Sprintf(clientRoleFormat, gadgetNamespace))
+		if err != nil {
+			return fmt.Errorf("parsing client role: %w", err)
+		}
+
+		objects = append(objects, clientRoleObjects...)
 	}
 
 	for _, object := range objects {

@@ -1,0 +1,22 @@
+{{- if .Values.clientRole.create }}
+# RBAC for *clients* of Inspektor Gadget (kubectl-gadget, gadgetctl).
+# This is NOT the RBAC used by the gadget DaemonSet itself, see clusterrole.yaml.
+#
+# No binding is shipped on purpose: deciding who may talk to Inspektor Gadget is
+# a cluster policy decision. See docs/reference/install-kubernetes.md.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "gadget.fullname" . }}-client-cluster-role
+  labels:
+    {{- if not .Values.skipLabels }}
+    {{- include "gadget.labels" . | nindent 4 }}
+    {{- end }}
+    k8s-app: {{ include "gadget.fullname" . }}
+rules:
+  - apiGroups: ["apps"]
+    resources: ["daemonsets"]
+    # Used by kubectl-gadget to auto-discover the namespace Inspektor Gadget
+    # runs in. It lists across all namespaces, hence a ClusterRole.
+    verbs: ["list"]
+{{- end }}
