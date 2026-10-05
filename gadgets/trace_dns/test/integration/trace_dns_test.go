@@ -329,6 +329,8 @@ func newTraceDNSStep(t *testing.T, tc testCase) (igtesting.TestStep, []igtesting
 				utils.NormalizeProc(&e.Proc)
 				utils.NormalizeString(&e.ID)
 				utils.NormalizeInt(&e.Latency)
+				utils.NormalizeEndpoint(&e.Src)
+				utils.NormalizeEndpoint(&e.Dst)
 
 				// Normalize the client port as we don't know it
 				if e.Src.Addr == clientIP {
