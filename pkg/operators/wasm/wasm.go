@@ -321,6 +321,9 @@ func (i *wasmOperatorInstance) callGuestFunction(ctx context.Context, name strin
 	if err != nil {
 		return fmt.Errorf("calling %s: %w", name, err)
 	}
+	if len(ret) != 1 {
+		return fmt.Errorf("%s returned wrong number of values", name)
+	}
 	if ret[0] != 0 {
 		return fmt.Errorf("%s failed", name)
 	}
