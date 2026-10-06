@@ -56,6 +56,11 @@ const (
 	// Keep in sync with `include/gadget/kernel_stack_map.h`
 	KernelStackMapName      = "ig_kstack"
 	KernelPerfMaxStackDepth = 127
+	// KernelStackIDNone marks a gadget_kernel_stack field for which the
+	// gadget did not collect a stack, set by GADGET_KERNEL_STACK_ID_NONE on
+	// the eBPF side. It must be tested before interpreting the field as a
+	// negative errno, which is how a bpf_get_stackid() failure is reported.
+	KernelStackIDNone = ^uint32(0)
 	// Keep in sync with `include/gadget/user_stack_map.h`
 	UserStackMapName      = "ig_ustack"
 	BuildIdMapName        = "ig_build_id"
