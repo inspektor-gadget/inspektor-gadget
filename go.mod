@@ -16,7 +16,7 @@ require (
 	github.com/docker/cli v29.8.2+incompatible
 	github.com/docker/go-connections v0.8.1 // indirect
 	github.com/docker/go-units v0.5.0
-	github.com/dustin/go-humanize v1.0.1
+	github.com/dustin/go-humanize v1.1.0
 	github.com/expr-lang/expr v1.17.8
 	github.com/florianl/go-tc v0.4.8
 	github.com/fsnotify/fsnotify v1.10.1
