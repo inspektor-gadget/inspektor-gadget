@@ -17,7 +17,11 @@ package ebpfoperator
 import (
 	"testing"
 
+	"github.com/cilium/ebpf"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 )
 
 func TestSplitTracepoint(t *testing.T) {
@@ -52,4 +56,35 @@ func TestSplitTracepoint(t *testing.T) {
 			require.Equal(t, tt.wantName, name)
 		})
 	}
+}
+
+func TestApplyAttachTo(t *testing.T) {
+	t.Parallel()
+
+	progs := map[string]*ebpf.ProgramSpec{
+		"fentry":   {Name: "fentry", Type: ebpf.Tracing, AttachTo: "orig"},
+		"lsm":      {Name: "lsm", Type: ebpf.LSM, AttachTo: "orig"},
+		"kprobe":   {Name: "kprobe", Type: ebpf.Kprobe, AttachTo: "orig"},
+		"disabled": {Name: "disabled", Type: ebpf.Tracing, AttachTo: "orig"},
+		"unset":    {Name: "unset", Type: ebpf.Tracing, AttachTo: "orig"},
+	}
+
+	config := viper.New()
+	config.Set("programs.fentry.attach_to", "new")
+	config.Set("programs.lsm.attach_to", "new")
+	config.Set("programs.kprobe.attach_to", "new")
+	config.Set("programs.disabled.attach_to", disabledProgram)
+
+	i := &ebpfInstance{
+		config:         config,
+		logger:         logger.DefaultLogger(),
+		collectionSpec: &ebpf.CollectionSpec{Programs: progs},
+	}
+	i.applyAttachTo()
+
+	require.Equal(t, "new", progs["fentry"].AttachTo)
+	require.Equal(t, "new", progs["lsm"].AttachTo)
+	require.Equal(t, "new", progs["kprobe"].AttachTo)
+	require.Equal(t, "orig", progs["disabled"].AttachTo)
+	require.Equal(t, "orig", progs["unset"].AttachTo)
 }

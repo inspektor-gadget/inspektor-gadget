@@ -870,6 +870,8 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		m.MaxEntries = maxEntries
 	}
 
+	i.applyAttachTo()
+
 	i.logger.Debugf("creating ebpf collection")
 
 	// check if the btfgen operator has stored the kernel types in the context

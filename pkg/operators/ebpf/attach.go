@@ -56,15 +56,28 @@ func splitTracepoint(attachTo string) (string, string, error) {
 	return group, name, nil
 }
 
+// applyAttachTo applies programs.<name>.attach_to to the program specs. It must
+// run before loading: the kernel resolves the target of fentry, fexit, tp_btf,
+// iter and LSM programs at load time.
+func (i *ebpfInstance) applyAttachTo() {
+	if i.config == nil {
+		return
+	}
+	for _, p := range i.collectionSpec.Programs {
+		attachTo := i.config.GetString("programs." + p.Name + ".attach_to")
+		// A disabled program is still loaded, so keep a target it can load with
+		if attachTo == "" || attachTo == disabledProgram {
+			continue
+		}
+		i.logger.Debugf("Overriding attachTo with %q for program %q", attachTo, p.Name)
+		p.AttachTo = attachTo
+	}
+}
+
 func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.ProgramSpec, prog *ebpf.Program) (link.Link, error) {
 	attachTo := p.AttachTo
 
-	if attachToCfg := i.config.GetString("programs." + p.Name + ".attach_to"); attachToCfg != "" {
-		i.logger.Debugf("Overriding attachTo with %q for program %q", attachToCfg, p.Name)
-		attachTo = attachToCfg
-	}
-
-	if attachTo == disabledProgram {
+	if i.config.GetString("programs."+p.Name+".attach_to") == disabledProgram {
 		i.logger.Debugf("Skipping program %q as it is disabled", p.Name)
 		return nil, nil
 	}
