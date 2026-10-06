@@ -157,7 +157,7 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 				AttachType: ebpf.AttachTraceFExit,
 			})
 		case strings.HasPrefix(p.SectionName, tpBtfPrefix):
-			i.logger.Debugf("Attaching tp_btf %q to %q", p.Name, p.AttachTo)
+			i.logger.Debugf("Attaching tp_btf %q to %q", p.Name, attachTo)
 			return link.AttachTracing(link.TracingOptions{
 				Program:    prog,
 				AttachType: ebpf.AttachTraceRawTp,
