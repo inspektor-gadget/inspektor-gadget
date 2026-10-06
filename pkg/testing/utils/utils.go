@@ -151,6 +151,30 @@ func stripCloudInjectedPodLabels(podLabels map[string]string) {
 	}
 }
 
+// stripCloudInjectedPodLabelsFromString removes cloud-injected topology
+// labels from a comma-joined "key=value,key=value" labels string, preserving
+// the order and formatting of the remaining entries.
+func stripCloudInjectedPodLabelsFromString(labels string) string {
+	if labels == "" {
+		return labels
+	}
+
+	parts := strings.Split(labels, ",")
+	kept := parts[:0]
+parts:
+	for _, part := range parts {
+		key, _, _ := strings.Cut(part, "=")
+		for _, cloudKey := range cloudInjectedPodLabelKeys {
+			if key == cloudKey {
+				continue parts
+			}
+		}
+		kept = append(kept, part)
+	}
+
+	return strings.Join(kept, ",")
+}
+
 func NormalizeEndpoint(e *L4Endpoint) {
 	// Information about the endpoint is not enriched when running ig, since it needs
 	// to connect to the kubeapiserver to get this information.
@@ -159,7 +183,15 @@ func NormalizeEndpoint(e *L4Endpoint) {
 		e.K8s.Name = ""
 		e.K8s.Namespace = ""
 		e.K8s.Labels = ""
+		return
 	}
+
+	// Managed clusters (e.g. AKS, GKE) asynchronously inject well-known
+	// topology labels onto pods. Strip them here too, same as
+	// NormalizeCommonData does for the map-based K8s.PodLabels, since
+	// K8s.Labels is a separate comma-joined string representation that was
+	// never updated to strip the same cloud-injected labels.
+	e.K8s.Labels = stripCloudInjectedPodLabelsFromString(e.K8s.Labels)
 }
 
 func BuildProc(comm string, uid, gid uint32) Process {
