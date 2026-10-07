@@ -64,14 +64,14 @@ Let's start the gadget before running our workload:
   <TabItem value="kubectl-gadget" label="kubectl gadget">
 ```bash
 $ kubectl gadget run trace_fsslower:%IG_TAG% --podname test-trace-fsslower --filesystem ext4 --min 1000
-K8S.NODE                       K8S.NAMESPACE                  K8S.PODNAME                    K8S.CONTAINERNAME              COMM                          PID              TID TID                OFFSET     SIZE FILE             OP            DELTA
+K8S.NODE                       K8S.NAMESPACE                  K8S.PODNAME                    K8S.CONTAINERNAME              COMM                          PID              TID TID                OFFSET FILE             OP            SIZE     DELTA
 ```
   </TabItem>
 
   <TabItem value="ig" label="ig">
 ```bash
 $ sudo ig run trace_fsslower:%IG_TAG%  --verify-image=false --filesystem ext4 --min 1000 -c test-trace-fsslower
-RUNTIME.CONTAINERNAME     COMM                 PID        TID OFFSET   SIZE FILE         OP            DELTA
+RUNTIME.CONTAINERNAME     COMM                 PID        TID OFFSET FILE         OP            SIZE     DELTA
 ```
   </TabItem>
 </Tabs>
@@ -106,43 +106,43 @@ The tool will list the I/O operations that were slower than 1ms:
   <TabItem value="kubectl-gadget" label="kubectl gadget">
 ```bash
 $ kubectl gadget run trace_fsslower:%IG_TAG% --podname test-trace-fsslower --filesystem ext4 --min 1000
-K8S.NODE                       K8S.NAMESPACE                  K8S.PODNAME                    K8S.CONTAINERNAME              COMM                          PID              TID TID                OFFSET     SIZE FILE             OP            DELTA
-minikube                       default                        test-trace-fsslower            test-trace-fsslower            http                        60778            60778 60775             3857488     8520 deb.debian.org_… F_WRITE      5.83ms
-minikube                       default                        test-trace-fsslower            test-trace-fsslower            http                        60778            60778 60775             6647227     1688 deb.debian.org_… F_WRITE      1.39ms
-minikube                       default                        test-trace-fsslower            test-trace-fsslower            store                       60786            60786 60775            14163567    25817 deb.debian.org_… F_WRITE      2.08ms
-minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg-preconfigu             60898            60898 60897                   0 9223372… #56749           F_FSYNC      3.08ms
-minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg-preconfigu             60898            60898 60897                   0 9223372… #56751           F_FSYNC      2.46ms
-minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg-preconfigu             60898            60898 60897                   0 9223372… config.dat-new   F_FSYNC      3.39ms
-minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg-preconfigu             60898            60898 60897                   0 9223372… templates.dat-n… F_FSYNC      2.08ms
-minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg                        60985            60985 60849                   0 9223372… triggers         F_FSYNC      3.67ms
-minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg                        60985            60985 60849                   0 9223372… shlibs           F_FSYNC      3.03ms
-minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg                        60985            60985 60849                   0 9223372… symbols          F_FSYNC      3.35ms
-minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg                        60985            60985 60849                   0 9223372… md5sums          F_FSYNC      3.06ms
-minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg                        60985            60985 60849                   0 9223372… control          F_FSYNC      3.11ms
-minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg                        60985            60985 60849                   0 9223372… tmp.ci           F_FSYNC      2.27ms
-minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg                        60985            60985 60849                   0 9223372… tmp.i            F_FSYNC      1.84ms
-minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg                        60985            60985 60849                   0 9223372… updates          F_FSYNC      1.57ms
+K8S.NODE                       K8S.NAMESPACE                  K8S.PODNAME                    K8S.CONTAINERNAME              COMM                          PID              TID TID                OFFSET FILE             OP            SIZE     DELTA
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            http                        60778            60778 60775             3857488 deb.debian.org_… F_WRITE     8.5 kB    5.83ms
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            http                        60778            60778 60775             6647227 deb.debian.org_… F_WRITE     1.7 kB    1.39ms
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            store                       60786            60786 60775            14163567 deb.debian.org_… F_WRITE      26 kB    2.08ms
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg-preconfigu             60898            60898 60897                   0 #56749           F_FSYNC     9.2 EB    3.08ms
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg-preconfigu             60898            60898 60897                   0 #56751           F_FSYNC     9.2 EB    2.46ms
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg-preconfigu             60898            60898 60897                   0 config.dat-new   F_FSYNC     9.2 EB    3.39ms
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg-preconfigu             60898            60898 60897                   0 templates.dat-n… F_FSYNC     9.2 EB    2.08ms
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg                        60985            60985 60849                   0 triggers         F_FSYNC     9.2 EB    3.67ms
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg                        60985            60985 60849                   0 shlibs           F_FSYNC     9.2 EB    3.03ms
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg                        60985            60985 60849                   0 symbols          F_FSYNC     9.2 EB    3.35ms
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg                        60985            60985 60849                   0 md5sums          F_FSYNC     9.2 EB    3.06ms
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg                        60985            60985 60849                   0 control          F_FSYNC     9.2 EB    3.11ms
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg                        60985            60985 60849                   0 tmp.ci           F_FSYNC     9.2 EB    2.27ms
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg                        60985            60985 60849                   0 tmp.i            F_FSYNC     9.2 EB    1.84ms
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg                        60985            60985 60849                   0 updates          F_FSYNC     9.2 EB    1.57ms
 ```
   </TabItem>
   <TabItem value="ig" label="ig">
 ```bash
 $ sudo ig run trace_fsslower:%IG_TAG% --verify-image=false --filesystem ext4 --min 1000 -c test-trace-fsslower
-RUNTIME.CONTAINERNAME     COMM                 PID        TID OFFSET   SIZE FILE         OP            DELTA
-test-trace-fsslower       dpkg-preconf…     204239     204239      0 92233… #38586681    F_FSYNC      1.01ms
-test-trace-fsslower       dpkg-preconf…     204239     204239      0 92233… #38586683    F_FSYNC      1.88ms
-test-trace-fsslower       dpkg              204242     204242      0 92233… perl-module… F_FSYNC      3.25ms
-test-trace-fsslower       dpkg              204242     204242      0 92233… libperl5.36… F_FSYNC      1.52ms
-test-trace-fsslower       dpkg              204242     204242      0 92233… symbols      F_FSYNC      1.27ms
-test-trace-fsslower       dpkg              204242     204242      0 92233… openssl.lis… F_FSYNC      1.28ms
-test-trace-fsslower       dpkg              204242     204242      0 92233… ca-certific… F_FSYNC      1.11ms
-test-trace-fsslower       dpkg              204242     204242      0 92233… tmp.i        F_FSYNC      1.31ms
-test-trace-fsslower       dpkg              204242     204242      0 92233… triggers     F_FSYNC      6.30ms
-test-trace-fsslower       dpkg              204242     204242      0 92233… tmp.i        F_FSYNC      1.44ms
-test-trace-fsslower       dpkg              204242     204242      0 92233… libkrb5supp… F_FSYNC      1.04ms
-test-trace-fsslower       dpkg              204242     204242      0 92233… md5sums      F_FSYNC      1.32ms
-test-trace-fsslower       dpkg              204242     204242      0 92233… openssh-cli… F_FSYNC      1.03ms
-test-trace-fsslower       dpkg              204242     204242      0 92233… symbols      F_FSYNC      1.06ms
-test-trace-fsslower       dpkg              204242     204242      0 92233… git.list-new F_FSYNC      2.53ms
+RUNTIME.CONTAINERNAME     COMM                 PID        TID OFFSET FILE         OP            SIZE     DELTA
+test-trace-fsslower       dpkg-preconf…     204239     204239      0 #38586681    F_FSYNC     9.2 EB    1.01ms
+test-trace-fsslower       dpkg-preconf…     204239     204239      0 #38586683    F_FSYNC     9.2 EB    1.88ms
+test-trace-fsslower       dpkg              204242     204242      0 perl-module… F_FSYNC     9.2 EB    3.25ms
+test-trace-fsslower       dpkg              204242     204242      0 libperl5.36… F_FSYNC     9.2 EB    1.52ms
+test-trace-fsslower       dpkg              204242     204242      0 symbols      F_FSYNC     9.2 EB    1.27ms
+test-trace-fsslower       dpkg              204242     204242      0 openssl.lis… F_FSYNC     9.2 EB    1.28ms
+test-trace-fsslower       dpkg              204242     204242      0 ca-certific… F_FSYNC     9.2 EB    1.11ms
+test-trace-fsslower       dpkg              204242     204242      0 tmp.i        F_FSYNC     9.2 EB    1.31ms
+test-trace-fsslower       dpkg              204242     204242      0 triggers     F_FSYNC     9.2 EB    6.30ms
+test-trace-fsslower       dpkg              204242     204242      0 tmp.i        F_FSYNC     9.2 EB    1.44ms
+test-trace-fsslower       dpkg              204242     204242      0 libkrb5supp… F_FSYNC     9.2 EB    1.04ms
+test-trace-fsslower       dpkg              204242     204242      0 md5sums      F_FSYNC     9.2 EB    1.32ms
+test-trace-fsslower       dpkg              204242     204242      0 openssh-cli… F_FSYNC     9.2 EB    1.03ms
+test-trace-fsslower       dpkg              204242     204242      0 symbols      F_FSYNC     9.2 EB    1.06ms
+test-trace-fsslower       dpkg              204242     204242      0 git.list-new F_FSYNC     9.2 EB    2.53ms
 ```
   </TabItem>
 </Tabs>

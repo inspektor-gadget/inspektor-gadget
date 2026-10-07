@@ -29,7 +29,7 @@ struct event {
 
 	gadget_duration delta_raw;
 	__s64 offset;
-	__u64 size; // TODO: use result of https://github.com/inspektor-gadget/inspektor-gadget/issues/3392
+	gadget_bytes size_raw;
 	enum fs_file_op op_raw;
 	char file[FILE_NAME_LEN];
 };
@@ -118,7 +118,7 @@ static int probe_exit(void *ctx, enum fs_file_op op, ssize_t size)
 	gadget_process_populate(&event->proc);
 	event->delta_raw = delta_ns;
 	event->offset = datap->start;
-	event->size = op != F_FSYNC ? size : datap->end - datap->start;
+	event->size_raw = op != F_FSYNC ? size : datap->end - datap->start;
 	event->op_raw = op;
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
 	dentry = datap->dentry;

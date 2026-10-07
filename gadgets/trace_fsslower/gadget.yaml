@@ -23,6 +23,9 @@ datasources:
           description: Offset of the operation
           columns.width: 8
           columns.alignment: right
+      size_raw:
+        annotations:
+          description: Size of the operation in bytes
       size:
         annotations:
           description: Size of the operation

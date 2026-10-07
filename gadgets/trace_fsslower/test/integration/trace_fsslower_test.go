@@ -37,7 +37,7 @@ type traceFSSlowerEvent struct {
 
 	Delta  uint64 `json:"delta_raw"`
 	Offset uint64 `json:"offset"`
-	Size   uint64 `json:"size"`
+	Size   uint64 `json:"size_raw"`
 	Op     string `json:"op"`
 	File   string `json:"file"`
 }
