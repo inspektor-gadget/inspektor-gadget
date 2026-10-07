@@ -119,7 +119,7 @@ func getFormattersForEnums(enums []*enum, ds datasource.DataSource, btfSpec *btf
 		}
 		addedTargets[targetName] = struct{}{}
 
-		out, err := ds.AddField(targetName, api.Kind_String, datasource.WithSameParentAs(in))
+		out, err := ds.AddField(targetName, api.Kind_String, datasource.WithSameParentAs(in), datasource.WithSameOrderAs(in))
 		if err != nil {
 			return formatters, err
 		}
