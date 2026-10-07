@@ -432,6 +432,8 @@ int ig_selinux(struct trace_event_raw_selinux_audited *ctx)
 
 	if (collect_kstack)
 		event->kstack_raw = gadget_get_kernel_stack(ctx);
+	else
+		event->kstack_raw = GADGET_KERNEL_STACK_ID_NONE;
 
 	if (collect_ustack && collect_otel_stack)
 		event->ustack = ustack;

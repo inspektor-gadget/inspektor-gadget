@@ -25,5 +25,9 @@ func TestTraceSelinux(t *testing.T) {
 	// without errors. It should be extended to check that the gadget produces
 	// correct data, which requires triggering a SELinux AVC denial on a host
 	// with SELinux enabled.
+
+	// The avc:selinux_audited tracepoint was added in v5.10-rc1.
+	gadgettesting.MinimumKernelVersion(t, "5.10")
+
 	gadgettesting.DummyGadgetTest(t, "trace_selinux")
 }
