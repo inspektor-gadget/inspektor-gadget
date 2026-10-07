@@ -21,6 +21,7 @@ struct args_t {
 	const char *fname;
 	int flags;
 	__u16 mode;
+	int dfd;
 };
 
 struct event {
@@ -53,7 +54,7 @@ GADGET_TRACER_MAP(events, 1024 * 256);
 
 GADGET_TRACER(open, events, event);
 
-static __always_inline int trace_enter(const char *filename, int flags,
+static __always_inline int trace_enter(int dfd, const char *filename, int flags,
 				       __u16 mode)
 {
 	__u64 pid = bpf_get_current_pid_tgid();
@@ -65,6 +66,7 @@ static __always_inline int trace_enter(const char *filename, int flags,
 	args.fname = filename;
 	args.flags = flags;
 	args.mode = mode;
+	args.dfd = dfd;
 	bpf_map_update_elem(&start, &pid, &args, 0);
 
 	return 0;
@@ -74,16 +76,16 @@ static __always_inline int trace_enter(const char *filename, int flags,
 SEC("tracepoint/syscalls/sys_enter_open")
 int ig_open_e(struct syscall_trace_enter *ctx)
 {
-	return trace_enter((const char *)ctx->args[0], (int)ctx->args[1],
-			   (__u16)ctx->args[2]);
+	return trace_enter(AT_FDCWD, (const char *)ctx->args[0],
+			   (int)ctx->args[1], (__u16)ctx->args[2]);
 }
 #endif /* !__TARGET_ARCH_arm64 */
 
 SEC("tracepoint/syscalls/sys_enter_openat")
 int ig_openat_e(struct syscall_trace_enter *ctx)
 {
-	return trace_enter((const char *)ctx->args[1], (int)ctx->args[2],
-			   (__u16)ctx->args[3]);
+	return trace_enter((int)ctx->args[0], (const char *)ctx->args[1],
+			   (int)ctx->args[2], (__u16)ctx->args[3]);
 }
 
 static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
@@ -111,6 +113,7 @@ static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 
 	fd = 0;
 	errval = 0;
+	event->fpath[0] = '\0';
 	if (ret >= 0) {
 		fd = ret;
 
@@ -122,6 +125,17 @@ static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 		}
 	} else {
 		errval = -ret;
+	}
+
+	if (paths && event->fpath[0] == '\0') {
+		char first = 0;
+		bpf_probe_read_user(&first, 1, ap->fname);
+		if (first != 0 && first != '/') {
+			long r = read_full_path_of_dfd_rel(
+				ap->dfd, ap->fname, (char *)event->fpath);
+			if (r <= 0)
+				event->fpath[0] = '\0';
+		}
 	}
 
 	/* event data */
