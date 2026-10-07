@@ -33,9 +33,9 @@ Running the gadget:
 
 ### `--snaplen`
 
-Sets the maximum number of bytes to capture from a packet.
+Sets the maximum number of bytes to capture from a packet. Set to `9000` or higher to capture full Jumbo frames.
 
-Default value: 0
+Default value: 1500
 
 ## Guide
 
@@ -173,3 +173,22 @@ Now if you go back to the terminal where you ran the gadget, you should see the 
         ```
     </TabItem>
 </Tabs>
+
+### Capturing Jumbo frames
+
+By default, `tcpdump` captures up to 1500 bytes per packet, corresponding to standard Ethernet MTU. On networks configured with Jumbo frames (such as cloud VPCs and storage networks with MTU up to 9000 bytes), you can capture full untruncated packets by passing `--snaplen 9000`:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run tcpdump:%IG_TAG% --snaplen 9000 -o pcap-ng | tcpdump -nvr -
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run tcpdump:%IG_TAG% --snaplen 9000 -o pcap-ng | tcpdump -nvr -
+        ```
+    </TabItem>
+</Tabs>
+
