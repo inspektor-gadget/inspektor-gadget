@@ -34,7 +34,19 @@ import (
 func (c *GadgetContext) instantiateOperators(paramValues api.ParamValues) error {
 	log := c.Logger()
 
-	ops := c.DataOperators()
+	disabledMap := make(map[string]bool, len(c.disabledDataOperators))
+	for _, name := range c.disabledDataOperators {
+		disabledMap[name] = true
+	}
+
+	ops := make([]operators.DataOperator, 0)
+	for _, op := range c.DataOperators() {
+		if disabledMap[op.Name()] {
+			log.Debugf("skipping disabled operator %q", op.Name())
+			continue
+		}
+		ops = append(ops, op)
+	}
 
 	// Sort dataOperators based on their priority and name
 	sort.Slice(ops, func(i, j int) bool {
