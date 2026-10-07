@@ -37,7 +37,7 @@ func (cc *ContainerCollection) EnrichEventByNetNs(event operators.ContainerInfoF
 
 	netNsId := event.GetNetNSID()
 	containers := cc.LookupContainersByNetns(netNsId)
-	if len(containers) == 0 {
+	if len(containers) == 0 && cc.cachedContainers != nil {
 		containers = lookupContainersByNetns(cc.cachedContainers, netNsId)
 	}
 	if len(containers) == 0 || containers[0].HostNetwork {
