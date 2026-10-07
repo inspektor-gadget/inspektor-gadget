@@ -110,7 +110,7 @@ func ValidateIntRange(min, max int64) func(value string) error {
 	return func(value string) error {
 		number, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
-			return fmt.Errorf("expected numeric value")
+			return fmt.Errorf("expected numeric value: %w", err)
 		}
 		if number < min || number > max {
 			return fmt.Errorf("number out of range: got %d, expected min %d, max %d", number, min, max)
