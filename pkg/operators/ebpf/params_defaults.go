@@ -52,7 +52,11 @@ func (i *ebpfInstance) fillParamDefaults() error {
 				continue
 			}
 
-			if int(v.Offset+v.Size) > len(b) {
+			// v.Offset and v.Size are uint32 fields coming from user data (the
+			// BTF Datasec); compute the end offset in uint64 so a crafted
+			// pair cannot wrap the bounds check (and the slice below).
+			end := uint64(v.Offset) + uint64(v.Size)
+			if end > uint64(len(b)) {
 				continue
 			}
 
@@ -77,12 +81,23 @@ func (i *ebpfInstance) fillParamDefaults() error {
 				vtype = btfhelpers.GetUnderlyingType(typedef)
 			}
 
-			bytes := b[v.Offset : v.Offset+v.Size]
+			bytes := b[v.Offset:end]
 
 			var defaultValue string
 
 			switch t := vtype.(type) {
 			case *btf.Int:
+				// The slice is sized by the Datasec variable size (v.Size),
+				// but the reads below take t.Size bytes through unsafe.Pointer,
+				// which performs no bounds check. v.Size and t.Size are
+				// independent BTF fields coming from user data, so reading when
+				// t.Size exceeds the slice length walks past the end of the
+				// .rodata backing array (and an empty slice panics on bytes[0]).
+				// Skip the variable unless the slice actually holds the width
+				// the integer type claims.
+				if int(t.Size) > len(bytes) {
+					continue
+				}
 				if t.Encoding&btf.Signed != 0 {
 					switch t.Size {
 					case 1:
