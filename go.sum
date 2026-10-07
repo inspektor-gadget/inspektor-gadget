@@ -230,8 +230,8 @@ github.com/google/pprof v0.0.0-20241210010833-40e02aabc2ad/go.mod h1:vavhavw2zAx
 github.com/google/uuid v1.1.2/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
-github.com/gopacket/gopacket v1.7.3 h1:KTze+fpeKEaI7aWkJUL9Sq7r1b0zkcuBzTl5l0uPUh8=
-github.com/gopacket/gopacket v1.7.3/go.mod h1:QKowPlTLrQU2rqV5C5I14Aoaid3l8da3kbddibc/Wgk=
+github.com/gopacket/gopacket v1.7.4 h1:3bi6ZOOyxZe5iGhPz2xkQg/qoEBa3ODsrxZ9LbnYuRw=
+github.com/gopacket/gopacket v1.7.4/go.mod h1:QKowPlTLrQU2rqV5C5I14Aoaid3l8da3kbddibc/Wgk=
 github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 h1:JeSE6pjso5THxAzdVpqr6/geYxZytqFMBCOtn/ujyeo=
 github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674/go.mod h1:r4w70xmWCQKmi1ONH4KIaBptdivuRPyosB9RmPlGEwA=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0 h1:5VipnvEpbqr2gA2VbM+nYVbkIF28c5ZQfqCBQ5g2xfk=
