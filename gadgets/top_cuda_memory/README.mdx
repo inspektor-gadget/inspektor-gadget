@@ -51,14 +51,14 @@ Start the gadget:
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
         $ kubectl gadget run top_cuda_memory:%IG_TAG% --pod mypod
-        K8S.NODE         K8S.NAMESPACE   K8S.PODNAME   K8S.CONTAINERNAME        PID COMM              MEM_ALLOC_BYTES   MEM_FREE_BYTES  MEM_ALLOC_CALLS   MEM_FREE_CALLS  MEM_IMPLICIT_FREE_BYTES  MEM_IMPLICIT_FREE_CALLS HOST
+        K8S.NODE         K8S.NAMESPACE   K8S.PODNAME   K8S.CONTAINERNAME        PID HOST COMM              MEM_ALLOC_BYTES   MEM_FREE_BYTES  MEM_ALLOC_CALLS   MEM_FREE_CALLS  MEM_IMPLICIT_FREE_BYTES  MEM_IMPLICIT_FREE_CALLS
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
         $ sudo ig run top_cuda_memory:%IG_TAG%
-        RUNTIME.CONTAINERNAME               PID COMM              MEM_ALLOC_BYTES   MEM_FREE_BYTES  MEM_ALLOC_CALLS   MEM_FREE_CALLS  MEM_IMPLICIT_FREE_BYTES  MEM_IMPLICIT_FREE_CALLS HOST
+        RUNTIME.CONTAINERNAME               PID HOST COMM              MEM_ALLOC_BYTES   MEM_FREE_BYTES  MEM_ALLOC_CALLS   MEM_FREE_CALLS  MEM_IMPLICIT_FREE_BYTES  MEM_IMPLICIT_FREE_CALLS
         ```
     </TabItem>
 </Tabs>
@@ -68,17 +68,17 @@ Once a CUDA process starts allocating memory, the gadget will show output like:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        K8S.NODE         K8S.NAMESPACE   K8S.PODNAME   K8S.CONTAINERNAME        PID COMM              MEM_ALLOC_BYTES   MEM_FREE_BYTES  MEM_ALLOC_CALLS   MEM_FREE_CALLS  MEM_IMPLICIT_FREE_BYTES  MEM_IMPLICIT_FREE_CALLS HOST
-        minikube         default         mypod         mypod                1234567 cuda_app               2147483648       1073741824              128               64                        0                        0 DEVICE
-        minikube         default         mypod         mypod                1234567 cuda_app                134217728        134217728               16               16                        0                        0 HOST
+        K8S.NODE         K8S.NAMESPACE   K8S.PODNAME   K8S.CONTAINERNAME        PID HOST   COMM              MEM_ALLOC_BYTES   MEM_FREE_BYTES  MEM_ALLOC_CALLS   MEM_FREE_CALLS  MEM_IMPLICIT_FREE_BYTES  MEM_IMPLICIT_FREE_CALLS
+        minikube         default         mypod         mypod                1234567 DEVICE cuda_app               2147483648       1073741824              128               64                        0                        0
+        minikube         default         mypod         mypod                1234567 HOST   cuda_app                134217728        134217728               16               16                        0                        0
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        RUNTIME.CONTAINERNAME               PID COMM              MEM_ALLOC_BYTES   MEM_FREE_BYTES  MEM_ALLOC_CALLS   MEM_FREE_CALLS  MEM_IMPLICIT_FREE_BYTES  MEM_IMPLICIT_FREE_CALLS HOST
-        my-cuda-container               1234567 cuda_app                2147483648       1073741824             128               64                        0                        0 DEVICE
-        my-cuda-container               1234567 cuda_app                 134217728        134217728              16               16                        0                        0 HOST
+        RUNTIME.CONTAINERNAME               PID HOST   COMM              MEM_ALLOC_BYTES   MEM_FREE_BYTES  MEM_ALLOC_CALLS   MEM_FREE_CALLS  MEM_IMPLICIT_FREE_BYTES  MEM_IMPLICIT_FREE_CALLS
+        my-cuda-container               1234567 DEVICE cuda_app                2147483648       1073741824             128               64                        0                        0
+        my-cuda-container               1234567 HOST   cuda_app                 134217728        134217728              16               16                        0                        0
         ```
     </TabItem>
 </Tabs>
@@ -98,15 +98,15 @@ will reflect the released memory:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        K8S.NODE         K8S.NAMESPACE   K8S.PODNAME   K8S.CONTAINERNAME        PID COMM              MEM_ALLOC_BYTES   MEM_FREE_BYTES  MEM_ALLOC_CALLS   MEM_FREE_CALLS  MEM_IMPLICIT_FREE_BYTES  MEM_IMPLICIT_FREE_CALLS HOST
-        minikube         default         mypod         mypod                9876543 ollama                17179869184                0             1024                0              17179869184                        1 DEVICE
+        K8S.NODE         K8S.NAMESPACE   K8S.PODNAME   K8S.CONTAINERNAME        PID HOST   COMM              MEM_ALLOC_BYTES   MEM_FREE_BYTES  MEM_ALLOC_CALLS   MEM_FREE_CALLS  MEM_IMPLICIT_FREE_BYTES  MEM_IMPLICIT_FREE_CALLS
+        minikube         default         mypod         mypod                9876543 DEVICE ollama                17179869184                0             1024                0              17179869184                        1
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        RUNTIME.CONTAINERNAME               PID COMM              MEM_ALLOC_BYTES   MEM_FREE_BYTES  MEM_ALLOC_CALLS   MEM_FREE_CALLS  MEM_IMPLICIT_FREE_BYTES  MEM_IMPLICIT_FREE_CALLS HOST
-        ollama-container                9876543 ollama               17179869184                 0             1024                0              17179869184                        1 DEVICE
+        RUNTIME.CONTAINERNAME               PID HOST   COMM              MEM_ALLOC_BYTES   MEM_FREE_BYTES  MEM_ALLOC_CALLS   MEM_FREE_CALLS  MEM_IMPLICIT_FREE_BYTES  MEM_IMPLICIT_FREE_CALLS
+        ollama-container                9876543 DEVICE ollama               17179869184                 0             1024                0              17179869184                        1
         ```
     </TabItem>
 </Tabs>

@@ -80,8 +80,8 @@ Now, run the gadget and see how it shows the open file:
 <TabItem value="kubectl-gadget" label="kubectl gadget">
 ```bash
 $ kubectl gadget run snapshot_file:%IG_TAG%
-K8S.NODE         K8S.NAMESPACE   K8S.PODNAME         K8S.CONTAINERNAME   COMM   PID   TID   FD   PATH      TYPE       FLAGS    
-minikube-docker  default         test-snapshot-file  test-snapshot-file  tail   5432  5432  3    demo.txt  REGULAR    O_RDONLY  
+K8S.NODE         K8S.NAMESPACE   K8S.PODNAME         K8S.CONTAINERNAME   COMM   PID   TID   FD  TYPE      PATH        FLAGS
+minikube-docker  default         test-snapshot-file  test-snapshot-file  tail   5432  5432  3   REGULAR   demo.txt    O_RDONLY
 ^C
 ```
 </TabItem>
@@ -89,8 +89,8 @@ minikube-docker  default         test-snapshot-file  test-snapshot-file  tail   
 <TabItem value="ig" label="ig">
 ```bash
 $ sudo ig run snapshot_file:%IG_TAG% -c test-snapshot-file
-RUNTIME.CONTAINERNAME             COMM               PID        TID   FD         PATH            TYPE            FLAGS              
-test-snapshot-file                tail               5321       5321  3          demo.txt        REGULAR         O_RDONLY
+RUNTIME.CONTAINERNAME             COMM               PID        TID   FD        TYPE            PATH             FLAGS
+test-snapshot-file                tail               5321       5321  3         REGULAR         demo.txt         O_RDONLY
 ^C
 ```
 </TabItem>
