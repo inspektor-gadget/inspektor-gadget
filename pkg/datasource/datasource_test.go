@@ -348,6 +348,31 @@ func TestDataSourceStaticFieldsTooBig(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestDataSourceStaticFieldsSameOrderAs(t *testing.T) {
+	t.Parallel()
+
+	ds, err := New(TypeSingle, "event")
+	require.NoError(t, err)
+
+	_, err = ds.AddStaticFields(16, []StaticField{
+		&dummyField{name: "f1", size: 8, offset: 0, kind: api.Kind_Uint64},
+		&dummyField{name: "f2", size: 8, offset: 8, kind: api.Kind_Uint64},
+	})
+	require.NoError(t, err)
+
+	f1 := ds.GetField("f1")
+	require.NotNil(t, f1)
+	_, err = ds.AddField("f1_str", api.Kind_String, WithSameOrderAs(f1))
+	require.NoError(t, err)
+
+	order := map[string]int32{}
+	for _, f := range ds.Fields() {
+		order[f.Name] = f.Order
+	}
+	require.Equal(t, order["f1"], order["f1_str"])
+	require.Less(t, order["f1_str"], order["f2"])
+}
+
 func TestDataSourceStaticFieldsStrings(t *testing.T) {
 	t.Parallel()
 

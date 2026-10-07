@@ -382,6 +382,7 @@ func (ds *dataSource) AddStaticFields(size uint32, fields []StaticField) (FieldA
 			Flags:        FieldFlagStaticMember.Uint32(),
 			Annotations:  maps.Clone(defaultFieldAnnotations),
 		}
+		nf.Order = int32(nf.Index)
 		nf.Size = f.FieldSize()
 		nf.Offs = f.FieldOffset()
 		if nf.Offs+nf.Size > size {
@@ -520,12 +521,11 @@ func (ds *dataSource) AddField(name string, kind api.Kind, opts ...FieldOption) 
 		Kind:        kind,
 		Annotations: maps.Clone(defaultFieldAnnotations),
 	}
+	// Default to the index; options such as WithOrder or WithSameOrderAs may
+	// override it, including with 0.
+	nf.Order = int32(nf.Index)
 	for _, opt := range opts {
 		opt(nf)
-	}
-	if nf.Order == 0 {
-		// If no order is set, use the current index as the order
-		nf.Order = int32(nf.Index)
 	}
 
 	if FieldFlagHasParent.In(nf.Flags) {
