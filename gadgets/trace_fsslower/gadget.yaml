@@ -6,9 +6,12 @@ sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadget
 datasources:
   malloc:
     fields:
-      delta_us:
+      delta_raw:
         annotations:
-          description: Time spent by the operation in microseconds
+          description: Time spent by the operation in nanoseconds
+      delta:
+        annotations:
+          description: Time spent by the operation
           columns.width: 8
           columns.alignment: right
       file:

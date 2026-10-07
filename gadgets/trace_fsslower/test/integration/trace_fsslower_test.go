@@ -35,7 +35,7 @@ type traceFSSlowerEvent struct {
 	Timestamp string        `json:"timestamp"`
 	Proc      utils.Process `json:"proc"`
 
-	Delta  uint64 `json:"delta_us"`
+	Delta  uint64 `json:"delta_raw"`
 	Offset uint64 `json:"offset"`
 	Size   uint64 `json:"size"`
 	Op     string `json:"op"`

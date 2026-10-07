@@ -27,7 +27,7 @@ struct event {
 	gadget_timestamp timestamp_raw;
 	struct gadget_process proc;
 
-	__u64 delta_us; // TODO: use result of https://github.com/inspektor-gadget/inspektor-gadget/issues/3393
+	gadget_duration delta_raw;
 	__s64 offset;
 	__u64 size; // TODO: use result of https://github.com/inspektor-gadget/inspektor-gadget/issues/3392
 	enum fs_file_op op_raw;
@@ -116,7 +116,7 @@ static int probe_exit(void *ctx, enum fs_file_op op, ssize_t size)
 		return 0;
 
 	gadget_process_populate(&event->proc);
-	event->delta_us = delta_ns / 1000;
+	event->delta_raw = delta_ns;
 	event->offset = datap->start;
 	event->size = op != F_FSYNC ? size : datap->end - datap->start;
 	event->op_raw = op;
