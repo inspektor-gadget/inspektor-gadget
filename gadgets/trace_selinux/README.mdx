@@ -40,6 +40,107 @@ containers, the gadget reports the offending container directly.
   the names always match the node's kernel. See
   [Permission names require access to kallsyms](#permission-names-require-access-to-kallsyms).
 
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_selinux:%IG_TAG% [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_selinux:%IG_TAG% [flags]
+        ```
+    </TabItem>
+</Tabs>
+
+## Flags
+
+### `--denials-only`
+
+Only report AVC denials. Set to `false` to also report audited events that were
+allowed (e.g. matched by an `auditallow` rule).
+
+Default value: `true`
+
+### `--collect-kstack`
+
+Collect the kernel stack trace that led to the AVC audit event (exposed in the
+`kstack` field).
+
+Default value: `false`
+
+### `--collect-ustack`
+
+Collect the user-space stack trace of the process that triggered the AVC audit
+event (exposed in the `ustack` field, with symbolized frames in
+`ustack.symbols`).
+
+Default value: `false`
+
+## Guide
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        Start the gadget in a terminal:
+
+        ```bash
+        $ kubectl gadget run trace_selinux:%IG_TAG% -A
+        K8S.NODE         K8S.NAMESPACE    K8S.PODNAME      K8S.CONTAINERNAME  COMM             PID        SCONTEXT                       TCONTEXT                       TCLASS         DENIED_PERMS
+        ```
+
+        On another terminal, trigger a SELinux denial from inside a container,
+        for example by trying to access a path the container's domain is not
+        allowed to access:
+
+        ```bash
+        $ kubectl exec -ti mypod -- cat /etc/shadow
+        ```
+
+        Go back to the first terminal and observe the denial, attributed to the
+        container:
+
+        ```bash
+        K8S.NODE         K8S.NAMESPACE    K8S.PODNAME      K8S.CONTAINERNAME  COMM             PID        SCONTEXT                       TCONTEXT                       TCLASS         DENIED_PERMS
+        minikube         default          mypod            mycontainer        cat              728870     …r:container_t:s0:c1,c2         …:unlabeled_t:s0                file           { execute_no_trans }
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        Start the gadget in a terminal:
+
+        ```bash
+        $ sudo ig run trace_selinux:%IG_TAG% --containername mycontainer
+        RUNTIME.CONTAINERNAME  COMM             PID        SCONTEXT                       TCONTEXT                       TCLASS         DENIED_PERMS
+        ```
+
+        On another terminal, run a container that triggers a SELinux denial:
+
+        ```bash
+        $ docker run --name mycontainer -ti busybox cat /etc/shadow
+        ```
+
+        Go back to the first terminal and observe the denial:
+
+        ```bash
+        RUNTIME.CONTAINERNAME  COMM             PID        SCONTEXT                       TCONTEXT                       TCLASS         DENIED_PERMS
+        mycontainer            cat              733494     …r:container_t:s0:c1,c2         …:unlabeled_t:s0                file           { execute_no_trans }
+        ```
+    </TabItem>
+</Tabs>
+
+The `DENIED_PERMS` column lists the names of the permissions that were denied
+for the given target object class, decoded from the kernel access-vector
+bitmask (the raw mask is still available in the hidden `denied` field). Use the
+`--denials-only=false` flag to also see audited events that were allowed, and
+`-o json` to see the full event including the kernel stack trace (`kstack`).
+
+Congratulations! You reached the end of this guide!
+
 ## Limitations
 
 ### Denials suppressed by `dontaudit` are not reported
@@ -107,52 +208,6 @@ everything, so it generates no denial and the gadget stays silent. Observing a
 denial requires a confined domain: a container, or a command run under
 `runcon`.
 
-## Getting started
-
-Running the gadget:
-
-<Tabs groupId="env">
-    <TabItem value="kubectl-gadget" label="kubectl gadget">
-        ```bash
-        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_selinux:%IG_TAG% [flags]
-        ```
-    </TabItem>
-
-    <TabItem value="ig" label="ig">
-        ```bash
-        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_selinux:%IG_TAG% [flags]
-        ```
-    </TabItem>
-</Tabs>
-
-## Security and privacy
-
-This gadget requires the privileges needed to load and attach eBPF programs. SELinux contexts, process identifiers, container metadata, and stack traces can disclose sensitive workload structure. Restrict access in multi-tenant environments, avoid collecting stacks unless needed, and apply output retention and access controls. AVC/auditallow storms can amplify CPU, memory, and output volume; use filters, bounded capture durations, and monitor dropped events.
-
-## Flags
-
-### `--denials-only`
-
-Only report AVC denials. Set to `false` to also report audited events that were
-allowed (e.g. matched by an `auditallow` rule).
-
-Default value: `true`
-
-### `--collect-kstack`
-
-Collect the kernel stack trace that led to the AVC audit event (exposed in the
-`kstack` field).
-
-Default value: `false`
-
-### `--collect-ustack`
-
-Collect the user-space stack trace of the process that triggered the AVC audit
-event (exposed in the `ustack` field, with symbolized frames in
-`ustack.symbols`).
-
-Default value: `false`
-
 ## Visualizing stack traces
 
 In the default table view, a stack trace is rendered as a single truncated line.
@@ -190,61 +245,6 @@ $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_selinux:%IG_TAG% \
     --collect-kstack --collect-ustack
 ```
 
-## Guide
+## Security and privacy
 
-<Tabs groupId="env">
-    <TabItem value="kubectl-gadget" label="kubectl gadget">
-        Start the gadget in a terminal:
-
-        ```bash
-        $ kubectl gadget run trace_selinux:%IG_TAG% -A
-        K8S.NODE         K8S.NAMESPACE    K8S.PODNAME      K8S.CONTAINERNAME  COMM             PID        SCONTEXT                       TCONTEXT                       TCLASS         DENIED_PERMS
-        ```
-
-        On another terminal, trigger a SELinux denial from inside a container,
-        for example by trying to access a path the container's domain is not
-        allowed to access:
-
-        ```bash
-        $ kubectl exec -ti mypod -- cat /etc/shadow
-        ```
-
-        Go back to the first terminal and observe the denial, attributed to the
-        container:
-
-        ```bash
-        K8S.NODE         K8S.NAMESPACE    K8S.PODNAME      K8S.CONTAINERNAME  COMM             PID        SCONTEXT                       TCONTEXT                       TCLASS         DENIED_PERMS
-        minikube         default          mypod            mycontainer        cat              728870     …r:container_t:s0:c1,c2         …:unlabeled_t:s0                file           { execute_no_trans }
-        ```
-    </TabItem>
-
-    <TabItem value="ig" label="ig">
-        Start the gadget in a terminal:
-
-        ```bash
-        $ sudo ig run trace_selinux:%IG_TAG% --containername mycontainer
-        RUNTIME.CONTAINERNAME  COMM             PID        SCONTEXT                       TCONTEXT                       TCLASS         DENIED_PERMS
-        ```
-
-        On another terminal, run a container that triggers a SELinux denial:
-
-        ```bash
-        $ docker run --name mycontainer -ti busybox cat /etc/shadow
-        ```
-
-        Go back to the first terminal and observe the denial:
-
-        ```bash
-        RUNTIME.CONTAINERNAME  COMM             PID        SCONTEXT                       TCONTEXT                       TCLASS         DENIED_PERMS
-        mycontainer            cat              733494     …r:container_t:s0:c1,c2         …:unlabeled_t:s0                file           { execute_no_trans }
-        ```
-    </TabItem>
-</Tabs>
-
-The `DENIED_PERMS` column lists the names of the permissions that were denied
-for the given target object class, decoded from the kernel access-vector
-bitmask (the raw mask is still available in the hidden `denied` field). Use the
-`--denials-only=false` flag to also see audited events that were allowed, and
-`-o json` to see the full event including the kernel stack trace (`kstack`).
-
-Congratulations! You reached the end of this guide!
+This gadget requires the privileges needed to load and attach eBPF programs. SELinux contexts, process identifiers, container metadata, and stack traces can disclose sensitive workload structure. Restrict access in multi-tenant environments, avoid collecting stacks unless needed, and apply output retention and access controls. AVC/auditallow storms can amplify CPU, memory, and output volume; use filters, bounded capture durations, and monitor dropped events.
