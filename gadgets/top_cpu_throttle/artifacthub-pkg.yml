@@ -1,10 +1,10 @@
 # Artifact Hub package metadata file
-version: 0.56.2
+version: 0.57.0
 name: "top cpu throttle"
 category: monitoring-logging
 displayName: "top cpu throttle"
-createdAt: "2026-10-01T13:37:41Z"
-digest: "2026-10-01T13:37:41Z"
+createdAt: "2026-10-05T18:06:50Z"
+digest: "2026-10-05T18:06:50Z"
 description: "Periodically report CFS CPU bandwidth throttling per cgroup"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""
