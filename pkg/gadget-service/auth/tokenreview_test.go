@@ -58,6 +58,7 @@ func TestAuthenticateAddsPolicyScope(t *testing.T) {
 		return true, &authv1.TokenReview{Status: authv1.TokenReviewStatus{
 			Authenticated: true,
 			User:          authv1.UserInfo{Username: "tenant"},
+			Audiences:     []string{Audience},
 		}}, nil
 	})
 	client.PrependReactor("create", "subjectaccessreviews", func(action k8stesting.Action) (bool, runtime.Object, error) {
@@ -79,4 +80,57 @@ func TestAuthenticateAddsPolicyScope(t *testing.T) {
 func TestAuthenticateRequiresToken(t *testing.T) {
 	_, err := authenticate(context.Background(), fake.NewSimpleClientset(), logger.DefaultLogger(), "test", DefaultScopeConfig())
 	assert.Equal(t, codes.Unauthenticated, status.Code(err))
+}
+
+func TestAuthenticateTokenReview(t *testing.T) {
+	for _, test := range []struct {
+		name          string
+		authenticated bool
+		audiences     []string
+		wantErr       bool
+	}{
+		{"not authenticated", false, []string{Audience}, true},
+		{"audience-unaware authenticator", true, nil, true},
+		{"empty audiences", true, []string{}, true},
+		{"different audience", true, []string{"https://kubernetes.default.svc"}, true},
+		{"audience with suffix", true, []string{Audience + "x"}, true},
+		{"audience prefix only", true, []string{Audience[:len(Audience)-1]}, true},
+		{"exact audience", true, []string{Audience}, false},
+		{"audience among others", true, []string{"https://kubernetes.default.svc", Audience}, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			client := fake.NewSimpleClientset(
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-a"}},
+			)
+			client.PrependReactor("create", "tokenreviews", func(action k8stesting.Action) (bool, runtime.Object, error) {
+				spec := action.(k8stesting.CreateAction).GetObject().(*authv1.TokenReview).Spec
+				assert.Equal(t, "token", spec.Token)
+				assert.Equal(t, []string{Audience}, spec.Audiences)
+				return true, &authv1.TokenReview{Status: authv1.TokenReviewStatus{
+					Authenticated: test.authenticated,
+					User:          authv1.UserInfo{Username: "tenant"},
+					Audiences:     test.audiences,
+				}}, nil
+			})
+			sarCount := 0
+			client.PrependReactor("create", "subjectaccessreviews", func(k8stesting.Action) (bool, runtime.Object, error) {
+				sarCount++
+				return true, &authzv1.SubjectAccessReview{Status: authzv1.SubjectAccessReviewStatus{Allowed: true}}, nil
+			})
+
+			ctx := metadata.NewIncomingContext(context.Background(), metadata.Pairs(authorizationHeader, "Bearer token"))
+			ctx, err := authenticate(ctx, client, logger.DefaultLogger(), "test", DefaultScopeConfig())
+			if test.wantErr {
+				assert.Equal(t, codes.Unauthenticated, status.Code(err))
+				assert.Zero(t, sarCount, "no SubjectAccessReview must be sent for a rejected token")
+				_, ok := PolicyScopeFromContext(ctx)
+				assert.False(t, ok)
+				return
+			}
+			require.NoError(t, err)
+			scope, ok := PolicyScopeFromContext(ctx)
+			require.True(t, ok)
+			assert.Equal(t, []string{"team-a"}, scope.AllowedNamespaces)
+		})
+	}
 }
