@@ -229,7 +229,7 @@ int ig_prof_cpu(struct bpf_perf_event_data *ctx)
 	gadget_process_populate(&key->proc);
 
 	if (user_stacks_only)
-		key->kern_stack_raw = -1;
+		key->kern_stack_raw = GADGET_KERNEL_STACK_ID_NONE;
 	else
 		key->kern_stack_raw =
 			bpf_get_stackid(&ctx->regs, &ig_kstack, 0);
@@ -248,7 +248,11 @@ int ig_prof_cpu(struct bpf_perf_event_data *ctx)
 		__builtin_memset(ustack_raw, 0, sizeof(*ustack_raw));
 	key->user_stack_id = ustack_raw->stack_id;
 
-	if (key->kern_stack_raw >= 0) {
+	// kern_stack_raw is unsigned, so this must be a signed comparison: it
+	// holds either a valid stack id, GADGET_KERNEL_STACK_ID_NONE, or the
+	// negative errno of a failed bpf_get_stackid(). Only a valid id means
+	// there is a kernel stack whose top frame is worth fixing up.
+	if ((__s32)key->kern_stack_raw >= 0) {
 		// populate extras to fix the kernel stack
 		u64 ip = PT_REGS_IP(&ctx->regs);
 

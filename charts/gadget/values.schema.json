@@ -240,6 +240,10 @@
         }
       }
     },
+    "dropCapSysAdmin": {
+      "type": "boolean",
+      "description": "Drop CAP_SYS_ADMIN and use CAP_BPF and CAP_PERFMON instead. Disables fanotify-based container detection. Ignored if capabilities is set."
+    },
     "skipDefaultTolerations": {
       "type": "boolean",
       "description": "Skip the default NoSchedule and NoExecute Exists tolerations."

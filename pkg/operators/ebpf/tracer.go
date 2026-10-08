@@ -259,7 +259,12 @@ func (t *Tracer) processEvent(gadgetCtx operators.GadgetContext, fullSample []by
 				return fmt.Errorf("getting rest length: %w", err)
 			}
 
-			if t.eventSize+xlen > sampleLen {
+			// Compare against the available trailing bytes directly.
+			// sampleLen > t.eventSize holds in this branch, so the
+			// subtraction cannot underflow; computing t.eventSize+xlen
+			// instead would overflow uint32 for an xlen coming from user
+			// data near 2^32 and let the guard pass.
+			if xlen > sampleLen-t.eventSize {
 				return fmt.Errorf("rest length %d is larger than data length %d - event size %d",
 					xlen, sampleLen, t.eventSize)
 			}

@@ -48,9 +48,9 @@ With the bridge running and a CUDA workload active:
 <TabItem value="ig" label="ig">
 ```bash
 $ sudo ig run gpu_top_per_pid:%IG_TAG%
-RUNTIME.CONTAINERNAME  COMM       PID    SM_UTIL  MEM_UTIL    MEM_USED  DEVICE  N
-training-job-7         python    12345        92        65       14 GB       0  1
-inference-server-2     python    12346        24        18        4 GB       0  1
+RUNTIME.CONTAINERNAME  COMM       PID     MEM_USED   SM_UTIL  MEM_UTIL  DEVICE  N
+training-job-7         python    12345       14 GB        92        65       0  1
+inference-server-2     python    12346        4 GB        24        18       0  1
 ^C
 ```
 </TabItem>

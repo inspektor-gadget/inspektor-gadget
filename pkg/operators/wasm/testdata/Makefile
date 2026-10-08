@@ -1,5 +1,6 @@
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 IG ?= ig
+SUDO ?= sudo
 
 TEST_ARTIFACTS = \
 	fields \
@@ -7,6 +8,7 @@ TEST_ARTIFACTS = \
 	dataemit \
 	badguest \
 	baderrptr \
+	noretval \
 	params \
 	config \
 	map \
@@ -22,13 +24,13 @@ all: $(TEST_ARTIFACTS)
 .PHONY: $(TEST_ARTIFACTS)
 $(TEST_ARTIFACTS):
 	@echo "Building $@"
-	@sudo IG_SOURCE_PATH=$(realpath $(ROOT_DIR)/../../../..) $(IG) image build -t $@:latest $@
-	@sudo $(IG) image export $@:latest $@.tar
+	@$(SUDO) IG_SOURCE_PATH=$(realpath $(ROOT_DIR)/../../../..) $(IG) image build -t $@:latest $@
+	@$(SUDO) $(IG) image export $@:latest $@.tar
 	# TODO: This fails with "Error: removing gadget image: unable to reload index:"
 	#@sudo $(IG) image remove $@:latest
 
 .PHONY:
 clean:
 	for ARTIFACT in $(TEST_ARTIFACTS); do \
-		sudo rm $$ARTIFACT.tar; \
+		$(SUDO) rm $$ARTIFACT.tar; \
 	done

@@ -139,11 +139,11 @@ Then, start the audit_seccomp gadget and observe how it logs the `unshare` sysca
 
 ```bash
 $ kubectl gadget run audit_seccomp:%IG_TAG%
-K8S.NODE          K8S.NAMESPACE   K8S.PODNAME     K8S.CONTAINERN… COMM          PID     TID      CODE      SYSCALL
-minikube-docker   default         mypod           container1      mkdir       60482   60482      …_RET_LOG SYS_MKDIR
-minikube-docker   default         mypod           container1      unshare     60483   60483      …L_THREAD SYS_UNSH…
-minikube-docker   default         mypod           container1      mkdir       60553   60553      …_RET_LOG SYS_MKDIR
-minikube-docker   default         mypod           container1      unshare     60554   60554      …L_THREAD SYS_UNSH…
+K8S.NODE          K8S.NAMESPACE   K8S.PODNAME     K8S.CONTAINERN… COMM          PID     TID SYSCALL        CODE
+minikube-docker   default         mypod           container1      mkdir       60482   60482 SYS_MKDIR      …_RET_LOG
+minikube-docker   default         mypod           container1      unshare     60483   60483 SYS_UNSH…      …L_THREAD
+minikube-docker   default         mypod           container1      mkdir       60553   60553 SYS_MKDIR      …_RET_LOG
+minikube-docker   default         mypod           container1      unshare     60554   60554 SYS_UNSH…      …L_THREAD
 ^C
 ```
 
@@ -152,12 +152,12 @@ minikube-docker   default         mypod           container1      unshare     60
 <TabItem value="ig" label="ig">
 
 ```bash
-$ sudo -E ig run audit_seccomp:%IG_TAG%
-RUNTIME.CONTAINERNAME COMM                  PID         TID         CODE          SYSCALL
-test-audit-seccomp    unshare            485855      485855         …_KILL_THREAD SYS_UNSHARE
-test-audit-seccomp    unshare            485865      485865         …_KILL_THREAD SYS_UNSHARE
-test-audit-seccomp    unshare            485868      485868         …_KILL_THREAD SYS_UNSHARE
-test-audit-seccomp    unshare            485888      485888         …_KILL_THREAD SYS_UNSHARE
+$ sudo ig run audit_seccomp:%IG_TAG%
+RUNTIME.CONTAINERNAME COMM                  PID         TID SYSCALL             CODE
+test-audit-seccomp    unshare            485855      485855 SYS_UNSHARE         …_KILL_THREAD
+test-audit-seccomp    unshare            485865      485865 SYS_UNSHARE         …_KILL_THREAD
+test-audit-seccomp    unshare            485868      485868 SYS_UNSHARE         …_KILL_THREAD
+test-audit-seccomp    unshare            485888      485888 SYS_UNSHARE         …_KILL_THREAD
 ^C
 ```
 
@@ -188,7 +188,7 @@ $ kubectl gadget run audit_seccomp:%IG_TAG% --collect-ustack -o jsonpretty
 <TabItem value="ig" label="ig">
 
 ```bash
-$ sudo -E ig run audit_seccomp:%IG_TAG% --collect-ustack -o jsonpretty
+$ sudo ig run audit_seccomp:%IG_TAG% --collect-ustack -o jsonpretty
 ...
   "ustack": {
     "addresses": "[0]0x000000000040332e; [1]0x00000000004771e6; [2]0x000000000047752e; [3]0x000000000048250b; [4]0x00000000004829ae; [5]0x0000000000482a7e; [6]0x0000000000482afe; [7]0x0000000000482b7e; [8]0x0000000000435a9d; [9]0x00000000004625a1; ",
