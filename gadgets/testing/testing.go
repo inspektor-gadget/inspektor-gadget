@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -164,6 +165,26 @@ func RequireInitPidNs(t testing.TB) {
 	if !*info.ServerPidNamespace.IsInit {
 		t.Skip("Skipping test because the gadget service does not run in the initial PID namespace")
 	}
+}
+
+// RequireDisposableVM skips the test unless it runs in a throwaway VM started
+// by vimto, as in the kernel test job of the CI. It is meant for tests that
+// change the global kernel state irreversibly, e.g. loading an SELinux policy.
+//
+// A marker file cannot be used: vimto shares the host's filesystem with the
+// VM. Instead, check that the kernel booted with vimto as init.
+func RequireDisposableVM(t testing.TB) {
+	t.Helper()
+
+	cmdline, err := os.ReadFile("/proc/cmdline")
+	require.NoError(t, err)
+
+	for _, arg := range strings.Fields(string(cmdline)) {
+		if path, ok := strings.CutPrefix(arg, "init="); ok && strings.HasPrefix(filepath.Base(path), "vimto") {
+			return
+		}
+	}
+	t.Skip("Skipping test because it requires a disposable VM started by vimto")
 }
 
 func RemoveMemlock(t testing.TB) {
