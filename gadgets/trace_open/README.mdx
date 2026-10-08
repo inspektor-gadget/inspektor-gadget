@@ -88,24 +88,24 @@ thus tracing on all nodes for a pod called "mypod":
 
 ```bash
 $ kubectl gadget run trace_open:%IG_TAG% --podname mypod
-K8S.NODE           K8S.NAMESPACE K8S.PODNAME   K8S.CONTAINE… COMM        PID     TID      FD FNAME                    MODE    ERROR
-minikube-docker    default       mypod         mypod         true     511559  511559       0 /etc/ld.so.cache         ------… ENOEN
-minikube-docker    default       mypod         mypod         true     511559  511559       0 /lib/x86_64-linux-gnu/g… ------… ENOEN
-minikube-docker    default       mypod         mypod         true     511559  511559       0 /lib/x86_64-linux-gnu/g… ------… ENOEN
-minikube-docker    default       mypod         mypod         true     511559  511559       0 /lib/x86_64-linux-gnu/t… ------… ENOEN
-minikube-docker    default       mypod         mypod         true     511559  511559       0 /lib/x86_64-linux-gnu/t… ------… ENOEN
-minikube-docker    default       mypod         mypod         true     511559  511559       0 /lib/x86_64-linux-gnu/t… ------… ENOEN
-minikube-docker    default       mypod         mypod         true     511559  511559       0 /lib/x86_64-linux-gnu/t… ------… ENOEN
-minikube-docker    default       mypod         mypod         true     511559  511559       0 /lib/x86_64-linux-gnu/x… ------… ENOEN
-minikube-docker    default       mypod         mypod         true     511559  511559       0 /lib/x86_64-linux-gnu/x… ------… ENOEN
-minikube-docker    default       mypod         mypod         true     511559  511559       0 /lib/x86_64-linux-gnu/x… ------… ENOEN
-minikube-docker    default       mypod         mypod         true     511559  511559       0 /lib/x86_64-linux-gnu/l… ------… ENOEN
+K8S.NODE           K8S.NAMESPACE K8S.PODNAME   K8S.CONTAINE… COMM        PID     TID ERROR      FD MODE    FNAME
+minikube-docker    default       mypod         mypod         true     511559  511559 ENOEN       0 ------… /etc/ld.so.cache
+minikube-docker    default       mypod         mypod         true     511559  511559 ENOEN       0 ------… /lib/x86_64-linux-gnu/g…
+minikube-docker    default       mypod         mypod         true     511559  511559 ENOEN       0 ------… /lib/x86_64-linux-gnu/g…
+minikube-docker    default       mypod         mypod         true     511559  511559 ENOEN       0 ------… /lib/x86_64-linux-gnu/t…
+minikube-docker    default       mypod         mypod         true     511559  511559 ENOEN       0 ------… /lib/x86_64-linux-gnu/t…
+minikube-docker    default       mypod         mypod         true     511559  511559 ENOEN       0 ------… /lib/x86_64-linux-gnu/t…
+minikube-docker    default       mypod         mypod         true     511559  511559 ENOEN       0 ------… /lib/x86_64-linux-gnu/t…
+minikube-docker    default       mypod         mypod         true     511559  511559 ENOEN       0 ------… /lib/x86_64-linux-gnu/x…
+minikube-docker    default       mypod         mypod         true     511559  511559 ENOEN       0 ------… /lib/x86_64-linux-gnu/x…
+minikube-docker    default       mypod         mypod         true     511559  511559 ENOEN       0 ------… /lib/x86_64-linux-gnu/x…
+minikube-docker    default       mypod         mypod         true     511559  511559 ENOEN       0 ------… /lib/x86_64-linux-gnu/l…
 ...
-minikube-docker    default       mypod         mypod         whoami   511560  511560       0 /lib/x86_64/libm.so.6    ------… ENOEN
-minikube-docker    default       mypod         mypod         whoami   511560  511560       3 /lib/libm.so.6           ------…
-minikube-docker    default       mypod         mypod         whoami   511560  511560       3 /lib/libresolv.so.2      ------…
-minikube-docker    default       mypod         mypod         whoami   511560  511560       3 /lib/libc.so.6           ------…
-minikube-docker    default       mypod         mypod         whoami   511560  511560       3 /etc/passwd              ------…
+minikube-docker    default       mypod         mypod         whoami   511560  511560 ENOEN       0 ------… /lib/x86_64/libm.so.6
+minikube-docker    default       mypod         mypod         whoami   511560  511560             3 ------… /lib/libm.so.6
+minikube-docker    default       mypod         mypod         whoami   511560  511560             3 ------… /lib/libresolv.so.2
+minikube-docker    default       mypod         mypod         whoami   511560  511560             3 ------… /lib/libc.so.6
+minikube-docker    default       mypod         mypod         whoami   511560  511560             3 ------… /etc/passwd
 ^C
 ```
 
@@ -117,27 +117,27 @@ We can stop the gadget by hitting Ctrl-C.
   <TabItem value="ig" label="ig">
 ```bash
 $ sudo ig run trace_open:%IG_TAG% --containername test-trace-open
-RUNTIME.CONTAINERNA… COMM                PID         TID         FD FNAME                    MODE       ERROR
-test-trace-open      true             515458      515458          0 /etc/ld.so.cache         ---------- ENOENT
-test-trace-open      true             515458      515458          0 /lib/x86_64-linux-gnu/g… ---------- ENOENT
-test-trace-open      true             515458      515458          0 /lib/x86_64-linux-gnu/g… ---------- ENOENT
-test-trace-open      true             515458      515458          0 /lib/x86_64-linux-gnu/t… ---------- ENOENT
-test-trace-open      true             515458      515458          0 /lib/x86_64-linux-gnu/t… ---------- ENOENT
-test-trace-open      true             515458      515458          0 /lib/x86_64-linux-gnu/t… ---------- ENOENT
-test-trace-open      true             515458      515458          0 /lib/x86_64-linux-gnu/t… ---------- ENOENT
-test-trace-open      true             515458      515458          0 /lib/x86_64-linux-gnu/x… ---------- ENOENT
-test-trace-open      true             515458      515458          0 /lib/x86_64-linux-gnu/x… ---------- ENOENT
-test-trace-open      true             515458      515458          0 /lib/x86_64-linux-gnu/x… ---------- ENOENT
+RUNTIME.CONTAINERNA… COMM                PID         TID ERROR          FD MODE       FNAME
+test-trace-open      true             515458      515458 ENOENT          0 ---------- /etc/ld.so.cache
+test-trace-open      true             515458      515458 ENOENT          0 ---------- /lib/x86_64-linux-gnu/g…
+test-trace-open      true             515458      515458 ENOENT          0 ---------- /lib/x86_64-linux-gnu/g…
+test-trace-open      true             515458      515458 ENOENT          0 ---------- /lib/x86_64-linux-gnu/t…
+test-trace-open      true             515458      515458 ENOENT          0 ---------- /lib/x86_64-linux-gnu/t…
+test-trace-open      true             515458      515458 ENOENT          0 ---------- /lib/x86_64-linux-gnu/t…
+test-trace-open      true             515458      515458 ENOENT          0 ---------- /lib/x86_64-linux-gnu/t…
+test-trace-open      true             515458      515458 ENOENT          0 ---------- /lib/x86_64-linux-gnu/x…
+test-trace-open      true             515458      515458 ENOENT          0 ---------- /lib/x86_64-linux-gnu/x…
+test-trace-open      true             515458      515458 ENOENT          0 ---------- /lib/x86_64-linux-gnu/x…
 ...
-test-trace-open      whoami           515459      515459          0 /lib/tls/x86_64/libm.so… ---------- ENOENT
-test-trace-open      whoami           515459      515459          0 /lib/tls/libm.so.6       ---------- ENOENT
-test-trace-open      whoami           515459      515459          0 /lib/x86_64/x86_64/libm… ---------- ENOENT
-test-trace-open      whoami           515459      515459          0 /lib/x86_64/libm.so.6    ---------- ENOENT
-test-trace-open      whoami           515459      515459          0 /lib/x86_64/libm.so.6    ---------- ENOENT
-test-trace-open      whoami           515459      515459          3 /lib/libm.so.6           ----------
-test-trace-open      whoami           515459      515459          3 /lib/libresolv.so.2      ----------
-test-trace-open      whoami           515459      515459          3 /lib/libc.so.6           ----------
-test-trace-open      whoami           515459      515459          3 /etc/passwd              ----------
+test-trace-open      whoami           515459      515459 ENOENT          0 ---------- /lib/tls/x86_64/libm.so…
+test-trace-open      whoami           515459      515459 ENOENT          0 ---------- /lib/tls/libm.so.6
+test-trace-open      whoami           515459      515459 ENOENT          0 ---------- /lib/x86_64/x86_64/libm…
+test-trace-open      whoami           515459      515459 ENOENT          0 ---------- /lib/x86_64/libm.so.6
+test-trace-open      whoami           515459      515459 ENOENT          0 ---------- /lib/x86_64/libm.so.6
+test-trace-open      whoami           515459      515459                 3 ---------- /lib/libm.so.6
+test-trace-open      whoami           515459      515459                 3 ---------- /lib/libresolv.so.2
+test-trace-open      whoami           515459      515459                 3 ---------- /lib/libc.so.6
+test-trace-open      whoami           515459      515459                 3 ---------- /etc/passwd
 ^C
 ```
   </TabItem>
