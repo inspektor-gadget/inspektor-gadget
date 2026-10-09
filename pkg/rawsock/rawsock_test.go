@@ -134,7 +134,9 @@ func TestOpenRawSockCurrentNetns(t *testing.T) {
 // makes - since magic links are refused there and only the procfs branch opens
 // them.
 func TestOpenNetnsPathIsCloseOnExec(t *testing.T) {
-	utilstest.RequireRoot(t)
+	if !privateMountTest(t, 0) {
+		return
+	}
 
 	saved := host.HostRoot
 	host.HostRoot = "/"
@@ -145,11 +147,18 @@ func TestOpenNetnsPathIsCloseOnExec(t *testing.T) {
 	require.NoError(t, os.WriteFile(bind, nil, 0o644))
 	require.NoError(t, unix.Mount(fmt.Sprintf("/proc/%d/task/%d/ns/net", os.Getpid(), unix.Gettid()),
 		bind, "none", unix.MS_BIND, ""))
-	t.Cleanup(func() { unix.Unmount(bind, unix.MNT_DETACH) })
+	t.Cleanup(func() { require.NoError(t, unix.Unmount(bind, unix.MNT_DETACH)) })
 
-	handle, _, err := OpenNetnsPath(bind)
+	handle, inode, err := OpenNetnsPath(bind)
 	require.NoError(t, err)
 	t.Cleanup(func() { handle.Close() })
+	require.Equal(t, statInode(t, bind), inode)
+	var stat unix.Stat_t
+	require.NoError(t, unix.Fstat(int(handle), &stat))
+	require.Equal(t, stat.Ino, inode)
+	var statfs unix.Statfs_t
+	require.NoError(t, unix.Fstatfs(int(handle), &statfs))
+	require.EqualValues(t, unix.NSFS_MAGIC, statfs.Type)
 
 	flags, err := unix.FcntlInt(uintptr(handle), unix.F_GETFD, 0)
 	require.NoError(t, err)
@@ -285,6 +294,78 @@ func TestOpenNetnsPathConfinesToHostRoot(t *testing.T) {
 	})
 }
 
+func TestOpenNetnsPathHostRootSyntax(t *testing.T) {
+	root := t.TempDir()
+	saved := host.HostRoot
+	host.HostRoot = root
+	t.Cleanup(func() { host.HostRoot = saved })
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "proc", "42", "ns"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "proc", "42", "ns", "net"), nil, 0o644))
+
+	for _, path := range []string{"/proc/42/ns/net", "proc/42/ns/net"} {
+		handle, _, err := OpenNetnsPath(path)
+		require.Error(t, err)
+		require.Equal(t, -1, int(handle))
+		require.Contains(t, err.Error(), "does not refer to a namespace", "the root-relative fixture must be reached")
+	}
+	for _, path := range []string{filepath.Join(root, "proc", "42", "ns", "net"), "/host/proc/42/ns/net"} {
+		handle, _, err := OpenNetnsPath(path)
+		require.Error(t, err)
+		require.Equal(t, -1, int(handle))
+		require.NotContains(t, err.Error(), "does not refer to a namespace", "host-root prefixes are not aliases")
+	}
+}
+
+func TestOpenNetnsPathImpostorNsDirectory(t *testing.T) {
+	root, outside := t.TempDir(), t.TempDir()
+	saved := host.HostRoot
+	host.HostRoot = root
+	t.Cleanup(func() { host.HostRoot = saved })
+	require.NoError(t, os.Mkdir(filepath.Join(root, "ns"), 0o755))
+	loot := filepath.Join(outside, "loot")
+	require.NoError(t, os.WriteFile(loot, nil, 0o644))
+	require.NoError(t, os.Symlink(loot, filepath.Join(root, "ns", "net")))
+
+	handle, _, err := OpenNetnsPath("/ns/net")
+	require.Error(t, err)
+	require.Equal(t, -1, int(handle))
+	require.NotContains(t, err.Error(), "does not refer to a namespace", "the impostor must not open an out-of-root file")
+}
+
+// TestOpenNetnsPathProcfsAliases catches pathname-prefix discrimination: these
+// ordinary directory symlinks reach genuine procfs without starting at /proc.
+func TestOpenNetnsPathProcfsAliases(t *testing.T) {
+	saved := host.HostRoot
+	host.HostRoot = "/"
+	t.Cleanup(func() { host.HostRoot = saved })
+
+	dir := t.TempDir()
+	require.NoError(t, os.Symlink("/proc", filepath.Join(dir, "alternate-proc")))
+	require.NoError(t, os.Symlink(fmt.Sprintf("/proc/%d/ns", os.Getpid()), filepath.Join(dir, "ns")))
+
+	for _, path := range []string{
+		filepath.Join(dir, "alternate-proc", fmt.Sprint(os.Getpid()), "ns", "net"),
+		filepath.Join(dir, "ns", "net"),
+	} {
+		t.Run(path, func(t *testing.T) {
+			handle, inode, err := OpenNetnsPath(path)
+			require.NoError(t, err, "a real procfs namespace entry must not depend on the mount prefix")
+			t.Cleanup(func() { handle.Close() })
+
+			var stat unix.Stat_t
+			require.NoError(t, unix.Fstat(int(handle), &stat))
+			require.Equal(t, statInode(t, "/proc/self/ns/net"), inode)
+			require.Equal(t, stat.Ino, inode, "the inode must come from the returned descriptor")
+			var statfs unix.Statfs_t
+			require.NoError(t, unix.Fstatfs(int(handle), &statfs))
+			require.EqualValues(t, unix.NSFS_MAGIC, statfs.Type)
+			flags, err := unix.FcntlInt(uintptr(handle), unix.F_GETFD, 0)
+			require.NoError(t, err)
+			require.NotZero(t, flags&unix.FD_CLOEXEC)
+		})
+	}
+}
+
 // TestOpenNetnsPathProcfsCarveOutIsNarrow checks the one place where a path
 // component is left for the kernel to resolve.
 //
@@ -295,6 +376,21 @@ func TestOpenNetnsPathConfinesToHostRoot(t *testing.T) {
 // resolution rather than after opening it. Both conditions are asserted here,
 // along with the legitimate path the carve-out exists for.
 func TestOpenNetnsPathProcfsCarveOutIsNarrow(t *testing.T) {
+	t.Run("an arbitrary terminal procfs magic link is confined", func(t *testing.T) {
+		saved := host.HostRoot
+		host.HostRoot = "/"
+		t.Cleanup(func() { host.HostRoot = saved })
+
+		file, err := os.Open("/proc/self/ns/net")
+		require.NoError(t, err)
+		defer file.Close()
+		for _, path := range []string{fmt.Sprintf("/proc/self/fd/%d", file.Fd()), "/proc/self/ns/mnt"} {
+			handle, _, err := OpenNetnsPath(path)
+			require.Error(t, err, "procfs alone must not authorize arbitrary terminal magic links")
+			require.Equal(t, -1, int(handle))
+			require.NotContains(t, err.Error(), "does not refer to a namespace")
+		}
+	})
 	t.Run("a namespace link still opens", func(t *testing.T) {
 		saved := host.HostRoot
 		host.HostRoot = "/"
@@ -361,7 +457,7 @@ func TestOpenNetnsPathProcfsCarveOutIsNarrow(t *testing.T) {
 		handle, _, err := OpenNetnsPath("/proc/1234/ns/net")
 		require.Error(t, err)
 		require.Equal(t, -1, int(handle), "no file descriptor must be returned on error")
-		require.Contains(t, err.Error(), "is not on procfs",
+		require.NotContains(t, err.Error(), "does not refer to a namespace",
 			"the shape alone must not buy an unconfined open")
 	})
 }

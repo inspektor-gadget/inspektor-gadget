@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"syscall"
 	"unsafe"
@@ -66,16 +65,31 @@ func OpenRawSock(pid uint32) (int, error) {
 // inode, both taken from the same file descriptor, so the two cannot end up
 // describing different namespaces. The caller owns the handle and must close it.
 //
-// The path comes from the user and is interpreted inside the host filesystem,
-// which is mounted elsewhere in a container, so it is confined to
-// host.HostRoot: no symlink along the way may escape it.
+// The path is interpreted relative to host.HostRoot. Ordinary symlink
+// resolution is confined to that root; a final procfs namespace magic link is
+// opened through its verified parent directory instead.
 //
 // It must also live on nsfs. Callers key attachments by inode, and inodes are
 // only comparable within one filesystem, so without the check an unrelated file
 // could alias an existing attachment.
 func OpenNetnsPath(path string) (netns.NsHandle, uint64, error) {
-	if isProcfsPath(path) {
-		return openProcfsNetnsPath(path)
+	parent, base := filepath.Split(path)
+	dirHandle, err := pathrs.OpenInRoot(host.HostRoot, parent)
+	if err != nil {
+		return netns.None(), 0, fmt.Errorf("resolving %q below host root %q: %w", path, host.HostRoot, err)
+	}
+	defer dirHandle.Close()
+
+	// Only the kernel-provided net entry in a procfs ns directory needs an
+	// unconfined final open. Path prefixes do not identify the filesystem.
+	if base == "net" && filepath.Base(filepath.Clean(parent)) == "ns" {
+		var statfs unix.Statfs_t
+		if err := unix.Fstatfs(int(dirHandle.Fd()), &statfs); err != nil {
+			return netns.None(), 0, fmt.Errorf("statfs %q: %w", path, err)
+		}
+		if statfs.Type == unix.PROC_SUPER_MAGIC {
+			return openProcfsNetnsPath(path, int(dirHandle.Fd()))
+		}
 	}
 	return openConfinedNetnsPath(path)
 }
@@ -133,44 +147,13 @@ func openConfinedNetnsPath(path string) (netns.NsHandle, uint64, error) {
 	return netnsHandle, inode, nil
 }
 
-// openProcfsNetnsPath opens a namespace link below /proc.
-//
-// /proc/<pid>/ns/net is a magic link, which no userspace path resolution can
-// follow: securejoin turns it into the literal string "net:[4026531840]", and
-// openat2(RESOLVE_NO_MAGICLINKS) refuses to traverse it at all. Only the
-// directory can be resolved; the last component is left to the kernel, which
-// resolves it on open.
-//
-// Two checks make that safe, and both are needed. isProcfsPath() admits nothing
-// but the exact shape of a namespace link, so the unresolved component is
-// always a name procfs itself provides; checkProcfs() requires the directory to
-// be on procfs, so those names are the kernel's and not an attacker's. Without
-// the second, a directory below <host root>/proc that an attacker can write to
-// would do, since the last component is opened following symlinks.
-//
-// The directory is resolved once, to a descriptor, and both the check and the
-// open go through it, so they cannot land on different inodes.
-func openProcfsNetnsPath(path string) (netns.NsHandle, uint64, error) {
-	dir, base := filepath.Split(path)
-	if base == "" {
-		return netns.None(), 0, fmt.Errorf("%q must point at a network namespace", path)
-	}
-
-	// Confined like any other path: only the last component needs the kernel.
-	dirHandle, err := pathrs.OpenInRoot(host.HostRoot, dir)
-	if err != nil {
-		return netns.None(), 0, fmt.Errorf("resolving %q below host root %q: %w", path, host.HostRoot, err)
-	}
-	defer dirHandle.Close()
-
-	if err := checkProcfs(int(dirHandle.Fd()), path); err != nil {
-		return netns.None(), 0, err
-	}
-
-	// O_PATH is not an option here, unlike in the confined case: setns(2)
-	// rejects it, and there is nothing to reopen through, since re-resolving is
-	// what this avoids.
-	fd, err := unix.Openat(int(dirHandle.Fd()), base, unix.O_RDONLY|unix.O_CLOEXEC, 0)
+// openProcfsNetnsPath opens the kernel-provided net magic link relative to the
+// already confined and verified procfs namespace directory. Scoped openat2
+// lookups cannot follow magic links, even without RESOLVE_NO_MAGICLINKS.
+// Checking and opening through the same directory descriptor avoids path swaps.
+func openProcfsNetnsPath(path string, dirFD int) (netns.NsHandle, uint64, error) {
+	// setns(2) rejects O_PATH, so open a usable namespace descriptor directly.
+	fd, err := unix.Openat(dirFD, "net", unix.O_RDONLY|unix.O_CLOEXEC, 0)
 	if err != nil {
 		return netns.None(), 0, fmt.Errorf("getting network namespace from path %q: %w", path, err)
 	}
@@ -183,33 +166,6 @@ func openProcfsNetnsPath(path string) (netns.NsHandle, uint64, error) {
 	}
 
 	return netnsHandle, inode, nil
-}
-
-// procfsNetnsLink matches the paths a namespace magic link can have, and
-// nothing else. "self" and "thread-self" are names procfs provides just as much
-// as the numeric ones, so refusing them would send a legitimate path to a
-// resolution that cannot follow it.
-var procfsNetnsLink = regexp.MustCompile(`^/proc/(?:\d+|self|thread-self)(?:/task/\d+)?/ns/[a-z_]+$`)
-
-// isProcfsPath reports whether path is a procfs namespace link, whose last
-// component is a magic link that only the kernel can resolve. Everything else
-// goes through the confined open, since only namespace links need the carve-out
-// in openProcfsNetnsPath().
-func isProcfsPath(path string) bool {
-	return procfsNetnsLink.MatchString(filepath.Clean(path))
-}
-
-// checkProcfs returns an error unless the given file descriptor refers to a
-// directory on procfs. path is only used for error messages.
-func checkProcfs(fd int, path string) error {
-	var statfs unix.Statfs_t
-	if err := unix.Fstatfs(fd, &statfs); err != nil {
-		return fmt.Errorf("statfs %q: %w", path, err)
-	}
-	if statfs.Type != unix.PROC_SUPER_MAGIC {
-		return fmt.Errorf("%q is not on procfs", path)
-	}
-	return nil
 }
 
 // checkNsfs returns an error unless the given file descriptor refers to a file
