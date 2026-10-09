@@ -38,4 +38,63 @@ Default value: "false"
 
 ## Guide
 
-TODO
+This example shows how to use this gadget.
+
+First, we need to run an application that generates some events. Every process
+allocates memory, so a pod that repeatedly runs a command gives us a steady
+stream of `malloc`/`free` calls to observe:
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl run --restart=Never --image=busybox mypod -- sh -c 'while /bin/true ; do whoami ; sleep 3 ; done'
+pod/mypod created
+```
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+```bash
+$ docker run --name test-trace-malloc -d busybox /bin/sh -c 'while /bin/true ; do whoami ; sleep 3 ; done'
+```
+  </TabItem>
+</Tabs>
+
+Then, let's run the gadget:
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+Using the trace_malloc gadget, we can see the memory operations performed by
+the processes in the pod. We can simply filter for the pod "mypod":
+
+```bash
+$ kubectl gadget run trace_malloc:%IG_TAG% --podname mypod
+K8S.NODE           K8S.NAMESPACE K8S.PODNAME   K8S.CONTAINE… COMM        PID     TID      OPERATION ADDR                 SIZE
+minikube-docker    default       mypod         mypod         whoami   511559  511559   malloc    0x55f8a1b2c3d0                1024
+minikube-docker    default       mypod         mypod         whoami   511559  511559   malloc    0x55f8a1b2c7a0                2048
+minikube-docker    default       mypod         mypod         whoami   511559  511559   free      0x55f8a1b2c3d0
+minikube-docker    default       mypod         mypod         whoami   511559  511559   calloc    0x55f8a1b2d100                 512
+minikube-docker    default       mypod         mypod         whoami   511559  511559   free      0x55f8a1b2c7a0
+^C
+```
+
+Each row is one memory operation: `OPERATION` (malloc, free, calloc, realloc,
+mmap, …), the `ADDR` it operated on, and `SIZE` in bytes for allocations.
+Matching malloc/free pairs on the same address is exactly how you spot leaks.
+We can stop the gadget by hitting Ctrl-C.
+
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+```bash
+$ sudo ig run trace_malloc:%IG_TAG% --containername test-trace-malloc
+RUNTIME.CONTAINERNA… COMM                PID         TID         OPERATION ADDR                 SIZE
+test-trace-malloc    whoami              511559      511559      malloc    0x55f8a1b2c3d0                1024
+test-trace-malloc    whoami              511559      511559      free      0x55f8a1b2c3d0
+^C
+```
+
+  </TabItem>
+</Tabs>
+
+Tip: pass `--collect-ustack` to also capture user-space stack traces, which
+tells you *where* in the program each allocation happened.
