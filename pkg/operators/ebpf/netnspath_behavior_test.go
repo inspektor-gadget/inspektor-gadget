@@ -65,6 +65,14 @@ func TestNetnsPathMixedSocketFilterTracepoint(t *testing.T) {
 	lg := logrus.New()
 	lg.SetOutput(&output)
 	lg.SetLevel(logger.DebugLevel)
+
+	// /proc/self/ns/net follows the process leader, which the target goroutine
+	// could otherwise unshare. Capture the pinned caller's namespace instead.
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	var original unix.Stat_t
+	require.NoError(t, unix.Stat("/proc/thread-self/ns/net", &original))
+
 	// Keep the target namespace alive on a disposable OS thread. A distinct
 	// target catches accidentally attaching the socket in the caller's netns.
 	target := make(chan string, 1)
@@ -88,10 +96,9 @@ func TestNetnsPathMixedSocketFilterTracepoint(t *testing.T) {
 	case err := <-failed:
 		t.Fatalf("creating target network namespace: %v", err)
 	}
-	var original, selected unix.Stat_t
-	require.NoError(t, unix.Stat("/proc/self/ns/net", &original))
+	var selected unix.Stat_t
 	require.NoError(t, unix.Stat(path, &selected))
-	require.NotEqual(t, original.Ino, selected.Ino)
+	require.NotEqual(t, original.Ino, selected.Ino, "target must differ from the pinned caller's namespace")
 	i := newNetnsPathInstance(path, true, false)
 	i.logger = lg
 	i.config = viper.New()
