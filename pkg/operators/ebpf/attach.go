@@ -60,6 +60,10 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 		return nil, nil
 	}
 
+	if i.netnsPath != "" && p.Type != ebpf.SocketFilter {
+		i.logger.Debugf("Ignoring %q for program %q of type %q", ParamNetnsPath, p.Name, p.Type)
+	}
+
 	switch p.Type {
 	case ebpf.Kprobe:
 		switch {

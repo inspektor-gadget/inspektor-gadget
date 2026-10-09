@@ -199,9 +199,9 @@ type ebpfInstance struct {
 
 	// netnsPath is the value of the netns-path parameter, exactly as the user
 	// gave it: it is resolved below the host root at the point of use, never
-	// stored resolved. Empty unless the user asked for a network namespace
-	// path, in which case network tracers attach to it instead of to
-	// containers.
+	// stored resolved. Set only after validating a socket-filter target; network
+	// tracers then attach to it instead of to containers. Other programs retain
+	// their normal attachment and container bookkeeping.
 	netnsPath string
 
 	networkTracers map[string]*networktracer.Tracer[api.GadgetData]
@@ -500,16 +500,12 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 		}
 	}
 
-	if len(i.tcHandlers) > 0 || len(i.networkTracers) > 0 {
-		// Registered for TC gadgets too, even though they don't support it yet:
-		// Start() then rejects it explicitly instead of the CLI reporting an
-		// unknown parameter.
-		i.params[ParamNetnsPath] = &param{
-			Param: &api.Param{
-				Key:         ParamNetnsPath,
-				Description: "Path of the network namespace to attach to, e.g. /run/netns/mynetns. Bypasses container discovery, so the resulting events carry no container or Kubernetes enrichment",
-			},
-		}
+	// Always expose the flag so unrelated program types can accept and ignore it.
+	i.params[ParamNetnsPath] = &param{
+		Param: &api.Param{
+			Key:         ParamNetnsPath,
+			Description: "Path of the network namespace for socket filters, e.g. /run/netns/mynetns. Bypasses container discovery for socket filters only; ignored by other programs and unsupported with TC programs",
+		},
 	}
 
 	i.params[ParamTraceKernel] = &param{
@@ -724,6 +720,12 @@ func (i *ebpfInstance) PreStart(gadgetCtx operators.GadgetContext) error {
 		}
 	}
 
+	// Managers can replay existing containers in their PreStart callbacks, so
+	// establish socket-filter targeting before those callbacks can run.
+	if err := i.validateNetnsPath(); err != nil {
+		return err
+	}
+
 	for ds, formatters := range i.formatters {
 		for _, formatter := range formatters {
 			ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
@@ -734,11 +736,11 @@ func (i *ebpfInstance) PreStart(gadgetCtx operators.GadgetContext) error {
 	return nil
 }
 
-// validateNetnsPath checks the netns-path parameter. It runs before anything is
-// attached: a gadget that mixes socket filter and TC programs has to be
-// rejected as a whole, rather than having its socket filters attached before
-// the TC program is refused.
+// validateNetnsPath checks the netns-path parameter during PreStart, before
+// manager callbacks or program attachment. A gadget mixing socket filters and
+// TC programs must be rejected as a whole.
 func (i *ebpfInstance) validateNetnsPath() error {
+	i.netnsPath = ""
 	path := i.paramValues[ParamNetnsPath]
 	if path == "" {
 		return nil
@@ -748,7 +750,8 @@ func (i *ebpfInstance) validateNetnsPath() error {
 		return fmt.Errorf("%q is not yet supported for TC programs", ParamNetnsPath)
 	}
 	if len(i.networkTracers) == 0 {
-		return fmt.Errorf("%q is only supported by gadgets with network programs", ParamNetnsPath)
+		i.logger.Debugf("Ignoring %q: gadget has no socket filter programs", ParamNetnsPath)
+		return nil
 	}
 	if !filepath.IsAbs(path) {
 		return fmt.Errorf("%q must be an absolute path, got %q", ParamNetnsPath, path)
@@ -784,10 +787,6 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 	err := parameters.CopyFromMap(i.paramValues, "")
 	if err != nil {
 		return fmt.Errorf("parsing parameter values: %w", err)
-	}
-
-	if err := i.validateNetnsPath(); err != nil {
-		return err
 	}
 
 	if paramMap[ParamTraceKernel].AsBool() {

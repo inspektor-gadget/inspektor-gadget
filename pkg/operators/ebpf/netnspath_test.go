@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/tchandler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
@@ -32,6 +33,7 @@ import (
 // validateNetnsPath() looks at.
 func newNetnsPathInstance(path string, withNetworkTracer, withTCHandler bool) *ebpfInstance {
 	i := &ebpfInstance{
+		logger:         logger.DefaultLogger(),
 		paramValues:    map[string]string{ParamNetnsPath: path},
 		networkTracers: map[string]*networktracer.Tracer[api.GadgetData]{},
 		tcHandlers:     map[string]*tchandler.Handler{},
@@ -89,9 +91,32 @@ func TestValidateNetnsPath(t *testing.T) {
 			errContains:   "not yet supported for TC programs",
 		},
 		{
-			name:        "no network programs",
-			path:        ownNetns,
-			errContains: "only supported by gadgets with network programs",
+			name: "no network programs",
+			path: ownNetns,
+		},
+		{
+			name: "relative path without socket filters",
+			path: "run/netns/foo",
+		},
+		{
+			name: "nonexistent path without socket filters",
+			path: "/run/netns/does-not-exist-4f2c1b",
+		},
+		{
+			name: "not a namespace without socket filters",
+			path: "/proc/version",
+		},
+		{
+			name:          "TC rejected even with an invalid path",
+			path:          "relative",
+			withTCHandler: true,
+			errContains:   "not yet supported for TC programs",
+		},
+		{
+			name:              "not a namespace",
+			path:              "/proc/version",
+			withNetworkTracer: true,
+			errContains:       "does not refer to a namespace",
 		},
 		{
 			name:              "relative path",
@@ -110,6 +135,8 @@ func TestValidateNetnsPath(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			i := newNetnsPathInstance(test.path, test.withNetworkTracer, test.withTCHandler)
+			// A failed or ignored validation must not retain a previous target.
+			i.netnsPath = "/previous/target"
 
 			err := i.validateNetnsPath()
 			if test.errContains != "" {
@@ -120,7 +147,7 @@ func TestValidateNetnsPath(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			if test.path == "" {
+			if test.path == "" || !test.withNetworkTracer {
 				require.Empty(t, i.netnsPath)
 			} else {
 				// The parameter is stored exactly as given: resolving it here
@@ -133,9 +160,9 @@ func TestValidateNetnsPath(t *testing.T) {
 }
 
 // TestValidateNetnsPathConfinesToHostRoot checks that a symlink in the host
-// filesystem cannot make the gadget attach to a namespace outside of it. Only
-// paths under /proc are resolved component-wise, because their last component
-// is a magic link the kernel alone can follow.
+// filesystem cannot make the gadget attach to a namespace outside of it.
+// Ordinary symlinks must remain confined even when they point at a procfs
+// namespace magic link.
 func TestValidateNetnsPathConfinesToHostRoot(t *testing.T) {
 	hostRoot := t.TempDir()
 
