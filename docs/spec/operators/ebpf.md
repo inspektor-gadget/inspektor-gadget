@@ -19,17 +19,36 @@ Fully qualified name: `operator.oci.ebpf.iface`
 
 ### `netns-path`
 
-Path of a network namespace to attach networking programs to, e.g.
-`/run/netns/mynetns` or `/proc/1234/ns/net`. The namespace is attached directly,
-without going through container discovery, which makes it possible to trace
-network namespaces that no container runtime reports.
+Absolute path of a network namespace to attach **socket filter** programs to,
+e.g. `/run/netns/mynetns` or `/proc/1234/ns/net`. Socket filters attach directly
+to this namespace instead of to discovered containers, making it possible to
+trace namespaces that no container runtime reports. Events keep their network
+namespace ID. Namespaces unknown to container discovery have no container or
+Kubernetes enrichment; known namespaces can still be enriched.
 
-While this is set, containers are not attached to. Events keep their network
-namespace ID, but they carry no container or Kubernetes enrichment, as is
-already the case with `--host`.
+Paths are interpreted relative to the host filesystem root (`HOST_ROOT`, `/`
+by default). When the host root is mounted at `/host` and `HOST_ROOT=/host`,
+use `/proc/1234/ns/net`, **not** `/host/proc/1234/ns/net`. Host PID paths work
+without sharing the host PID namespace if host procfs is exposed at
+`/host/proc`; a container's own procfs does not expose arbitrary host PIDs.
+Procfs can also be mounted at another location below the host root. The
+`self` and `thread-self` entries refer to the calling process or thread.
 
-Only available if the gadget uses networking programs. Not supported yet for
-gadgets using TC programs; setting it on those returns an error.
+Ordinary path resolution is confined to the host root. Procfs namespace magic
+links need a separate final open: even `openat2(RESOLVE_IN_ROOT)` without
+`RESOLVE_NO_MAGICLINKS` cannot follow them. The parent directory is resolved
+and verified through one descriptor before opening its `net` entry.
+
+The parameter is available for all eBPF gadgets. For supported program kinds
+other than socket filters it is ignored, with a debug log, and their usual
+attachment and container callbacks are unchanged. This includes TCP/UDP BPF
+iterators: they still enumerate discovered containers' network namespaces.
+If there are no socket filters, the path is not validated.
+
+TC programs are the exception: setting this parameter on a gadget containing
+TC programs returns `"netns-path" is not yet supported for TC programs` before
+manager callbacks or program attachment, including gadgets that mix TC and
+socket filters. TC attachment by namespace path is not supported.
 
 Fully qualified name: `operator.oci.ebpf.netns-path`
 
