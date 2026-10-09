@@ -1,0 +1,250 @@
+---
+title: trace_selinux
+sidebar_position: 0
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# trace_selinux
+
+The `trace_selinux` gadget traces SELinux AVC (Access Vector Cache) audit
+events. By default it reports access denials, telling you which process, in
+which container, was denied which permission, along with the source and target
+SELinux security contexts and the target object class.
+
+The denied/requested/audited permissions are decoded from the kernel
+access-vector bitmasks into permission names (e.g. `{ execute_no_trans }`) in
+the `denied_perms`/`requested_perms`/`audited_perms` fields, mirroring how
+denials appear in the host audit log. Kernel and user-space stack traces leading
+to the audit event can also be collected (see the `kstack` and `ustack` fields).
+
+This is useful for debugging SELinux policy issues in containerized workloads:
+instead of digging through the host audit log and manually correlating PIDs to
+containers, the gadget reports the offending container directly.
+
+## Requirements
+
+- The node must have SELinux enabled (`CONFIG_SECURITY_SELINUX=y`) and the
+  `avc:selinux_audited` tracepoint available. The tracepoint was added in Linux
+  5.10 by commit [`dd8166212d9a`](https://git.kernel.org/torvalds/c/dd8166212d9a)
+  ("selinux: add tracepoint on audited events"), so **5.10 is the minimum
+  upstream version**; older vendor kernels may backport it.
+- The kernel must be built with `CONFIG_KALLSYMS_ALL=y`. `secclass_map` is a
+  data symbol, and without this option `/proc/kallsyms` lists only function
+  symbols. It depends on `CONFIG_DEBUG_KERNEL` and defaults to `n` upstream,
+  but the major distributions (including Ubuntu and Fedora) enable it.
+- The kernel symbol `secclass_map` must be readable from `/proc/kallsyms`, i.e.
+  `kernel.kptr_restrict` must not be `2`. The gadget reads the permission names
+  from that table in the running kernel rather than shipping its own copy, so
+  the names always match the node's kernel. See
+  [Permission names require access to kallsyms](#permission-names-require-access-to-kallsyms).
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_selinux:%IG_TAG% [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_selinux:%IG_TAG% [flags]
+        ```
+    </TabItem>
+</Tabs>
+
+## Flags
+
+### `--denials-only`
+
+Only report AVC denials. Set to `false` to also report audited events that were
+allowed (e.g. matched by an `auditallow` rule).
+
+Default value: `true`
+
+### `--collect-kstack`
+
+Collect the kernel stack trace that led to the AVC audit event (exposed in the
+`kstack` field).
+
+Default value: `false`
+
+### `--collect-ustack`
+
+Collect the user-space stack trace of the process that triggered the AVC audit
+event (exposed in the `ustack` field, with symbolized frames in
+`ustack.symbols`).
+
+Default value: `false`
+
+## Guide
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        Start the gadget in a terminal:
+
+        ```bash
+        $ kubectl gadget run trace_selinux:%IG_TAG% -A
+        K8S.NODE         K8S.NAMESPACE    K8S.PODNAME      K8S.CONTAINERNAME  COMM             PID        SCONTEXT                       TCONTEXT                       TCLASS         DENIED_PERMS
+        ```
+
+        On another terminal, trigger a SELinux denial from inside a container,
+        for example by trying to access a path the container's domain is not
+        allowed to access:
+
+        ```bash
+        $ kubectl exec -ti mypod -- cat /etc/shadow
+        ```
+
+        Go back to the first terminal and observe the denial, attributed to the
+        container:
+
+        ```bash
+        K8S.NODE         K8S.NAMESPACE    K8S.PODNAME      K8S.CONTAINERNAME  COMM             PID        SCONTEXT                       TCONTEXT                       TCLASS         DENIED_PERMS
+        minikube         default          mypod            mycontainer        cat              728870     …r:container_t:s0:c1,c2         …:unlabeled_t:s0                file           { execute_no_trans }
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        Start the gadget in a terminal:
+
+        ```bash
+        $ sudo ig run trace_selinux:%IG_TAG% --containername mycontainer
+        RUNTIME.CONTAINERNAME  COMM             PID        SCONTEXT                       TCONTEXT                       TCLASS         DENIED_PERMS
+        ```
+
+        On another terminal, run a container that triggers a SELinux denial:
+
+        ```bash
+        $ docker run --name mycontainer -ti busybox cat /etc/shadow
+        ```
+
+        Go back to the first terminal and observe the denial:
+
+        ```bash
+        RUNTIME.CONTAINERNAME  COMM             PID        SCONTEXT                       TCONTEXT                       TCLASS         DENIED_PERMS
+        mycontainer            cat              733494     …r:container_t:s0:c1,c2         …:unlabeled_t:s0                file           { execute_no_trans }
+        ```
+    </TabItem>
+</Tabs>
+
+The `DENIED_PERMS` column lists the names of the permissions that were denied
+for the given target object class, decoded from the kernel access-vector
+bitmask (the raw mask is still available in the hidden `denied` field). Use the
+`--denials-only=false` flag to also see audited events that were allowed, and
+`-o json` to see the full event including the kernel stack trace (`kstack`).
+
+Congratulations! You reached the end of this guide!
+
+## Limitations
+
+### Denials suppressed by `dontaudit` are not reported
+
+SELinux policies use `dontaudit` rules to silence denials that are known to be
+harmless. For such a permission the kernel leaves the `audited` mask empty, so
+`avc_audit()` never reaches the `avc:selinux_audited` tracepoint this gadget
+hooks. The access is still denied, but neither the host audit log nor this
+gadget reports it.
+
+If an expected event is missing, disable the `dontaudit` rules on the node to
+check whether they are the reason:
+
+```bash
+$ sudo semodule -DB   # disable dontaudit rules (rebuilds the policy)
+$ sudo semodule -B    # restore them afterwards
+```
+
+### Permission names require access to kallsyms
+
+The `*_perms` fields are decoded using the kernel's own `secclass_map` table,
+whose address is resolved from `/proc/kallsyms` when the gadget is loaded. This
+is deliberate: the permission lists change between kernel versions, so a copy
+shipped with the gadget would silently decode the wrong names on some kernels.
+
+If `kernel.kptr_restrict` is set to `2`, kernel addresses are hidden from all
+users including root, the symbol cannot be resolved and **the gadget fails to
+load**:
+
+```
+Error: ... creating eBPF collection: populating kallsyms caches: getting
+addresses from kallsyms: loading symbol addresses: symbol secclass_map:
+restricted by kernel.kptr_restrict and/or net.core.bpf_jit_harden sysctls
+```
+
+This is intentional: failing to load is preferable to silently reporting
+permission names that may be wrong. Check and relax the setting with:
+
+```bash
+$ sysctl kernel.kptr_restrict           # 2 means addresses are hidden
+$ sudo sysctl -w kernel.kptr_restrict=1 # until the next reboot
+```
+
+To persist it, add `kernel.kptr_restrict = 1` to a file in `/etc/sysctl.d/`.
+`1` is enough: it hides kernel addresses from unprivileged users but still
+lets the privileged reader loading the gadget resolve them. As the error
+message suggests, `net.core.bpf_jit_harden` can restrict symbol resolution
+too, so check it as well if the problem persists.
+
+A kernel built without `CONFIG_KALLSYMS_ALL=y` fails differently: the symbol is
+not merely hidden, it is absent from `/proc/kallsyms` altogether, and no sysctl
+brings it back.
+
+```
+Error: ... creating eBPF collection: program ig_selinux: resolve .ksyms:
+kernel is missing symbol: secclass_map
+```
+
+Such a kernel must be rebuilt to run this gadget.
+
+### Unconfined domains produce no denials
+
+A process in an unconfined domain such as `unconfined_t` is allowed nearly
+everything, so it generates no denial and the gadget stays silent. Observing a
+denial requires a confined domain: a container, or a command run under
+`runcon`.
+
+## Visualizing stack traces
+
+In the default table view, a stack trace is rendered as a single truncated line.
+To see the full call path, either select a structured output format or focus the
+columns:
+
+```bash
+# Full kernel + user stacks, one frame per line
+$ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_selinux:%IG_TAG% \
+    --collect-kstack --collect-ustack -o yaml
+
+# Table focused on the stack columns
+$ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_selinux:%IG_TAG% \
+    --collect-kstack --collect-ustack \
+    --fields k8s.containerName,proc.comm,tclass,denied_perms,kstack,ustack.symbols
+```
+
+See the [Stack traces](../../docs/reference/stack-traces.mdx) reference for more
+on symbolization (`--symbolizers`, `--collect-build-id`, etc.).
+
+### Flamegraph view
+
+When stack traces are collected, the `selinux` data source can also be rendered
+as a flamegraph (in environments that support the flamegraph view, such as the
+web UI). Each AVC audit event is treated as one sample, so the flamegraph
+highlights which call paths trigger the most denials. The samples are grouped
+hierarchically by container (`runtime.containerName`), process (`proc.comm`),
+target object class (`tclass`) and denied permissions (`denied_perms`), then by
+the user-space stack (`ustack.symbols`) and finally the kernel stack (`kstack`).
+
+Make sure to collect the relevant stacks so the deeper levels are populated:
+
+```bash
+$ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_selinux:%IG_TAG% \
+    --collect-kstack --collect-ustack
+```
+
+## Security and privacy
+
+This gadget requires the privileges needed to load and attach eBPF programs. SELinux contexts, process identifiers, container metadata, and stack traces can disclose sensitive workload structure. Restrict access in multi-tenant environments, avoid collecting stacks unless needed, and apply output retention and access controls. AVC/auditallow storms can amplify CPU, memory, and output volume; use filters, bounded capture durations, and monitor dropped events.
