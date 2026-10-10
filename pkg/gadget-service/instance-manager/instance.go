@@ -72,6 +72,16 @@ type GadgetInstance struct {
 	state                gadgetState
 	error                error
 	ready                chan struct{}
+	readyOnce            sync.Once
+}
+
+// markReady unblocks everything waiting for the gadget info. It is called both
+// when the gadget info becomes available and when the gadget run ends, so that
+// waiters are released even if the gadget failed before producing it.
+func (p *GadgetInstance) markReady() {
+	p.readyOnce.Do(func() {
+		close(p.ready)
+	})
 }
 
 func (p *GadgetInstance) GadgetInfo() (*api.GadgetInfo, error) {
@@ -88,8 +98,22 @@ func (p *GadgetInstance) ParamValues() api.ParamValues {
 }
 
 func (p *GadgetInstance) AddClient(client api.GadgetManager_RunGadgetServer) chan struct{} {
-	log.Debugf("[%s] client connected", p.gadgetInfo.Id)
+	done := make(chan struct{})
+
+	// The gadget instance is registered on the manager before its gadget is
+	// started, so a client can attach before the gadget info exists. Wait for
+	// it instead of reading a half-initialized instance.
+	<-p.ready
+
+	log.Debugf("[%s] client connected", p.id)
 	p.mu.Lock()
+	gadgetInfoSerialized := p.gadgetInfoSerialized
+	if gadgetInfoSerialized == nil {
+		p.mu.Unlock()
+		log.Debugf("[%s] client disconnected (gadget has no gadget info)", p.id)
+		close(done)
+		return done
+	}
 	cl := NewGadgetInstanceClient(client)
 	p.clients[cl] = struct{}{}
 	var replayBuf []*bufferedEvent
@@ -108,13 +132,12 @@ func (p *GadgetInstance) AddClient(client api.GadgetManager_RunGadgetServer) cha
 	cl.seq = uint32(len(replayBuf))
 	p.mu.Unlock()
 
-	done := make(chan struct{})
-	err := client.Send(p.gadgetInfoSerialized)
+	err := client.Send(gadgetInfoSerialized)
 	if err != nil {
 		p.mu.Lock()
 		delete(p.clients, cl)
 		p.mu.Unlock()
-		log.Debugf("[%s] client disconnected (failed to send gadget info): %c", p.gadgetInfo.Id, err)
+		log.Debugf("[%s] client disconnected (failed to send gadget info): %v", p.id, err)
 		close(done)
 		return done
 	}
@@ -122,9 +145,9 @@ func (p *GadgetInstance) AddClient(client api.GadgetManager_RunGadgetServer) cha
 	go func() {
 		err := cl.Run()
 		if err != nil {
-			log.Debugf("[%s] client disconnected (with error): %v", p.gadgetInfo.Id, err)
+			log.Debugf("[%s] client disconnected (with error): %v", p.id, err)
 		} else {
-			log.Debugf("[%s] client disconnected", p.gadgetInfo.Id)
+			log.Debugf("[%s] client disconnected", p.id)
 		}
 		p.mu.Lock()
 		delete(p.clients, cl)
@@ -143,6 +166,25 @@ func (p *GadgetInstance) RemoveClients() {
 }
 
 func (p *GadgetInstance) Run(
+	ctx context.Context,
+	runtime runtime.Runtime,
+	logger logger.Logger,
+) error {
+	err := p.run(ctx, runtime, logger)
+	if err != nil {
+		p.mu.Lock()
+		p.state = stateError
+		p.error = err
+		p.mu.Unlock()
+	}
+	// The gadget is over; release anything still waiting for the gadget info.
+	// If the gadget never got far enough to produce it, waiters will see the
+	// error recorded above instead of blocking forever.
+	p.markReady()
+	return err
+}
+
+func (p *GadgetInstance) run(
 	ctx context.Context,
 	runtime runtime.Runtime,
 	logger logger.Logger,
@@ -201,12 +243,14 @@ func (p *GadgetInstance) Run(
 			gi.Name = p.name
 
 			d, _ := proto.Marshal(gi)
+			p.mu.Lock()
 			p.gadgetInfoSerialized = &api.GadgetEvent{
 				Type:    api.EventTypeGadgetInfo,
 				Payload: d,
 			}
 			p.gadgetInfo = gi
-			close(p.ready)
+			p.mu.Unlock()
+			p.markReady()
 			return nil
 		}),
 	)
