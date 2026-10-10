@@ -1,4 +1,4 @@
-// Copyright 2023-2024 The Inspektor Gadget authors
+// Copyright 2023-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,6 +51,7 @@ func (c *GadgetInstanceClient) Run() error {
 			DataSourceID: ev.datasourceID,
 			Payload:      ev.payload,
 			Seq:          uint32(i) + 1,
+			LostSamples:  ev.lostSamples,
 		})
 		if err != nil {
 			return err
@@ -72,7 +73,7 @@ func (c *GadgetInstanceClient) Run() error {
 	}
 }
 
-func (c *GadgetInstanceClient) SendPayload(datasourceID uint32, payload []byte) {
+func (c *GadgetInstanceClient) SendPayload(datasourceID uint32, payload []byte, lostSamples uint64) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.seq++
@@ -81,6 +82,7 @@ func (c *GadgetInstanceClient) SendPayload(datasourceID uint32, payload []byte) 
 		DataSourceID: datasourceID,
 		Payload:      payload,
 		Seq:          c.seq,
+		LostSamples:  lostSamples,
 	}
 	select {
 	case c.buffer <- event:
