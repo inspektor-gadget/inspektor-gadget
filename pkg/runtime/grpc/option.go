@@ -19,3 +19,7 @@ type Option func(runtime *Runtime)
 func WithConnectUsingK8SProxy(runtime *Runtime) {
 	runtime.connectionMode = ConnectionModeKubernetesProxy
 }
+
+func WithConnectUsingK8SDirect(runtime *Runtime) {
+	runtime.connectionMode = ConnectionModeKubernetesDirect
+}
