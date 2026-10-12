@@ -187,8 +187,8 @@ func TestGeneral(t *testing.T) {
 					annotation: map[string]string{"formatters.errno.target": "timeout"},
 				},
 				{
-					value:    uint32(134),
-					expected: "error#134",
+					value:    uint32(4095),
+					expected: "error#4095",
 					ok:       true,
 				},
 			},
