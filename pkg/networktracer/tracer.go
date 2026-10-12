@@ -59,6 +59,7 @@ type attachment struct {
 	// 1. several containers in a pod (sharing the netns)
 	// 2. pods with networkHost=true
 	// In both cases, we want to attach the BPF program only once.
+
 	users map[uint32]struct{}
 }
 
@@ -73,6 +74,10 @@ type Tracer[Event any] struct {
 	// value: Tracelet
 	attachments map[uint64]*attachment
 
+	// Explicit namespace targeting bypasses container discovery. This single
+	// attachment lives until Close, even if its path disappears.
+	netnsAttachment *attachment
+
 	eventHandler func(ev *Event)
 
 	// mu protects attachments from concurrent access
@@ -81,12 +86,11 @@ type Tracer[Event any] struct {
 }
 
 func (t *Tracer[Event]) newAttachment(
-	pid uint32,
 	netns uint64,
+	openSock func() (int, error),
 ) (_ *attachment, err error) {
 	a := &attachment{
 		sockFd: -1,
-		users:  map[uint32]struct{}{pid: {}},
 	}
 	defer func() {
 		if err != nil {
@@ -118,7 +122,7 @@ func (t *Tracer[Event]) newAttachment(
 		return nil, fmt.Errorf("loading ebpf program: %w", err)
 	}
 
-	a.sockFd, err = rawsock.OpenRawSock(pid)
+	a.sockFd, err = openSock()
 	if err != nil {
 		return nil, fmt.Errorf("opening raw socket: %w", err)
 	}
@@ -167,12 +171,43 @@ func (t *Tracer[Event]) Attach(pid uint32) error {
 		return nil
 	}
 
-	a, err := t.newAttachment(pid, netns)
+	a, err := t.newAttachment(netns, func() (int, error) {
+		return rawsock.OpenRawSock(pid)
+	})
 	if err != nil {
 		return fmt.Errorf("creating network tracer attachment for pid %d: %w", pid, err)
 	}
+	a.users = map[uint32]struct{}{pid: {}}
 	t.attachments[netns] = a
 
+	return nil
+}
+
+// AttachNetnsPath attaches the dispatcher to one network namespace without
+// container discovery. It is called once per tracer; Close releases it.
+func (t *Tracer[Event]) AttachNetnsPath(path string) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if t.netnsAttachment != nil {
+		return fmt.Errorf("network namespace path is already attached")
+	}
+
+	// Resolve once and use the same handle for the inode and socket, even if
+	// the path is replaced while attachment is in progress.
+	handle, netns, err := rawsock.OpenNetnsPath(path)
+	if err != nil {
+		return err
+	}
+	defer handle.Close()
+
+	a, err := t.newAttachment(netns, func() (int, error) {
+		return rawsock.OpenRawSockInNetns(handle)
+	})
+	if err != nil {
+		return fmt.Errorf("creating network tracer attachment for netns path %q: %w", path, err)
+	}
+	t.netnsAttachment = a
 	return nil
 }
 
@@ -218,6 +253,11 @@ func (t *Tracer[Event]) Close() {
 	}
 	for key, l := range t.attachments {
 		t.releaseAttachment(key, l)
+	}
+	if t.netnsAttachment != nil {
+		unix.Close(t.netnsAttachment.sockFd)
+		t.netnsAttachment.dispatcherObjs.Close()
+		t.netnsAttachment = nil
 	}
 	if t.dispatcherMap != nil {
 		t.dispatcherMap.Close()
