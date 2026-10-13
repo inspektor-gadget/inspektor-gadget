@@ -97,7 +97,8 @@ int ig_seccomp_e(struct bpf_raw_tracepoint_args *ctx)
 	// will fail.
 
 	struct pt_regs regs = {};
-	unsigned int id;
+	// Keep the bounds check and map index 64-bit for verifier compatibility.
+	__u64 id;
 
 #ifdef __TARGET_ARCH_x86
 	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
