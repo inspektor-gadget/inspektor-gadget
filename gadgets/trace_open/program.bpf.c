@@ -34,6 +34,18 @@ struct event {
 	struct gadget_user_stack ustack;
 	char fname[NAME_MAX];
 	char fpath[GADGET_PATH_MAX];
+	__u64 bytes_written;
+	__u64 write_count;
+};
+
+struct file_key {
+	__u32 tgid;
+	__u32 fd;
+};
+
+struct write_stat {
+	__u64 bytes_written;
+	__u64 write_count;
 };
 
 const volatile bool targ_failed = false;
@@ -48,6 +60,20 @@ struct {
 	__type(key, u32);
 	__type(value, struct args_t);
 } start SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 10240);
+	__type(key, struct file_key);
+	__type(value, struct write_stat);
+} open_fds SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 10240);
+	__type(key, __u64);
+	__type(value, __u32);
+} write_args SEC(".maps");
 
 GADGET_TRACER_MAP(events, 1024 * 256);
 
@@ -138,6 +164,17 @@ static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 	event->error_raw = errval;
 	event->fd = fd;
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
+	event->bytes_written = 0;
+	event->write_count = 0;
+
+	if (ret >= 0 && ((ap->flags & 3) == 1 || (ap->flags & 3) == 2)) {
+		struct file_key fkey = {
+			.tgid = (u32)(pid_tgid >> 32),
+			.fd = fd,
+		};
+		struct write_stat init_stat = {};
+		bpf_map_update_elem(&open_fds, &fkey, &init_stat, BPF_ANY);
+	}
 
 	/* emit event */
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
@@ -159,6 +196,68 @@ SEC("tracepoint/syscalls/sys_exit_openat")
 int ig_openat_x(struct syscall_trace_exit *ctx)
 {
 	return trace_exit(ctx);
+}
+
+SEC("tracepoint/syscalls/sys_enter_write")
+int ig_write_e(struct syscall_trace_enter *ctx)
+{
+	__u64 pid_tgid = bpf_get_current_pid_tgid();
+	__u32 fd = (__u32)ctx->args[0];
+
+	if (gadget_should_discard_data_current())
+		return 0;
+
+	struct file_key fkey = {
+		.tgid = (u32)(pid_tgid >> 32),
+		.fd = fd,
+	};
+	struct write_stat *stat = bpf_map_lookup_elem(&open_fds, &fkey);
+	if (!stat)
+		return 0;
+
+	bpf_map_update_elem(&write_args, &pid_tgid, &fd, BPF_ANY);
+	return 0;
+}
+
+SEC("tracepoint/syscalls/sys_exit_write")
+int ig_write_x(struct syscall_trace_exit *ctx)
+{
+	__u64 pid_tgid = bpf_get_current_pid_tgid();
+	__u32 *fdp = bpf_map_lookup_elem(&write_args, &pid_tgid);
+	if (!fdp)
+		return 0;
+
+	__u32 fd = *fdp;
+	bpf_map_delete_elem(&write_args, &pid_tgid);
+
+	long ret = ctx->ret;
+	if (ret <= 0)
+		return 0;
+
+	struct file_key fkey = {
+		.tgid = (u32)(pid_tgid >> 32),
+		.fd = fd,
+	};
+	struct write_stat *stat = bpf_map_lookup_elem(&open_fds, &fkey);
+	if (stat) {
+		__sync_fetch_and_add(&stat->bytes_written, ret);
+		__sync_fetch_and_add(&stat->write_count, 1);
+	}
+	return 0;
+}
+
+SEC("tracepoint/syscalls/sys_enter_close")
+int ig_close_e(struct syscall_trace_enter *ctx)
+{
+	__u64 pid_tgid = bpf_get_current_pid_tgid();
+	__u32 fd = (__u32)ctx->args[0];
+
+	struct file_key fkey = {
+		.tgid = (u32)(pid_tgid >> 32),
+		.fd = fd,
+	};
+	bpf_map_delete_elem(&open_fds, &fkey);
+	return 0;
 }
 
 char LICENSE[] SEC("license") = "GPL";
