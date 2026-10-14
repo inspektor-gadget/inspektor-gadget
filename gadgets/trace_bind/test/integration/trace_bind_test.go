@@ -84,7 +84,7 @@ func TestTraceBind(t *testing.T) {
 	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
 		func(t *testing.T, output string) {
 			expectedEntry := &traceBindEvent{
-				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+				CommonData: utils.BuildCommonData(t, containerName, commonDataOpts...),
 				Proc:       utils.BuildProc("nc", 1000, 1111),
 				Addr: utils.L4Endpoint{
 					Addr:    "127.0.0.1",
