@@ -1,0 +1,29 @@
+# Artifact Hub package metadata file
+version: 0.53.2
+name: "trace selinux"
+category: security
+displayName: "trace selinux"
+createdAt: "2026-06-25T08:46:52Z"
+digest: "2026-06-25T08:46:52Z"
+description: "trace SELinux AVC audit events (denials)"
+logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
+license: ""
+homeURL: "https://inspektor-gadget.io/docs/latest/gadgets/trace_selinux"
+containersImages:
+    - name: gadget
+      image: "ghcr.io/inspektor-gadget/gadget/trace_selinux:latest"
+      platforms:
+        - linux/amd64
+        - linux/arm64
+keywords:
+    - gadget
+links:
+    - name: source
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_selinux"
+install: |
+    # Run
+    ```bash
+    sudo ig run ghcr.io/inspektor-gadget/gadget/trace_selinux:latest
+    ```
+provider:
+    name: Inspektor Gadget

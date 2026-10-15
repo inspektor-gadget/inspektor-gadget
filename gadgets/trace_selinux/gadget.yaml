@@ -1,0 +1,137 @@
+name: trace selinux
+description: trace SELinux AVC audit events
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_selinux
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_selinux
+datasources:
+  selinux:
+    annotations:
+      # Allow rendering the collected stack traces as a flamegraph, in addition
+      # to the default table view. Each AVC audit event counts as one sample, so
+      # the flamegraph shows which call paths lead to the most denials, grouped
+      # by container, process, target class and denied permissions. Collecting
+      # stack traces (--collect-kstack / --collect-ustack) is required for the
+      # stack levels of the flamegraph to be populated.
+      views.modes.flamegraph: true
+    fields:
+      runtime.containerName:
+        annotations:
+          flamegraph.level: 0
+          flamegraph.type: single
+      proc.comm:
+        annotations:
+          flamegraph.level: 10
+          flamegraph.type: single
+      scontext:
+        annotations:
+          description: Source SELinux security context (the process context)
+          columns.width: 30
+          columns.ellipsis: start
+      tcontext:
+        annotations:
+          description: Target SELinux security context (the accessed object context)
+          columns.width: 30
+          columns.ellipsis: start
+      tclass:
+        annotations:
+          description: Target object class (e.g. file, dir, tcp_socket)
+          columns.width: 14
+          flamegraph.level: 20
+          flamegraph.type: single
+      denied_perms:
+        annotations:
+          description: Names of the permissions that were denied
+          columns.width: 30
+          columns.ellipsis: end
+          flamegraph.level: 30
+          flamegraph.type: single
+      requested_perms:
+        annotations:
+          description: Names of the permissions that were requested
+          columns.width: 30
+          columns.hidden: true
+          columns.ellipsis: end
+      audited_perms:
+        annotations:
+          description: Names of the permissions that were audited
+          columns.width: 30
+          columns.hidden: true
+          columns.ellipsis: end
+      denied:
+        annotations:
+          description: Bitmask of the permissions that were denied
+          columns.width: 10
+          columns.alignment: right
+          columns.hidden: true
+      requested:
+        annotations:
+          description: Bitmask of the permissions that were requested
+          columns.width: 10
+          columns.alignment: right
+          columns.hidden: true
+      audited:
+        annotations:
+          description: Bitmask of the permissions that were audited
+          columns.width: 10
+          columns.alignment: right
+          columns.hidden: true
+      denied_unknown:
+        annotations:
+          description: Bitmask of the denied permissions whose name could not be resolved
+          columns.width: 10
+          columns.alignment: right
+          columns.hidden: true
+      requested_unknown:
+        annotations:
+          description: Bitmask of the requested permissions whose name could not be resolved
+          columns.width: 10
+          columns.alignment: right
+          columns.hidden: true
+      audited_unknown:
+        annotations:
+          description: Bitmask of the audited permissions whose name could not be resolved
+          columns.width: 10
+          columns.alignment: right
+          columns.hidden: true
+      result:
+        annotations:
+          description: AVC result (0 means allowed, non-zero means denied)
+          columns.width: 8
+          columns.alignment: right
+          columns.hidden: true
+      kstack_raw:
+        annotations:
+          columns.hidden: true
+      kstack:
+        annotations:
+          description: Kernel stack trace that led to the AVC audit event
+          columns.width: 60
+          # columns.hidden: true
+          flamegraph.level: 50
+          flamegraph.type: stack
+      ustack.symbols:
+        annotations:
+          description: User-space stack trace (symbolized) that led to the AVC audit event
+          columns.width: 60
+          # columns.hidden: true
+          flamegraph.level: 40
+          flamegraph.type: stack
+      ustack.addresses:
+        annotations:
+          description: User-space stack trace (raw addresses)
+          columns.width: 60
+          # columns.hidden: true
+params:
+  ebpf:
+    denials_only:
+      key: denials-only
+      defaultValue: "true"
+      description: Only report AVC denials. Set to false to also report allowed audited events.
+    collect_kstack:
+      key: collect-kstack
+      defaultValue: "false"
+      description: Collect kernel stack traces
+    collect_ustack:
+      key: collect-ustack
+      defaultValue: "false"
+      description: Collect user-space stack traces
