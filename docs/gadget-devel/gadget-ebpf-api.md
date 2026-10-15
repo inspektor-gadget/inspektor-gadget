@@ -65,6 +65,7 @@ and the container runtime (docker, cri-o, containerd, etc.).
 | k8s.node                     | Name of the k8s node                             |
 | k8s.namespace                | Name of the k8s namespace                        |
 | k8s.podName                  | Name of the k8s pod                              |
+| k8s.podUID                   | UID of the k8s pod                               |
 | k8s.containerName            | Name of the k8s container name                   |
 | k8s.hostnetwork              | true, if the container is using the host network |
 | runtime.containerName        | Name of the container on the container runtime   |

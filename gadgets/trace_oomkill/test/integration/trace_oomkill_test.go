@@ -68,7 +68,10 @@ func TestTraceOomKill(t *testing.T) {
 
 	var runnerOpts []igrunner.Option
 	var testingOpts []igtesting.Option
-	commonDataOpts := []utils.CommonDataOption{utils.WithContainerImageName(containerImage)}
+	commonDataOpts := []utils.CommonDataOption{
+		utils.WithContainerImageName(containerImage),
+		utils.WithPodUID(utils.NormalizedStr),
+	}
 
 	switch utils.CurrentTestComponent {
 	case utils.IgK8sTestComponent:
@@ -82,7 +85,7 @@ func TestTraceOomKill(t *testing.T) {
 	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
 		func(t *testing.T, output string) {
 			expectedEntry := &traceOomKillEvent{
-				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+				CommonData: utils.BuildCommonData(t, containerName, commonDataOpts...),
 				Timestamp:  utils.NormalizedStr,
 				TMntNsID:   utils.NormalizedInt,
 				Pages:      utils.NormalizedInt,
@@ -95,6 +98,7 @@ func TestTraceOomKill(t *testing.T) {
 			normalize := func(e *traceOomKillEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
 				utils.NormalizeString(&e.Runtime.ContainerID)
+				utils.NormalizeString(&e.K8s.PodUID)
 				utils.NormalizeString(&e.Timestamp)
 				utils.NormalizeInt(&e.TMntNsID)
 				utils.NormalizeInt(&e.Tpid)

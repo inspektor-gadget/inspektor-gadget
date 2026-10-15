@@ -47,6 +47,13 @@ func WithContainerImageName(imageName string) CommonDataOption {
 	}
 }
 
+// WithPodUID sets the PodUID to facilitate the tests
+func WithPodUID(podUID string) CommonDataOption {
+	return func(commonData *eventtypes.CommonData) {
+		commonData.K8s.PodUID = podUID
+	}
+}
+
 // WithContainerID sets the ContainerID to facilitate the tests
 func WithContainerID(containerID string) CommonDataOption {
 	return func(commonData *eventtypes.CommonData) {
@@ -61,7 +68,15 @@ func WithK8sNamespace(namespace string) CommonDataOption {
 	}
 }
 
-func BuildCommonData(containerName string, options ...CommonDataOption) eventtypes.CommonData {
+// GetPodUID queries the Kubernetes API to get the UID of a pod
+func GetPodUID(t *testing.T, namespace, podname string) string {
+	cmd := exec.Command("kubectl", "-n", namespace, "get", "pod", podname, "-o", "jsonpath={.metadata.uid}")
+	r, err := cmd.CombinedOutput()
+	require.NoError(t, err, "getting UID of %s/%s: %s", namespace, podname, r)
+	return string(r)
+}
+
+func BuildCommonData(t *testing.T, containerName string, options ...CommonDataOption) eventtypes.CommonData {
 	var e eventtypes.CommonData
 
 	switch CurrentTestComponent {
@@ -90,6 +105,11 @@ func BuildCommonData(containerName string, options ...CommonDataOption) eventtyp
 	for _, option := range options {
 		option(&e)
 	}
+
+	if e.K8s.PodUID == "" && CurrentTestComponent == KubectlGadgetTestComponent {
+		e.K8s.PodUID = GetPodUID(t, e.K8s.Namespace, containerName)
+	}
+
 	return e
 }
 

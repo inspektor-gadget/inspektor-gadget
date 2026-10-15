@@ -108,7 +108,7 @@ func TestTopProcess(t *testing.T) {
 		igrunner.WithValidateOutput(
 			func(t *testing.T, output string) {
 				expectedEntry := &topProcessEntry{
-					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+					CommonData: utils.BuildCommonData(t, containerName, commonDataOpts...),
 					Comm:       "sh",
 					Uid:        1000,
 					Nice:       10,

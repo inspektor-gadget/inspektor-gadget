@@ -83,7 +83,7 @@ func TestTraceLink(t *testing.T) {
 	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
 		func(t *testing.T, output string) {
 			expectedHardlinkEntry := &traceLinkEvent{
-				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+				CommonData: utils.BuildCommonData(t, containerName, commonDataOpts...),
 				Proc:       utils.BuildProc("ln", 0, 0),
 				Type:       "HARDLINK",
 				Target:     "/tmp/testlinkold",
@@ -94,7 +94,7 @@ func TestTraceLink(t *testing.T) {
 			}
 
 			expectedSymlinkEntry := &traceLinkEvent{
-				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+				CommonData: utils.BuildCommonData(t, containerName, commonDataOpts...),
 				Proc:       utils.BuildProc("ln", 0, 0),
 				Type:       "SYMLINK",
 				Target:     "../tmp/testlinkold",

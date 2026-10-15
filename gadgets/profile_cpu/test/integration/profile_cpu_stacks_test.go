@@ -159,7 +159,7 @@ func TestProfileCpuOtelStacks(t *testing.T) {
 			// path symbolized Python frames.
 			expectedEntries := []*profileCpuEvent{
 				{
-					CommonData:   utils.BuildCommonData(containerName, dataOpts...),
+					CommonData:   utils.BuildCommonData(t, containerName, dataOpts...),
 					Proc:         utils.BuildProc("cpuburn.py", 0, 0),
 					UserStackRaw: userStackRaw{Symbols: "python-frames-present"},
 				},

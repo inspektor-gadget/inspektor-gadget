@@ -145,10 +145,11 @@ int main(int argc, char *argv[], char **envp) {
 	commonDataOpts := []utils.CommonDataOption{
 		utils.WithContainerImageName(containerImage),
 		// TODO: We need to start the container after the tracer, so we don't
-		// have the container ID available here. It could be possible to split
+		// have the container ID nor pod UID available here. It could be possible to split
 		// the logic to have a container create + container start to be able to
 		// get the ID before starting it.
 		utils.WithContainerID(utils.NormalizedStr),
+		utils.WithPodUID(utils.NormalizedStr),
 	}
 
 	switch utils.CurrentTestComponent {
@@ -167,7 +168,7 @@ int main(int argc, char *argv[], char **envp) {
 				expectedEntries := []*traceExecEvent{
 					// inner script.sh
 					{
-						CommonData:  utils.BuildCommonData(containerName, commonDataOpts...),
+						CommonData:  utils.BuildCommonData(t, containerName, commonDataOpts...),
 						Proc:        utils.BuildProc("sh2", 1000, 1111),
 						Cwd:         "/tmp",
 						Args:        "/dev/script.sh",
@@ -187,7 +188,7 @@ int main(int argc, char *argv[], char **envp) {
 						Sessionid: utils.NormalizedInt,
 					},
 					{
-						CommonData:  utils.BuildCommonData(containerName, commonDataOpts...),
+						CommonData:  utils.BuildCommonData(t, containerName, commonDataOpts...),
 						Proc:        utils.BuildProc("sh2", 1000, 1111),
 						Cwd:         "/tmp",
 						Args:        "/bin/script.sh",
@@ -207,7 +208,7 @@ int main(int argc, char *argv[], char **envp) {
 						Sessionid: utils.NormalizedInt,
 					},
 					{
-						CommonData:    utils.BuildCommonData(containerName, commonDataOpts...),
+						CommonData:    utils.BuildCommonData(t, containerName, commonDataOpts...),
 						Proc:          utils.BuildProc("with_shebeng.sh", 1000, 1111),
 						Cwd:           "/tmp",
 						Args:          strings.Join(shebangArgs, consts.ArgsSeparator),
@@ -229,7 +230,7 @@ int main(int argc, char *argv[], char **envp) {
 					},
 					// inner sh
 					{
-						CommonData:    utils.BuildCommonData(containerName, commonDataOpts...),
+						CommonData:    utils.BuildCommonData(t, containerName, commonDataOpts...),
 						Proc:          utils.BuildProc("sh2", 1000, 1111),
 						Cwd:           "/",
 						Args:          strings.Join(innerShArgs, consts.ArgsSeparator),
@@ -250,7 +251,7 @@ int main(int argc, char *argv[], char **envp) {
 					},
 					// sleeps
 					{
-						CommonData:    utils.BuildCommonData(containerName, commonDataOpts...),
+						CommonData:    utils.BuildCommonData(t, containerName, commonDataOpts...),
 						Proc:          utils.BuildProc("sleep", 1000, 1111),
 						Cwd:           "/tmp",
 						Args:          strings.Join(sleep1Args, consts.ArgsSeparator),
@@ -270,7 +271,7 @@ int main(int argc, char *argv[], char **envp) {
 						Sessionid: utils.NormalizedInt,
 					},
 					{
-						CommonData:    utils.BuildCommonData(containerName, commonDataOpts...),
+						CommonData:    utils.BuildCommonData(t, containerName, commonDataOpts...),
 						Proc:          utils.BuildProc("sleep", 1000, 1111),
 						Cwd:           "/tmp",
 						Args:          strings.Join(sleep2Args, consts.ArgsSeparator),
@@ -293,6 +294,7 @@ int main(int argc, char *argv[], char **envp) {
 				normalize := func(e *traceExecEvent) {
 					utils.NormalizeCommonData(&e.CommonData)
 					utils.NormalizeString(&e.Runtime.ContainerID)
+					utils.NormalizeString(&e.K8s.PodUID)
 					utils.NormalizeString(&e.Timestamp)
 					utils.NormalizeProc(&e.Proc)
 					utils.NormalizeInt(&e.Loginuid)
