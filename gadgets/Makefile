@@ -141,6 +141,7 @@ GADGETS ?= \
 	trace_oomkill \
 	trace_init_module \
 	trace_open \
+	trace_rename \
 	trace_selinux \
 	trace_signal \
 	trace_sni \
