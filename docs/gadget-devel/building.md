@@ -83,6 +83,17 @@ have clang, llvm, the gadget headers (see make install-headers) and the [bpf
 headers](https://github.com/libbpf/libbpf/blob/56069cda7897afdd0ae2478825845c7a7308c878/src/Makefile#L160)
 installed.
 
+:::note
+
+Gadgets using the declarative decl-tag macros (`GADGET_MAP_ONLY_IF`,
+`GADGET_PROG_ATTACH_TO`, `GADGET_ASSERT`, `GADGET_EXPR_DEFINE`; see the
+[eBPF API reference](./gadget-ebpf-api.md#declarative-gating-and-configuration))
+require **clang ≥ 14**, which is the first release able to emit `btf_decl_tag`
+attributes. The default builder image already satisfies this; when building with
+`--local`, make sure your local clang is recent enough.
+
+:::
+
 In this case it's possible to control some of the tools used by setting some env variables:
 
 ```bash

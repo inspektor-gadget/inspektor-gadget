@@ -47,10 +47,11 @@ struct test_event {
 	__u64 timestamp_ns;
 };
 
-GADGET_ITER(map_entries, test_event, dump_test_iter_map);
+GADGET_ITER(map_entries, test_event);
 GADGET_ITER_TARGET_MAP(dump_test_iter_map, test_iter_map);
 
 SEC("iter/bpf_map_elem")
+GADGET_ITER_MEMBER(map_entries)
 int dump_test_iter_map(struct bpf_iter__bpf_map_elem *ctx)
 {
 	struct seq_file *seq = ctx->meta->seq;
