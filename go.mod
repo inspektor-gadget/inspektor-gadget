@@ -46,9 +46,9 @@ require (
 	github.com/tklauser/numcpus v0.12.0
 	github.com/vishvananda/netlink v1.3.1
 	github.com/vishvananda/netns v0.0.5
-	go.opentelemetry.io/collector/pdata/pprofile v0.147.0
+	go.opentelemetry.io/collector/pdata/pprofile v0.159.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.67.0
-	go.opentelemetry.io/ebpf-profiler v0.0.202536
+	go.opentelemetry.io/ebpf-profiler v0.0.202633
 	go.opentelemetry.io/otel v1.45.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.21.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.42.0
@@ -58,7 +58,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.45.0
 	go.opentelemetry.io/otel/sdk/log v0.21.0
 	go.opentelemetry.io/otel/sdk/metric v1.45.0
-	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f
+	golang.org/x/exp v0.0.0-20260820142414-ca536658362e
 	golang.org/x/net v0.61.0
 	golang.org/x/sync v0.24.0 // indirect
 	golang.org/x/sys v0.49.0
@@ -128,7 +128,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/josharian/native v1.1.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.19.1 // indirect
+	github.com/klauspost/compress v1.19.2 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/mdlayher/netlink v1.7.2 // indirect
@@ -215,7 +215,7 @@ require (
 	github.com/go-openapi/swag/typeutils v0.27.1 // indirect
 	github.com/go-openapi/swag/yamlutils v0.27.1 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
-	github.com/hashicorp/go-version v1.8.0 // indirect
+	github.com/hashicorp/go-version v1.9.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 	github.com/mdlayher/kobject v0.0.0-20200520190114-19ca17470d7d // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
@@ -226,12 +226,13 @@ require (
 	github.com/veraison/go-cose v1.3.0 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	github.com/zeebo/xxh3 v1.1.0 // indirect
-	go.opentelemetry.io/collector/consumer v1.53.0 // indirect
-	go.opentelemetry.io/collector/consumer/xconsumer v0.147.0 // indirect
-	go.opentelemetry.io/collector/featuregate v1.53.0 // indirect
-	go.opentelemetry.io/collector/pdata v1.53.0 // indirect
+	go.opentelemetry.io/collector/consumer v1.65.0 // indirect
+	go.opentelemetry.io/collector/consumer/xconsumer v0.159.0 // indirect
+	go.opentelemetry.io/collector/featuregate v1.65.0 // indirect
+	go.opentelemetry.io/collector/pdata v1.65.0 // indirect
+	go.opentelemetry.io/proto/otlp/processcontext/v1development v0.4.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/arch v0.24.0 // indirect
+	golang.org/x/arch v0.30.0 // indirect
 	golang.org/x/mod v0.41.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.4.2 // indirect
 )
@@ -245,4 +246,4 @@ replace github.com/notaryproject/notation-go => github.com/inspektor-gadget/nota
 // - GetStackCacheMap() accessor for userspace cleanup
 // - GetPerfEntryEbpfProgram() accessor for perf_event OTel stack correlation
 // Please keep in sync with examples/go.mod
-replace go.opentelemetry.io/ebpf-profiler => github.com/inspektor-gadget/opentelemetry-ebpf-profiler v0.0.202611-0.20260715114040-ef6cf29492c8
+replace go.opentelemetry.io/ebpf-profiler => github.com/alban/opentelemetry-ebpf-profiler v0.0.202637-0.20260908174505-38a8228ed245

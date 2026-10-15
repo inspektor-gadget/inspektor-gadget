@@ -86,7 +86,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/josharian/native v1.1.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.19.1 // indirect
+	github.com/klauspost/compress v1.19.2 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/mdlayher/netlink v1.7.2 // indirect
 	github.com/mdlayher/socket v0.5.1 // indirect
@@ -156,7 +156,7 @@ require (
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.58.0 // indirect
-	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
+	golang.org/x/exp v0.0.0-20260820142414-ca536658362e // indirect
 	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/net v0.61.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
@@ -196,4 +196,4 @@ replace github.com/inspektor-gadget/inspektor-gadget => ../
 replace github.com/notaryproject/notation-go => github.com/inspektor-gadget/notation-go v1.3.3
 
 // keep in sync with root module to preserve tracer/types import path
-replace go.opentelemetry.io/ebpf-profiler => github.com/inspektor-gadget/opentelemetry-ebpf-profiler v0.0.202611-0.20260715114040-ef6cf29492c8
+replace go.opentelemetry.io/ebpf-profiler => github.com/alban/opentelemetry-ebpf-profiler v0.0.202637-0.20260908174505-38a8228ed245

@@ -81,6 +81,24 @@ The exporter also uses some annotations on the fields
 
 Marks a field to be used as an attribute of the sample.
 
+Sample attribute names are the full field names, following the OpenTelemetry
+convention of dot-separated namespaces (e.g. `k8s.podName`, `proc.comm`).
+Pyroscope >= 2.0 keeps them as-is, while Pyroscope 1.x replaced dots with
+underscores. To keep queries and dashboards written for Pyroscope 1.x working
+with Pyroscope >= 2.0, use the `--otel-profiles-sanitize-labels` flag: the
+exporter then replaces dots with underscores, so `k8s.namespace`, `k8s.podName`,
+and `proc.comm` are exported as `k8s_namespace`, `k8s_podName`, and `proc_comm`.
+Field names in gadget metadata and annotations still use dots.
+
+With `--otel-profiles-sanitize-labels`, if two selected fields normalize to the
+same attribute name (for example, `k8s.podName` and `k8s_podName`), the exporter
+fails to start with an error rather than overwriting an attribute. Resource
+attributes such as `service.name` and `service.version` retain their
+OpenTelemetry names.
+
+Previously stored profiles are not renamed: update queries when toggling the
+flag or upgrading Pyroscope.
+
 Annotations example:
 
 ```yaml
