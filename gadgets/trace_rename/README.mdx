@@ -1,0 +1,124 @@
+---
+title: trace_rename
+sidebar_position: 0
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# trace_rename
+
+The trace_rename gadget emits an event each time a process successfully renames a file or directory with `rename`, `renameat` or `renameat2`.
+
+## Requirements
+
+- Minimum Kernel Version: 5.4
+- The `--paths` flag relies on the `security_path_rename` LSM hook, so it needs a kernel built with `CONFIG_SECURITY_PATH=y`. Without `--paths` the gadget only uses syscall tracepoints.
+  `CONFIG_SECURITY_PATH` is selected by AppArmor, TOMOYO and Landlock but not by SELinux, so kernels that enable only SELinux may not have it. On those kernels `--paths` is not available and only the names as passed to the syscall are reported, which may be relative.
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_rename:%IG_TAG% [flags]
+```
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+```bash
+$ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_rename:%IG_TAG% [flags]
+```
+  </TabItem>
+</Tabs>
+
+## Flags
+
+### `--paths`
+
+Show absolute old and new paths (requires CONFIG_SECURITY_PATH)
+
+Default value: "false"
+
+## Guide
+
+Each event includes:
+
+- `oldname` and `newname`: the names exactly as passed to the syscall. They can be relative to the current directory or to a directory file descriptor.
+- `oldpath` and `newpath`: the absolute paths, only with `--paths`. These columns are hidden by default.
+- `flags`: the `renameat2` flags (`RENAME_NOREPLACE`, `RENAME_EXCHANGE`, `RENAME_WHITEOUT`).
+
+Failed renames don't produce events.
+
+First, we need to run an application that generates some events.
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl run --restart=Never --image=busybox rename-demo -- \
+  sh -c 'while true; do touch /tmp/a; mv /tmp/a /tmp/b; rm -f /tmp/b; sleep 2; done'
+pod/rename-demo created
+```
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+```bash
+$ docker run --name test-trace-rename -d --rm busybox /bin/sh -c 'while true; do touch /tmp/a; mv /tmp/a /tmp/b; rm -f /tmp/b; sleep 2; done'
+```
+  </TabItem>
+</Tabs>
+
+Then, let's run the gadget:
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl gadget run trace_rename:%IG_TAG% --podname rename-demo
+```
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+```bash
+$ sudo ig run trace_rename:%IG_TAG% --containername test-trace-rename
+```
+
+Example output:
+
+```text
+RUNTIME.CONTAINERNAME  COMM      PID      TID  FLAGS  OLDNAME  NEWNAME
+test-trace-rename      mv    2457670  2457670         /tmp/a   /tmp/b
+test-trace-rename      mv    2457687  2457687         /tmp/a   /tmp/b
+test-trace-rename      mv    2457711  2457711         /tmp/a   /tmp/b
+test-trace-rename      mv    2457727  2457727         /tmp/a   /tmp/b
+```
+  </TabItem>
+</Tabs>
+
+Use `--paths` together with `--fields` to see the absolute paths:
+
+```bash
+$ sudo ig run trace_rename:%IG_TAG% --containername test-trace-rename --paths --fields comm,oldname,newname,oldpath,newpath
+```
+
+Finally, clean the system:
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl delete pod rename-demo
+```
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+```bash
+$ docker rm -f test-trace-rename
+```
+  </TabItem>
+</Tabs>
+
+## Limitations
+
+- Renames done through io_uring (`IORING_OP_RENAMEAT`) don't go through the rename syscalls, so this gadget doesn't see them.
+- Names and paths longer than 511 bytes are truncated. This applies to real paths too, which can be up to 4095 bytes (`PATH_MAX`).
