@@ -18,6 +18,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"google.golang.org/grpc"
@@ -145,6 +146,10 @@ func authenticate(ctx context.Context, client kubernetes.Interface, log logger.L
 	}
 	if !review.Status.Authenticated {
 		return ctx, status.Error(codes.Unauthenticated, "token was not authenticated")
+	}
+
+	if !slices.Contains(review.Status.Audiences, Audience) {
+		return ctx, status.Errorf(codes.Unauthenticated, "token audience %q was not honoured by the authenticator", Audience)
 	}
 
 	allowed, err := allowedNamespaces(ctx, client, review.Status.User, scope)
