@@ -1,0 +1,133 @@
+---
+title: trace_nvidia_errors
+sidebar_position: 0
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# trace_nvidia_errors
+
+The `trace_nvidia_errors` gadget traces NVIDIA GPU errors — both CUDA Driver API failures (from
+user-space `libcuda.so` via uprobes) and in-kernel XID events (from the NVIDIA kernel module via
+a kprobe on `nv_report_error`). Every event is enriched with a human-readable name, a one-line
+explanation, an actionable suggestion, and a severity/category label.
+
+## Requirements
+
+- CUDA workload using `libcuda.so` (Driver API)
+- For XID events: open-source NVIDIA kernel module exporting `nv_report_error`
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+kubectl gadget run trace_nvidia_errors:%IG_TAG%
+```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+```bash
+sudo ig run trace_nvidia_errors:%IG_TAG%
+```
+    </TabItem>
+</Tabs>
+
+## When to use it
+
+| Symptom | This gadget reports |
+|---|---|
+| `RuntimeError: CUDA error: ...` in Python / C++ | The exact `CUresult` + the API it came from + the args |
+| `dmesg` line `NVRM: Xid (PCI:...): 13, ...` | Same information, structured, with PCI address |
+| `compute-sanitizer memcheck` too slow for prod | Realtime, eBPF-only, near-zero overhead |
+
+## Events
+
+All events share the common IG fields (`timestamp`, `proc.{pid,comm,tid}`, container metadata)
+plus:
+
+| Field | Type | Description |
+|---|---|---|
+| `source` | enum | `SOURCE_CUDA_API` or `SOURCE_XID` |
+| `error_code` | enum | CUDA `CUresult` name (e.g. `CUDA_ERROR_OUT_OF_MEMORY`). Populated for CUDA API events only. |
+| `api_id` | enum | CUDA Driver API name (e.g. `cuMemAlloc_v2`). Populated for CUDA API events only. |
+| `xid_code` | uint32 | NVIDIA XID number. Populated for XID events only. |
+| `gpu_pci_addr` | string | PCI address `DDDD:BB:SS.F` of the GPU that reported the XID. |
+| `severity` | string | `LOW` / `MEDIUM` / `HIGH` / `CRITICAL`. |
+| `category` | string | `memory`, `launch`, `context`, `device`, `hardware_ecc`, `firmware`, … |
+| `description` | string | One-line plain-English explanation. |
+| `why` | string | Why this happened in this context, derived from API args. |
+| `suggestion` | string | Recommended remediation step. |
+| `context_info` | string | Argument/context details (e.g. `requested_bytes=274877906944 (256.0 GiB)`). |
+| `active_cuda_call` | string | Active CUDA call correlated with an XID event. |
+| `xid_attribution` | string | How the XID was attributed to the workload. |
+| `ustack` | stack | User-space call stack for CUDA API events (requires `--collect-ustack`). |
+
+## Example
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+kubectl gadget run trace_nvidia_errors:%IG_TAG%
+```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+```bash
+sudo ig run trace_nvidia_errors:%IG_TAG%
+```
+    </TabItem>
+</Tabs>
+
+```
+RUNTIME.CONTAINERNAME  COMM     PID    XID_CODE  ERROR_CODE                  API_ID          SOURCE           SEVERITY  CATEGORY  WHY                                              CONTEXT_INFO
+oom-repro              t        84229  0         CUDA_ERROR_OUT_OF_MEMORY    cuMemAlloc_v2   SOURCE_CUDA_API  HIGH      memory    GPU memory allocation request exceeded free dev…  requested_bytes=274877906944 (256.0 GiB)
+invdev-repro           t        91532  0         CUDA_ERROR_INVALID_DEVICE   cuCtxCreate_v2  SOURCE_CUDA_API  MEDIUM    device    Device ordinal out of range [0, N-1]. ordinal=9…  flags=0x0 device_ordinal=9999
+```
+
+## Severity legend
+
+| Severity | Meaning |
+|---|---|
+| LOW | Informational / recoverable / API misuse with no side effects |
+| MEDIUM | App error requiring a code change |
+| HIGH | Context-destroying error; process usually must restart |
+| CRITICAL | Hardware/firmware fault; operator intervention required |
+
+## Architecture
+
+```
+┌──────────────────┐  uprobe/uretprobe      ┌──────────────┐
+│  libcuda.so      │─────────────────────▶  │ program.bpf.c│──▶ events ringbuf
+│ cuMemAlloc_v2 …  │                        │  save_entry/  │            │
+└──────────────────┘                        │  handle_return│            ▼
+                                            └──────────────┘     WASM enricher
+┌──────────────────┐  kprobe                        ▲            (program.go)
+│  nvidia.ko       │─────────────────────────────────┘                │
+│  nv_report_error │  (1 in-kernel function)                          ▼
+└──────────────────┘                                         ig columns / json
+```
+
+The BPF program only emits events when `ret != CUDA_SUCCESS`; successful calls cost one hash-map
+insert + one hash-map delete on the uretprobe.
+
+## Limitations
+
+* Only the **CUDA Driver API** is hooked directly. Errors returned by the higher-level Runtime API
+  (`cudaMalloc`, `cudaLaunchKernel`) surface through their Driver-API callees, so they are still
+  observed — but with the Driver API name, not the Runtime name.
+* XID capture relies on the symbol `nv_report_error` exported by the open-source NVIDIA kernel
+  module. Older proprietary-only driver builds may not export this symbol; the gadget still loads
+  but no XID events will be emitted.
+* The WASM enricher catalog is embedded at build time; new XID numbers or CUDA error codes
+  introduced by a future driver release will be rendered as `XID_<n>` / `CUDA_ERROR_<n>` with an
+  "Unknown" suggestion until the catalog is updated.
+
+## See also
+
+* [NVIDIA XID documentation](https://docs.nvidia.com/deploy/xid-errors/)
+* [CUDA Driver API error codes](https://docs.nvidia.com/cuda/cuda-driver-api/group__CUDA__TYPES.html)
+* `profile_cuda` gadget — for per-kernel timing, not errors.

@@ -1,0 +1,186 @@
+name: trace nvidia errors
+description: Trace NVIDIA CUDA Driver API errors and in-kernel XID events with enrichment
+homepageURL: https://github.com/inspektor-gadget/inspektor-gadget
+documentationURL: https://github.com/inspektor-gadget/inspektor-gadget/blob/main/gadgets/trace_nvidia_errors/README.md
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget
+datasources:
+  nvidia_errors:
+    fields:
+      timestamp_raw:
+        annotations:
+          description: Event timestamp (boot nanoseconds)
+          columns.hidden: "true"
+      proc.pid:
+        annotations:
+          description: Process ID
+          columns.width: "7"
+      proc.tid:
+        annotations:
+          description: Thread ID
+          columns.hidden: "true"
+      proc.comm:
+        annotations:
+          description: Process name
+          columns.width: "16"
+      source_raw:
+        annotations:
+          description: "Raw source discriminator (1=CUDA API, 2=XID)"
+          columns.hidden: "true"
+          value.one-of: |
+            1: SOURCE_CUDA_API
+            2: SOURCE_XID
+      error_code_raw:
+        annotations:
+          description: "Raw CUDA error code (CUresult). Only meaningful for CUDA API events."
+          columns.hidden: "true"
+          value.one-of: |
+            0: CUDA_SUCCESS
+            1: CUDA_ERROR_INVALID_VALUE
+            2: CUDA_ERROR_OUT_OF_MEMORY
+            3: CUDA_ERROR_NOT_INITIALIZED
+            4: CUDA_ERROR_DEINITIALIZED
+            34: CUDA_ERROR_STUB_LIBRARY
+            100: CUDA_ERROR_NO_DEVICE
+            101: CUDA_ERROR_INVALID_DEVICE
+            200: CUDA_ERROR_INVALID_IMAGE
+            201: CUDA_ERROR_INVALID_CONTEXT
+            209: CUDA_ERROR_NO_BINARY_FOR_GPU
+            214: CUDA_ERROR_ECC_UNCORRECTABLE
+            218: CUDA_ERROR_INVALID_PTX
+            220: CUDA_ERROR_NVLINK_UNCORRECTABLE
+            700: CUDA_ERROR_ILLEGAL_ADDRESS
+            701: CUDA_ERROR_LAUNCH_OUT_OF_RESOURCES
+            719: CUDA_ERROR_LAUNCH_FAILED
+            999: CUDA_ERROR_UNKNOWN
+      api_id_raw:
+        annotations:
+          description: "Raw CUDA API identifier (see api_name for string)"
+          columns.hidden: "true"
+          value.one-of: |
+            1: cuMemAlloc_v2
+            2: cuMemAllocPitch_v2
+            3: cuMemAllocManaged
+            4: cuLaunchKernel
+            5: cuCtxCreate_v2
+            6: cuDeviceGet
+            7: cuDeviceGetCount
+            8: cuModuleLoad
+            9: cuModuleLoadData
+            10: cuModuleGetFunction
+            11: cuMemcpyHtoD_v2
+            12: cuMemcpyDtoH_v2
+            13: cuStreamCreate
+            14: cuStreamQuery
+            15: cuStreamSynchronize
+            16: cuEventCreate
+            17: cuEventRecord
+            18: cuEventQuery
+            19: cuEventSynchronize
+            20: cuMemFree_v2
+            21: cuCtxSynchronize
+            22: cuInit
+      xid_code:
+        annotations:
+          description: "NVIDIA XID number (only for SOURCE_XID events)"
+          columns.width: "8"
+          columns.alignment: right
+      source:
+        annotations:
+          description: "Event source: SOURCE_CUDA_API or SOURCE_XID"
+          columns.width: "16"
+      error_code:
+        annotations:
+          description: "CUDA error name"
+          columns.width: "36"
+      api_id:
+        annotations:
+          description: "CUDA API name"
+          columns.width: "22"
+      severity:
+        annotations:
+          description: "Severity: LOW | MEDIUM | HIGH | CRITICAL"
+          columns.width: "10"
+      category:
+        annotations:
+          description: "Error category"
+          columns.width: "14"
+      description:
+        annotations:
+          description: "Plain-English error description"
+          columns.hidden: "true"
+      why:
+        annotations:
+          description: "Why this error happened in this context"
+          columns.width: "48"
+      suggestion:
+        annotations:
+          description: "Actionable remediation suggestion"
+          columns.hidden: "true"
+      context_info:
+        annotations:
+          description: "Argument and context details"
+          columns.width: "40"
+      gpu_pci_addr:
+        annotations:
+          description: "GPU PCI address (DDDD:BB:SS.F) for XID events"
+          columns.width: "14"
+      pci_domain:
+        annotations:
+          description: "PCI domain (raw)"
+          columns.hidden: "true"
+      pci_bus:
+        annotations:
+          description: "PCI bus (raw)"
+          columns.hidden: "true"
+      pci_slot:
+        annotations:
+          description: "PCI slot (raw)"
+          columns.hidden: "true"
+      pci_func:
+        annotations:
+          description: "PCI function (raw)"
+          columns.hidden: "true"
+      arg1:
+        annotations: { description: "Raw argument 1", columns.hidden: "true" }
+      arg2:
+        annotations: { description: "Raw argument 2", columns.hidden: "true" }
+      arg3:
+        annotations: { description: "Raw argument 3", columns.hidden: "true" }
+      arg4:
+        annotations: { description: "Raw argument 4", columns.hidden: "true" }
+      arg5:
+        annotations: { description: "Raw argument 5", columns.hidden: "true" }
+      arg6:
+        annotations: { description: "Raw argument 6", columns.hidden: "true" }
+      active_cuda_api:
+        annotations:
+          description: "API_* id of the most recent CUDA call by the offending PID within 100 ms of the XID (raw)"
+          columns.hidden: "true"
+      xid_attrib_flags:
+        annotations:
+          description: "XID→workload attribution bitmask (raw)"
+          columns.hidden: "true"
+      active_cuda_delta_ns:
+        annotations:
+          description: "Time between the active CUDA call and the XID event (ns)"
+          columns.hidden: "true"
+      active_cuda_args:
+        annotations:
+          description: "Arguments of the active CUDA call (raw)"
+          columns.hidden: "true"
+      _pad:
+        annotations:
+          description: "padding"
+          columns.hidden: "true"
+      active_cuda_call:
+        annotations:
+          description: "Active CUDA call correlated with an XID"
+          columns.width: "28"
+      xid_attribution:
+        annotations:
+          description: "How the XID was attributed to the workload"
+          columns.width: "24"
+      ustack_raw:
+        annotations:
+          description: "User-space call stack (CUDA and XID events)"
+          columns.hidden: "true"
