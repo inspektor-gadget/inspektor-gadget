@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 package api
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"runtime"
@@ -145,7 +144,7 @@ func (m Map) Lookup(key any, value any) error {
 	runtime.KeepAlive(key)
 	runtime.KeepAlive(value)
 	if ret != 0 {
-		return errors.New("looking up map")
+		return fmt.Errorf("looking up key %v in map handle %d", key, m)
 	}
 
 	v := reflect.ValueOf(value)
@@ -173,7 +172,7 @@ func (m Map) Update(key any, value any, flags MapUpdateFlags) error {
 	runtime.KeepAlive(key)
 	runtime.KeepAlive(value)
 	if ret != 0 {
-		return errors.New("updating value in map")
+		return fmt.Errorf("updating value in map handle %d", m)
 	}
 	return nil
 }
@@ -187,7 +186,7 @@ func (m Map) Delete(key any) error {
 	ret := mapDelete(uint32(m), uint64(keyPtr))
 	runtime.KeepAlive(key)
 	if ret != 0 {
-		return errors.New("deleting value in map")
+		return fmt.Errorf("deleting value in map handle %d", m)
 	}
 	return nil
 }
@@ -195,7 +194,7 @@ func (m Map) Delete(key any) error {
 func (m Map) Close() error {
 	ret := mapRelease(uint32(m))
 	if ret != 0 {
-		return errors.New("closing map")
+		return fmt.Errorf("closing map handle %d", m)
 	}
 	return nil
 }
