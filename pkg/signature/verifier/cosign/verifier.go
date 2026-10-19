@@ -45,34 +45,18 @@ var supportedFormats = []signatureformat.SignatureFormat{
 	&signatureformat.BundleFormat{},
 }
 
-func loadSigningInformation(ctx context.Context, imageDigest string, imageStore oras.GraphTarget) ([]byte, []byte, []byte, signatureformat.SignatureFormat, error) {
-	errs := make([]error, 0)
-	for _, format := range supportedFormats {
-		signingInfoTag, err := format.CraftSigningInfoTag(imageDigest)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("crafting signing info tag for %s format: %w", format.Name(), err))
-
-			continue
-		}
-
-		signatureTag, err := format.FindSignatureTag(ctx, imageStore, signingInfoTag)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("finding signature tag for %s format: %w", format.Name(), err))
-
-			continue
-		}
-
-		signature, payload, rawPayload, err := format.LoadSignatureAndPayload(ctx, imageStore, signatureTag)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("loading signature and payload for %s format: %w", format.Name(), err))
-
-			continue
-		}
-
-		return signature, payload, rawPayload, format, nil
+func loadSigningInformation(ctx context.Context, imageDigest string, imageStore oras.GraphTarget, format signatureformat.SignatureFormat) ([]byte, []byte, []byte, error) {
+	signingInfoTag, err := format.CraftSigningInfoTag(imageDigest)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("crafting signing info tag: %w", err)
 	}
 
-	return nil, nil, nil, nil, errors.Join(errs...)
+	signatureTag, err := format.FindSignatureTag(ctx, imageStore, signingInfoTag)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("finding signature tag: %w", err)
+	}
+
+	return format.LoadSignatureAndPayload(ctx, imageStore, signatureTag)
 }
 
 func newVerifier(publicKey []byte) (signature.Verifier, error) {
@@ -100,37 +84,34 @@ func (c *Verifier) Verify(ctx context.Context, imageStore oras.GraphTarget, ref 
 		return fmt.Errorf("getting image digest: %w", err)
 	}
 
-	signatureBytes, payloadBytes, rawPayload, format, err := loadSigningInformation(ctx, imageDigest, imageStore)
-	if err != nil {
-		return fmt.Errorf("getting signing information: %w", err)
-	}
-
-	verified := false
 	var errs error
-	for _, verifier := range c.verifiers {
-		err = verifier.VerifySignature(bytes.NewReader(signatureBytes), bytes.NewReader(payloadBytes))
-		if err == nil {
-			verified = true
-
-			break
+	for _, format := range supportedFormats {
+		sig, payload, rawPayload, err := loadSigningInformation(ctx, imageDigest, imageStore, format)
+		if err != nil {
+			errs = errors.Join(errs, fmt.Errorf("loading %s format: %w", format.Name(), err))
+			continue
 		}
 
-		errs = errors.Join(errs, err)
+		for _, verifier := range c.verifiers {
+			err := verifier.VerifySignature(bytes.NewReader(sig), bytes.NewReader(payload))
+			if err != nil {
+				errs = errors.Join(errs, fmt.Errorf("verifying %s format: %w", format.Name(), err))
+				continue
+			}
+
+			// We should not read the payload before confirming it was signed:
+			// https://github.com/containers/image/blob/main/docs/containers-signature.5.md#the-cryptographic-signature
+			err = format.CheckPayloadImage(rawPayload, imageDigest)
+			if err != nil {
+				errs = errors.Join(errs, fmt.Errorf("checking %s payload image: %w", format.Name(), err))
+				break
+			}
+
+			return nil
+		}
 	}
 
-	if !verified {
-		return fmt.Errorf("the image was not signed by the provided keys: %w", errs)
-	}
-
-	// We should not read the payload before confirming it was signed, so let's
-	// do this check once it was confirmed to be signed:
-	// https://github.com/containers/image/blob/main/docs/containers-signature.5.md#the-cryptographic-signature
-	err = format.CheckPayloadImage(rawPayload, imageDigest)
-	if err != nil {
-		return fmt.Errorf("checking payload image: %w", err)
-	}
-
-	return nil
+	return fmt.Errorf("the image was not signed by the provided keys: %w", errs)
 }
 
 func NewVerifier(opts VerifierOptions) (*Verifier, error) {
