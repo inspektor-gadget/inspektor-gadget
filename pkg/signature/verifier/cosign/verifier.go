@@ -40,9 +40,9 @@ type Verifier struct {
 }
 
 var supportedFormats = []signatureformat.SignatureFormat{
+	&signatureformat.BundleFormat{},
 	&signatureformat.LegacyFormat{},
 	&signatureformat.OCI11Format{},
-	&signatureformat.BundleFormat{},
 }
 
 func loadSigningInformation(ctx context.Context, imageDigest string, imageStore oras.GraphTarget, format signatureformat.SignatureFormat) ([]byte, []byte, []byte, error) {
