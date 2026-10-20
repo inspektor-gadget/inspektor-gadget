@@ -1,0 +1,47 @@
+name: trace rename
+description: trace successful file renames
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_rename
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_rename
+datasources:
+  rename:
+    fields:
+      proc.parent.tid:
+        annotations:
+          columns.hidden: true
+      flags_raw:
+        annotations:
+          columns.hidden: true
+      flags:
+        annotations:
+          description: renameat2 flags (RENAME_NOREPLACE, RENAME_EXCHANGE, RENAME_WHITEOUT)
+          columns.width: 32
+      oldname:
+        annotations:
+          description: Old name as given in the rename syscall (may be relative to the directory fd or cwd)
+          columns.width: 32
+          columns.minwidth: 24
+      newname:
+        annotations:
+          description: New name as given in the rename syscall (may be relative to the directory fd or cwd)
+          columns.width: 32
+          columns.minwidth: 24
+      oldpath:
+        annotations:
+          description: Absolute old path (requires --paths flag)
+          columns.hidden: true
+          columns.width: 32
+          columns.minwidth: 24
+      newpath:
+        annotations:
+          description: Absolute new path (requires --paths flag)
+          columns.hidden: true
+          columns.width: 32
+          columns.minwidth: 24
+params:
+  wasm:
+    paths:
+      key: paths
+      defaultValue: "false"
+      typeHint: bool
+      description: Show absolute old and new paths (requires CONFIG_SECURITY_PATH)
