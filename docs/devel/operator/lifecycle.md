@@ -35,7 +35,7 @@ to tear everything back down.
 
 Instances (`DataOperatorInstance` and `ImageOperatorInstance`) are created by
 `InstantiateDataOperator()` and `InstantiateImageOperator()` respectively. Those
-functions should return a new initalized instance of the operator. They can also
+functions should return a new initialized instance of the operator. They can also
 return `nil` if the operator should be skipped. Data sources should be created
 in this step.
 
