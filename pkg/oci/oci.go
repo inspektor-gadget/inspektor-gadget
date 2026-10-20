@@ -954,7 +954,11 @@ func getManifestForHost(ctx context.Context, target oras.ReadOnlyTarget, image s
 
 	var manifestDesc *ocispec.Descriptor
 	for _, indexManifest := range index.Manifests {
-		// TODO: Check docker code
+		// Platform is an OPTIONAL property per the OCI image-index
+		// spec
+		if indexManifest.Platform == nil {
+			continue
+		}
 		if indexManifest.Platform.Architecture == runtime.GOARCH {
 			manifestDesc = &indexManifest
 			break
