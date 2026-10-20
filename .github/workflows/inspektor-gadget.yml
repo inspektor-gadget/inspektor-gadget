@@ -43,7 +43,7 @@ jobs:
   documentation-checks:
     name: Documentation checks
     # level: 0
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
@@ -83,7 +83,7 @@ jobs:
   actionlint:
     name: Lint GitHub Actions workflows
     # level: 0
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
@@ -97,7 +97,7 @@ jobs:
   lint:
     name: Lint
     # level: 0
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
@@ -117,7 +117,7 @@ jobs:
 
   semgrep:
     name: semgrep
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     container:
       image: returntocorp/semgrep@sha256:afbc982af6778a1c4eaf69fca866ad083dd52c627e5d7d5ee1fd38c061c628bf # v1.153.1
@@ -138,7 +138,7 @@ jobs:
     name: eBPF Object checks
     # level: 1
     needs: build-helper-images
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -182,7 +182,7 @@ jobs:
     # Otherwise, for other cases like pushing to main, it will fail because it
     # searches for base_ref and head_ref which only exists in PR context.
     if: ${{ github.event.pull_request }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -193,7 +193,7 @@ jobs:
   build-clients:
     name: clients
     # level: 0
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       security-events: write
     strategy:
@@ -267,7 +267,7 @@ jobs:
   btfgen:
     name: btfgen
     # level: 0
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -306,7 +306,7 @@ jobs:
     needs:
       - btfgen
       - build-helper-images
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       security-events: write
     strategy:
@@ -367,7 +367,7 @@ jobs:
   build-ig-cwe:
     name: Check ig CWE
     # level: 0
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       security-events: write
     strategy:
@@ -404,7 +404,7 @@ jobs:
     # We only build this dependencies to check if they do not contain CWE.
     name: Build gadget-container-deps
     # level: 0
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       security-events: write
     steps:
@@ -434,7 +434,7 @@ jobs:
     needs:
       - btfgen
       - check-secrets
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       # allow publishing container image
       # in case of public fork repo/packages permissions will always be read
@@ -594,7 +594,7 @@ jobs:
       - btfgen
       - build-helper-images
       - check-secrets
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       # allow publishing container image
       # in case of public fork repo/packages permissions will always be read
@@ -750,7 +750,7 @@ jobs:
   build-gpu-ebpf-bridge:
     name: gpu-ebpf-bridge binary
     # level: 0
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -792,7 +792,7 @@ jobs:
     # level: 1
     needs:
       - check-secrets
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       # allow publishing container image
       # in case of public fork repo/packages permissions will always be read
@@ -929,7 +929,7 @@ jobs:
     name: Scan gpu-ebpf-bridge img
     # level: 2
     needs: build-gpu-ebpf-bridge-container-images
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -957,7 +957,7 @@ jobs:
     needs:
       - build-gpu-ebpf-bridge-container-images
       - check-secrets
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       # allow publishing container image
       # in case of public fork repo/packages permissions will always be read
@@ -1016,7 +1016,7 @@ jobs:
 
   analyse-ig-binary-size:
     name: IG binary size analysis
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs:
       - build-ig
     strategy:
@@ -1057,7 +1057,7 @@ jobs:
 
   analyze-ig-memory:
     name: IG memory analysis with pprof
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs:
       - build-ig
       - build-and-push-gadgets
@@ -1109,7 +1109,7 @@ jobs:
     name: Scan gadget img
     # level: 2
     needs: build-gadget-container-images
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -1139,7 +1139,7 @@ jobs:
     needs:
       - build-gadget-container-images
       - check-secrets
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       # allow publishing container image
       # in case of public fork repo/packages permissions will always be read
@@ -1207,7 +1207,7 @@ jobs:
     needs:
       - build-ig-container-images
       - check-secrets
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       # allow publishing container image
       # in case of public fork repo/packages permissions will always be read
@@ -1269,7 +1269,7 @@ jobs:
   build-helper-images:
     # level: 2
     name: helper images
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs:
       - check-secrets
     outputs:
@@ -1421,7 +1421,7 @@ jobs:
   build-examples:
     name: example
     # level: 0
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       # allow publishing container image
       # in case of public fork repo/packages permissions will always be read
@@ -1461,7 +1461,7 @@ jobs:
   build-gadgets-examples:
     name: Gadgets examples
     # level: 0
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
@@ -1481,7 +1481,7 @@ jobs:
   check-gadget-docs:
     name: Check gadget docs structure
     # level: 0
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
@@ -1494,7 +1494,7 @@ jobs:
     # level: 0
     needs:
       - build-ig
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
@@ -1516,7 +1516,7 @@ jobs:
       - build-ig
     name: Unit tests
     # level: 0
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
@@ -1543,7 +1543,7 @@ jobs:
   benchmarks:
     name: Benchmarks
     # level: 0
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
@@ -1604,7 +1604,7 @@ jobs:
   package-helm-charts:
     name: Lint and package Helm charts
     # level: 0
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
@@ -1653,7 +1653,7 @@ jobs:
   test-helm-charts:
     name: Test Helm charts
     # level: 2
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs:
       - package-helm-charts
       - build-gadget-container-images
@@ -1714,7 +1714,7 @@ jobs:
     # level: 1
     if: github.event_name != 'pull_request'
     needs: package-helm-charts
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       # allow publishing helm charts
       # in case of public fork repo/packages permissions will always be read
@@ -1748,7 +1748,7 @@ jobs:
   test-components:
     name: Test components
     # level: 1
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs:
       - build-helper-images
     steps:
@@ -1769,7 +1769,7 @@ jobs:
   check-secrets:
     name: Check repo secrets
     # level: 0
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     outputs:
       aro: ${{ steps.set_output.outputs.aro }}
       aks: ${{ steps.set_output.outputs.aks }}
@@ -1841,7 +1841,7 @@ jobs:
     name: Public key check
     # level: 1
     needs: check-secrets
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     # The first check means that job will only run if the secrets are present. So it will be skipped
     # for forks, PRs from forks and dependabot PRs (if no dependabot secret are configured).
     # The second check ensures if we forgot configuring the secrets in main repo
@@ -1869,7 +1869,7 @@ jobs:
     name: Test ig w/ k8s
     # level: 3
     needs: [ test-unit, build-ig, build-helper-images ]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -1929,7 +1929,7 @@ jobs:
       - build-ig
       - build-helper-images
       - check-secrets
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       # allow publishing container image
       # in case of public fork repo/packages permissions will always be read
@@ -2024,7 +2024,7 @@ jobs:
       - build-and-push-gadgets
       - build-helper-images
       - check-secrets
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     services:
       registry:
         image: ${{ github.event_name == 'pull_request' && 'ghcr.io/inspektor-gadget/ci/registry@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373' || '' }}
@@ -2095,7 +2095,7 @@ jobs:
       - build-and-push-gadgets
       - build-helper-images
       - check-secrets
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     services:
       registry:
         image: ${{ github.event_name == 'pull_request' && 'ghcr.io/inspektor-gadget/ci/registry@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373' || '' }}
@@ -2189,7 +2189,7 @@ jobs:
       - build-helper-images
       - build-and-push-gadgets
       - check-secrets
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     services:
       registry:
         image: ${{ github.event_name == 'pull_request' && 'ghcr.io/inspektor-gadget/ci/registry@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373' || '' }}
@@ -2292,7 +2292,7 @@ jobs:
       - build-ig
       - build-helper-images
       - build-and-push-gadgets
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -2344,7 +2344,7 @@ jobs:
       - publish-gpu-ebpf-bridge-images-manifest
       - build-and-push-gadgets
     if: needs.check-secrets.outputs.aks == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -2446,7 +2446,7 @@ jobs:
     # Run this job only if an ARO cluster is available on repo secrets. See
     # docs/devel/ci.md for further details.
     if: needs.check-secrets.outputs.aro == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     concurrency:
       group: no-simultaneous-test-integration-aro
     steps:
@@ -2496,7 +2496,7 @@ jobs:
       - publish-gpu-ebpf-bridge-images-manifest
       - build-and-push-gadgets
     if: ${{ vars.AWS_ROLE != '' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     # These permissions are needed to interact with GitHub's OIDC Token endpoint.
     permissions:
       id-token: write
@@ -2578,7 +2578,7 @@ jobs:
       - publish-gadget-images-manifest
       - publish-gpu-ebpf-bridge-images-manifest
       - build-and-push-gadgets
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -2678,7 +2678,7 @@ jobs:
       - build-helper-images
       - build-and-push-gadgets
       - check-secrets
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     services:
       registry:
         image: ${{ github.event_name == 'pull_request' && 'ghcr.io/inspektor-gadget/ci/registry@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373' || '' }}
@@ -2754,7 +2754,7 @@ jobs:
       - test-integration-k8s-ig
       - test-integration-non-k8s-ig
       - test-gadgets-local
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     # Skip this job when running on a fork or a PR from a fork.
     if: always() && (
       (github.event_name == 'push' && github.repository == 'inspektor-gadget/inspektor-gadget') ||
@@ -2796,7 +2796,7 @@ jobs:
       - publish-gpu-ebpf-bridge-images-manifest
       - build-gpu-ebpf-bridge
       - public-key-check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       contents: write
     if: startsWith(github.ref, 'refs/tags/v')
