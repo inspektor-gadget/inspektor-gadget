@@ -142,7 +142,7 @@ func newDaemonCommand(runtime runtime.Runtime) *cobra.Command {
 			}
 		}
 
-		if tlsOptionsSet > 1 && tlsOptionsSet < 3 {
+		if tlsOptionsSet > 0 && tlsOptionsSet < 3 {
 			return fmt.Errorf(`
 missing at least one the TLS related options:
 	* tls-key-file: %q
