@@ -68,6 +68,60 @@ Together with the `otel-metrics-listen=true` and `otel-metrics-name=<name>`
 flags, this annotation is used to enable the Otel Metrics operator to export the
 data source's output as Prometheus metrics.
 
+#### `metrics.snapshot`
+
+Controls whether gauge series are collected as snapshots. By default, gauges
+are recorded synchronously and retain the latest value for each attribute set.
+
+Set this annotation to `true` when every array emitted by the data source is
+a complete refresh of the currently active entities:
+
+```yaml
+datasources:
+  metrics:
+    annotations:
+      metrics.collect: "true"
+      metrics.snapshot: "true"
+```
+
+Snapshot mode uses observable gauges. Each emitted array atomically replaces
+the previous gauge snapshot, so attribute sets omitted from a later array are
+no longer exported. An empty array removes all gauge series for the data source.
+Snapshot mode is only supported for array data sources.
+
+Counters and histograms in the same data source retain their normal cumulative
+behavior. Snapshot replacement only applies to fields with
+`metrics.type=gauge`.
+
+Rows within one snapshot must have unique values for the fields annotated with
+`metrics.type=key`. The operator rejects a snapshot containing duplicate key
+sets instead of applying an implicit last-write-wins aggregation. A rejected
+snapshot does not replace the previous gauge snapshot; the rows remain
+available to other operators, and counters and histograms still consume them.
+
+#### `metrics.snapshot-timeout`
+
+Sets how long the latest snapshot remains authoritative without another
+completed refresh. When the timeout expires, the observable callback stops
+exporting all gauges from that snapshot.
+
+If omitted, the timeout defaults to three times the data source's positive
+`fetch-interval`. Data sources without a positive fetch interval must configure
+the timeout explicitly. An explicit timeout must be at least twice the positive
+`fetch-interval`. Prefer the derived timeout when users can override the fetch
+interval.
+
+```yaml
+datasources:
+  metrics:
+    annotations:
+      metrics.snapshot: "true"
+      metrics.snapshot-timeout: 5s
+```
+
+An empty snapshot removes series immediately. The timeout instead covers a
+stalled data source that stops emitting refreshes.
+
 #### `metrics.print`
 
 If set to `"true"`, the Otel Metrics operator will render the data source's
