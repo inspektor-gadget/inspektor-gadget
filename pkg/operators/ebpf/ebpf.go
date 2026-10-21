@@ -24,6 +24,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strconv"
@@ -53,6 +54,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/rawsock"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/symbolizer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/tchandler"
@@ -66,6 +68,7 @@ const (
 	typeSplitter = "___"
 
 	ParamIface       = "iface"
+	ParamNetnsPath   = "netns-path"
 	ParamTraceKernel = "trace-pipe"
 
 	kernelTypesVar = "kernelTypes"
@@ -193,6 +196,13 @@ type ebpfInstance struct {
 	skTargetMaps map[string]string
 	params       map[string]*param
 	paramValues  map[string]string
+
+	// netnsPath is the value of the netns-path parameter, exactly as the user
+	// gave it: it is resolved below the host root at the point of use, never
+	// stored resolved. Set only after validating a socket-filter target; network
+	// tracers then attach to it instead of to containers. Other programs retain
+	// their normal attachment and container bookkeeping.
+	netnsPath string
 
 	networkTracers map[string]*networktracer.Tracer[api.GadgetData]
 	tcHandlers     map[string]*tchandler.Handler
@@ -490,6 +500,14 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 		}
 	}
 
+	// Always expose the flag so unrelated program types can accept and ignore it.
+	i.params[ParamNetnsPath] = &param{
+		Param: &api.Param{
+			Key:         ParamNetnsPath,
+			Description: "Path of the network namespace for socket filters, e.g. /run/netns/mynetns. Bypasses container discovery for socket filters only; ignored by other programs and unsupported with TC programs",
+		},
+	}
+
 	i.params[ParamTraceKernel] = &param{
 		Param: &api.Param{
 			Key:          ParamTraceKernel,
@@ -702,6 +720,12 @@ func (i *ebpfInstance) PreStart(gadgetCtx operators.GadgetContext) error {
 		}
 	}
 
+	// Managers can replay existing containers in their PreStart callbacks, so
+	// establish socket-filter targeting before those callbacks can run.
+	if err := i.validateNetnsPath(); err != nil {
+		return err
+	}
+
 	for ds, formatters := range i.formatters {
 		for _, formatter := range formatters {
 			ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
@@ -709,6 +733,42 @@ func (i *ebpfInstance) PreStart(gadgetCtx operators.GadgetContext) error {
 			}, 0)
 		}
 	}
+	return nil
+}
+
+// validateNetnsPath checks the netns-path parameter during PreStart, before
+// manager callbacks or program attachment. A gadget mixing socket filters and
+// TC programs must be rejected as a whole.
+func (i *ebpfInstance) validateNetnsPath() error {
+	i.netnsPath = ""
+	path := i.paramValues[ParamNetnsPath]
+	if path == "" {
+		return nil
+	}
+
+	if len(i.tcHandlers) > 0 {
+		return fmt.Errorf("%q is not yet supported for TC programs", ParamNetnsPath)
+	}
+	if len(i.networkTracers) == 0 {
+		i.logger.Debugf("Ignoring %q: gadget has no socket filter programs", ParamNetnsPath)
+		return nil
+	}
+	if !filepath.IsAbs(path) {
+		return fmt.Errorf("%q must be an absolute path, got %q", ParamNetnsPath, path)
+	}
+
+	// Fail fast, before any program is attached, on a path that does not exist,
+	// escapes the host root, or is not a namespace at all. This is only a check:
+	// the path is stored as the user gave it, and rawsock.OpenNetnsPath()
+	// resolves and opens it as one operation each time it is used, so nothing
+	// resolved here is carried over to attach time.
+	handle, _, err := rawsock.OpenNetnsPath(path)
+	if err != nil {
+		return fmt.Errorf("network namespace path %q: %w", path, err)
+	}
+	handle.Close()
+
+	i.netnsPath = path
 	return nil
 }
 
@@ -1132,9 +1192,13 @@ func (i *ebpfInstance) AttachContainer(container *containercollection.Container)
 	i.containers[container.Runtime.ContainerID] = container
 	i.mu.Unlock()
 
-	for _, networkTracer := range i.networkTracers {
-		if err := networkTracer.AttachContainer(container); err != nil {
-			return err
+	// With netns-path, the network tracers are attached to that namespace in
+	// Start(); containers are not attach targets.
+	if i.netnsPath == "" {
+		for _, networkTracer := range i.networkTracers {
+			if err := networkTracer.AttachContainer(container); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -1160,9 +1224,11 @@ func (i *ebpfInstance) DetachContainer(container *containercollection.Container)
 	delete(i.containers, container.Runtime.ContainerID)
 	i.mu.Unlock()
 
-	for _, networkTracer := range i.networkTracers {
-		if err := networkTracer.DetachContainer(container); err != nil {
-			return err
+	if i.netnsPath == "" {
+		for _, networkTracer := range i.networkTracers {
+			if err := networkTracer.DetachContainer(container); err != nil {
+				return err
+			}
 		}
 	}
 
