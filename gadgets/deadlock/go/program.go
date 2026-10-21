@@ -61,12 +61,12 @@ func gadgetInit() int32 {
 		api.Warnf("failed to get field: %s", err)
 		return 1
 	}
-	tidF, err := dsMutex.GetField("tid")
+	tidF, err := dsMutex.GetField("proc.tid")
 	if err != nil {
 		api.Warnf("failed to get field: %s", err)
 		return 1
 	}
-	pidF, err := dsMutex.GetField("pid")
+	pidF, err := dsMutex.GetField("proc.pid")
 	if err != nil {
 		api.Warnf("failed to get field: %s", err)
 		return 1
@@ -81,12 +81,12 @@ func gadgetInit() int32 {
 		api.Warnf("failed to get field: %s", err)
 		return 1
 	}
-	commF, err := dsMutex.GetField("comm")
+	commF, err := dsMutex.GetField("proc.comm")
 	if err != nil {
 		api.Warnf("failed to get field: %s", err)
 		return 1
 	}
-	mntnsIdF, err := dsMutex.GetField("mntns_id")
+	mntnsIdF, err := dsMutex.GetField("proc.mntns_id")
 	if err != nil {
 		api.Warnf("failed to get field: %s", err)
 		return 1
