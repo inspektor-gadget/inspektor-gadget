@@ -14,7 +14,22 @@
 
 package ebpfoperator
 
-// Keep this aligned with include/gadget/macros.h
+// Legacy "___"-style magic-global name prefixes.
+//
+// These are the ORIGINAL encoding of gadget metadata: the macros used to emit
+// specially named global symbols (e.g. gadget_param_<name>, gadget_tracer_<...>)
+// that the analyze() prefix walk decodes. As of the decl-tag migration the
+// public macros instead emit ig:* btf_decl_tags (see include/gadget/macros.h and
+// pkg/operators/ebpf/migtags.go), so newly built gadgets no longer carry these
+// symbols.
+//
+// Deprecated: for NEW gadgets, prefer the ig:* decl-tag encoding. These prefix
+// parsers are nonetheless RETAINED PERMANENTLY (they are not "transition-only")
+// so that pre-built OCI images — whose eBPF ELF carries only the "___" symbols
+// and no ig:* tags — keep loading with a new ig. They run side by side with the
+// decl-tag readers, per the permanent backward-compatibility guarantee. Removal,
+// if ever, would be a future major release.
+// Keep this aligned with include/gadget/macros.h.
 const (
 	// Prefix used to mark trace maps
 	tracerInfoPrefix = "gadget_tracer_"
