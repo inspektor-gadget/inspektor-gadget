@@ -1,4 +1,4 @@
-// Copyright 2023-2024 The Inspektor Gadget authors
+// Copyright 2023-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -48,6 +48,10 @@ const (
 type Data interface {
 	private()
 	payload() [][]byte
+
+	// LostSampleCount returns the number of lost samples between this packet and the previous packet; depending on the
+	// data source, this could be per-CPU
+	LostSampleCount() uint64
 }
 
 type DataArray interface {
@@ -74,6 +78,10 @@ type DataArray interface {
 	// beyond the new size will be released. Currently, it does not support
 	// resizing to a larger size.
 	Resize(int) error
+
+	// LostSampleCount returns the number of lost samples between this packet and the previous packet; depending on the
+	// data source, this could be per-CPU
+	LostSampleCount() uint64
 }
 
 type Packet interface {
@@ -82,6 +90,13 @@ type Packet interface {
 
 	// Raw returns the raw proto message for marshaling and unmarshaling
 	Raw() proto.Message
+
+	// SetLostSampleCount sets the number of lost samples between this packet and the previous packet
+	SetLostSampleCount(ctr uint64)
+
+	// LostSampleCount returns the number of lost samples between this packet and the previous packet; depending on the
+	// data source, this could be per-CPU
+	LostSampleCount() uint64
 }
 
 type PacketSingle interface {
