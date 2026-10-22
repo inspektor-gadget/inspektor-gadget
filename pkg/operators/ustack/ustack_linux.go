@@ -51,6 +51,13 @@ func checkBuildIDMap(buildIDMap *ebpf.Map) error {
 func readUserStackMap(gadgetCtx operators.GadgetContext, userStackMap, buildIDMap *ebpf.Map, stackId uint32) (string, string, []symbolizer.StackItemQuery, error) {
 	logger := gadgetCtx.Logger()
 
+	// bpf_get_stackid() failed and its negative errno was stored in this
+	// unsigned field. Do not look it up as a stack ID.
+	if errno := int32(stackId); errno < 0 {
+		logger.Warnf("user stack not collected, bpf_get_stackid failed: %s", unix.Errno(-errno))
+		return "", "", nil, nil
+	}
+
 	stack := [ebpftypes.UserPerfMaxStackDepth]uint64{}
 	err := userStackMap.Lookup(stackId, &stack)
 	if err != nil {
