@@ -1,10 +1,10 @@
-ARG BUILDER_IMAGE=golang:1.26.9-trixie@sha256:cf7e928cb9edc2ed8b3cc6fe77ee1ee30b9fea28149564c8840097321a7600ea
+ARG BUILDER_IMAGE=golang:1.26.10-trixie@sha256:909771fef53e3dcb0950255f0c9a8b4728c3b841e61509c7b29b098de7ee02d4
 # Debian rather than distroless/static because the -tags nvml build
 # requires cgo, which links libc dynamically. The bridge then
 # dlopen()s libnvidia-ml.so.1 at runtime from the host (bind-mounted
 # via the NVIDIA Container Toolkit hook or explicit HostPath mount);
 # nothing NVIDIA-specific ships in this image.
-ARG BASE_IMAGE=gcr.io/distroless/base-debian12:latest@sha256:e7e678c88c59e70e105a46549bb3fbfb3d732ee3b4afd3a19fdab2e15afaa6b3
+ARG BASE_IMAGE=gcr.io/distroless/base-nossl-debian12:latest@sha256:e35893f8ca1cabfbd60394af94899c20930c4615355adf97c5da660a51b61bca
 
 FROM --platform=${BUILDPLATFORM} ${BUILDER_IMAGE} AS builder
 
