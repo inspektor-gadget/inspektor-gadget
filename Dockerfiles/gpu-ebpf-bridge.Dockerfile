@@ -1,4 +1,4 @@
-ARG BUILDER_IMAGE=golang:1.26.9-trixie@sha256:cf7e928cb9edc2ed8b3cc6fe77ee1ee30b9fea28149564c8840097321a7600ea
+ARG BUILDER_IMAGE=golang:1.26.10-trixie@sha256:909771fef53e3dcb0950255f0c9a8b4728c3b841e61509c7b29b098de7ee02d4
 # Debian rather than distroless/static because the -tags nvml build
 # requires cgo, which links libc dynamically. The bridge then
 # dlopen()s libnvidia-ml.so.1 at runtime from the host (bind-mounted
