@@ -83,5 +83,10 @@ func InstanceSpecsFromReader(r io.Reader) ([]*InstanceSpec, error) {
 		}
 		res = append(res, spec)
 	}
+
+	if len(res) == 0 {
+		return nil, errors.New("no gadget instance spec found in manifest")
+	}
+
 	return res, nil
 }
