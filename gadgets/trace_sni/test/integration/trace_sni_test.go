@@ -38,7 +38,15 @@ type traceSNIEvent struct {
 	Name string `json:"name"`
 }
 
-func TestTraceSNI(t *testing.T) {
+type testCase struct {
+	name           string
+	containerImage string
+	containerCmd   string
+	expectedProc   utils.Process
+	expectedName   string
+}
+
+func newTraceSNIStep(t *testing.T, tc testCase) (igtesting.TestStep, []igtesting.Option) {
 	gadgettesting.RequireEnvironmentVariables(t)
 	utils.InitTest(t)
 
@@ -48,20 +56,20 @@ func TestTraceSNI(t *testing.T) {
 
 	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
 	require.NoError(t, err, "new container factory")
-	containerName := "test-trace-sni"
-	containerImage := gadgettesting.BusyBoxImage
+	containerName := tc.name
+	containerImage := tc.containerImage
 
 	var ns string
 	containerOpts := []containers.ContainerOption{containers.WithContainerImage(containerImage)}
 
 	if utils.CurrentTestComponent == utils.KubectlGadgetTestComponent {
-		ns = utils.GenerateTestNamespaceName(t, "test-trace-sni")
+		ns = utils.GenerateTestNamespaceName(t, tc.name)
 		containerOpts = append(containerOpts, containers.WithContainerNamespace(ns))
 	}
 
 	testContainer := containerFactory.NewContainer(
 		containerName,
-		"while true; do setuidgid 1000:1111 wget --no-check-certificate -T 2 -q -O /dev/null https://inspektor-gadget.io; sleep 1; done",
+		tc.containerCmd,
 		containerOpts...,
 	)
 
@@ -87,8 +95,8 @@ func TestTraceSNI(t *testing.T) {
 		func(t *testing.T, output string) {
 			expectedEntry := &traceSNIEvent{
 				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-				Proc:       utils.BuildProc("wget", 1000, 1111),
-				Name:       "inspektor-gadget.io",
+				Proc:       tc.expectedProc,
+				Name:       tc.expectedName,
 
 				// Check the existence of the following fields
 				Timestamp: utils.NormalizedStr,
@@ -108,5 +116,31 @@ func TestTraceSNI(t *testing.T) {
 
 	traceSNICmd := igrunner.New("trace_sni", runnerOpts...)
 
+	return traceSNICmd, testingOpts
+}
+
+func TestTraceSNI(t *testing.T) {
+	tc := testCase{
+		name:           "test-trace-sni",
+		containerImage: gadgettesting.BusyBoxImage,
+		containerCmd:   "while true; do setuidgid 1000:1111 wget --no-check-certificate -T 2 -q -O /dev/null https://inspektor-gadget.io; sleep 1; done",
+		expectedProc:   utils.BuildProc("wget", 1000, 1111),
+		expectedName:   "inspektor-gadget.io",
+	}
+
+	traceSNICmd, testingOpts := newTraceSNIStep(t, tc)
+	igtesting.RunTestSteps([]igtesting.TestStep{traceSNICmd}, t, testingOpts...)
+}
+
+func TestTraceSNI_IPv6(t *testing.T) {
+	tc := testCase{
+		name:           "test-trace-sni-ipv6",
+		containerImage: gadgettesting.NetworkMultitoolImage,
+		containerCmd:   "openssl req -x509 -newkey rsa:2048 -keyout /tmp/key.pem -out /tmp/cert.pem -days 1 -nodes -subj '/CN=ipv6.inspektor-gadget.io' 2>/dev/null && openssl s_server -key /tmp/key.pem -cert /tmp/cert.pem -accept 8443 -www >/dev/null 2>&1 & sleep 1 && echo '::1 ipv6.inspektor-gadget.io' >> /etc/hosts && while true; do wget --no-check-certificate -T 2 -q -O /dev/null https://ipv6.inspektor-gadget.io:8443; sleep 1; done",
+		expectedProc:   utils.BuildProc("wget", 0, 0),
+		expectedName:   "ipv6.inspektor-gadget.io",
+	}
+
+	traceSNICmd, testingOpts := newTraceSNIStep(t, tc)
 	igtesting.RunTestSteps([]igtesting.TestStep{traceSNICmd}, t, testingOpts...)
 }
