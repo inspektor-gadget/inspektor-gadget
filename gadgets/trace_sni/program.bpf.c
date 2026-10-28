@@ -193,9 +193,6 @@ int ig_trace_sni(struct __sk_buff *skb)
 	if (bpf_skb_load_bytes(skb, tcp_off, &tcph, sizeof tcph))
 		return 0;
 
-	if (!tcph.psh)
-		return 0;
-
 	// The data offset field in the header is specified in 32-bit words. We
 	// have to multiply this value by 4 to get the TCP header length in bytes.
 	__u8 tcp_header_len = tcph.doff * 4;
