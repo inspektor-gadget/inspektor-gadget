@@ -170,6 +170,11 @@ func (i *wasmOperatorInstance) addHandle(obj any) uint32 {
 	i.handleLock.Lock()
 	defer i.handleLock.Unlock()
 
+	if i.handleMap == nil {
+		i.logger.Warnf("no handle map")
+		return 0
+	}
+
 	if len(i.handleMap) == maxHandles {
 		i.logger.Warnf("too many open handles")
 		return 0
