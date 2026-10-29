@@ -7,6 +7,7 @@ params:
   ebpf:
     snaplen:
       key: snaplen
+      defaultValue: "1500"
       description: 'Maximum number of bytes to capture from a packet.'
 datasources:
   packets:
