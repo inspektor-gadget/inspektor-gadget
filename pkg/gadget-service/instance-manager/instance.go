@@ -72,6 +72,15 @@ type GadgetInstance struct {
 	state                gadgetState
 	error                error
 	ready                chan struct{}
+	readyOnce            sync.Once
+}
+
+// closeReady releases everyone waiting on p.ready. It is safe to call from
+// multiple exit paths because the underlying close happens at most once.
+func (p *GadgetInstance) closeReady() {
+	p.readyOnce.Do(func() {
+		close(p.ready)
+	})
 }
 
 func (p *GadgetInstance) GadgetInfo() (*api.GadgetInfo, error) {
@@ -87,9 +96,25 @@ func (p *GadgetInstance) ParamValues() api.ParamValues {
 	return maps.Clone(p.request.ParamValues)
 }
 
-func (p *GadgetInstance) AddClient(client api.GadgetManager_RunGadgetServer) chan struct{} {
-	log.Debugf("[%s] client connected", p.gadgetInfo.Id)
+func (p *GadgetInstance) AddClient(client api.GadgetManager_RunGadgetServer) (chan struct{}, error) {
+	// Wait for the gadget to finish initialising (or to fail) before touching
+	// gadgetInfo. Run closes p.ready on every exit path, so this never blocks
+	// forever, even when initialisation failed before OnInit ran.
+	<-p.ready
+
 	p.mu.Lock()
+	if p.gadgetInfo == nil {
+		// The gadget never initialised (e.g. the image could not be pulled or
+		// its signature failed verification). Refuse the attach instead of
+		// dereferencing a nil gadgetInfo, which would crash the daemon.
+		err := p.error
+		if err == nil {
+			err = fmt.Errorf("gadget instance %q is not available", p.id)
+		}
+		p.mu.Unlock()
+		return nil, err
+	}
+	log.Debugf("[%s] client connected", p.gadgetInfo.Id)
 	cl := NewGadgetInstanceClient(client)
 	p.clients[cl] = struct{}{}
 	var replayBuf []*bufferedEvent
@@ -116,7 +141,7 @@ func (p *GadgetInstance) AddClient(client api.GadgetManager_RunGadgetServer) cha
 		p.mu.Unlock()
 		log.Debugf("[%s] client disconnected (failed to send gadget info): %c", p.gadgetInfo.Id, err)
 		close(done)
-		return done
+		return done, nil
 	}
 
 	go func() {
@@ -131,7 +156,7 @@ func (p *GadgetInstance) AddClient(client api.GadgetManager_RunGadgetServer) cha
 		p.mu.Unlock()
 		close(done)
 	}()
-	return done
+	return done, nil
 }
 
 func (p *GadgetInstance) RemoveClients() {
@@ -146,7 +171,20 @@ func (p *GadgetInstance) Run(
 	ctx context.Context,
 	runtime runtime.Runtime,
 	logger logger.Logger,
-) error {
+) (err error) {
+	// Always release clients waiting on initialisation, even if Run fails
+	// before OnInit runs (e.g. image pull or signature verification failed).
+	// Otherwise GadgetInfo() and AddClient would block on p.ready forever.
+	defer func() {
+		if err != nil {
+			p.mu.Lock()
+			p.state = stateError
+			p.error = err
+			p.mu.Unlock()
+		}
+		p.closeReady()
+	}()
+
 	if p.request.Version != api.VersionGadgetRunProtocol {
 		return fmt.Errorf("expected version to be %d, got %d", api.VersionGadgetRunProtocol, p.request.Version)
 	}
@@ -206,7 +244,7 @@ func (p *GadgetInstance) Run(
 				Payload: d,
 			}
 			p.gadgetInfo = gi
-			close(p.ready)
+			p.closeReady()
 			return nil
 		}),
 	)

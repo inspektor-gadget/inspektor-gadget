@@ -110,7 +110,15 @@ func (m *Manager) RunGadget(instance *api.GadgetInstance) {
 		m.waitingRoom.Range(func(key, value any) bool {
 			if value.(string) == gi.id {
 				log.Debugf("adopting client for gadget instance %q", gi.id)
-				gi.AddClient(key.(api.GadgetManager_RunGadgetServer))
+				// AddClient blocks until the gadget has initialised; run it in
+				// the background so it cannot deadlock RunGadget, which only
+				// starts the gadget (and closes gi.ready) after releasing m.mu.
+				client := key.(api.GadgetManager_RunGadgetServer)
+				go func() {
+					if _, err := gi.AddClient(client); err != nil {
+						log.Debugf("adopting client for gadget instance %q failed: %v", gi.id, err)
+					}
+				}()
 				m.waitingRoom.Delete(key)
 			}
 			return true
