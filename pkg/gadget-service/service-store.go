@@ -16,10 +16,12 @@ package gadgetservice
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/inspektor-gadget/inspektor-gadget/internal/namesgenerator"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	instancemanager "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/instance-manager"
 	kubemanagerpolicy "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager/policy"
 )
 
@@ -67,6 +69,9 @@ func (s *Service) ListGadgetInstances(ctx context.Context, request *api.ListGadg
 		}
 		st, err := s.instanceMgr.InstanceState(gi.Id)
 		if err != nil {
+			if errors.Is(err, instancemanager.ErrNotFound) {
+				continue
+			}
 			return nil, fmt.Errorf("getting instance status for %q: %w", gi.Id, err)
 		}
 		gi.State = st
