@@ -350,7 +350,11 @@ func (o *otelLogsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) e
 				// Build attr prep using full field name
 				p, err := makeAttrPrep(f, "")
 				if err != nil {
-					return fmt.Errorf("getting key/val func for %s.%s: %w", ds.Name(), f.FullName(), err)
+					// This is a best-effort fallback over every field of the data source, so
+					// skip fields that can't be represented as attributes (e.g. arrays like
+					// the raw IPv6 address bytes) instead of failing the whole gadget.
+					gadgetCtx.Logger().Debugf("otel-logs: skipping field %s.%s: %v", ds.Name(), f.FullName(), err)
+					continue
 				}
 				if p == nil {
 					continue
