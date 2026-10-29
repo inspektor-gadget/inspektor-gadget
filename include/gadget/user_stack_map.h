@@ -179,10 +179,25 @@ static __always_inline u32 gadget_get_base_addr_hash(struct task_struct *task)
 	return hash;
 }
 
+/* __gadget_reset_otel_correlation resets otel_generic_params so that a failed
+ * tail call or unwinding yields 0 ("no OTel stack") rather than the id of a
+ * previous trace. The OTel eBPF Profiler generates the id.
+ */
+static __always_inline void __gadget_reset_otel_correlation(void)
+{
+	struct generic_param *param;
+	u32 zero = 0;
+
+	param = bpf_map_lookup_elem(&otel_generic_params, &zero);
+	if (param)
+		param->correlation_id = 0;
+}
+
 static __attribute__((noinline)) int
 gadget_fetch_otel_stack_from_kprobe(void *ctx)
 {
 	u32 key = 0;
+	__gadget_reset_otel_correlation();
 	bpf_tail_call(ctx, &otel_tc_kprobe, key);
 	return 0;
 }
@@ -191,6 +206,7 @@ static __attribute__((noinline)) int
 gadget_fetch_otel_stack_from_perf_event(void *ctx)
 {
 	u32 key = 0;
+	__gadget_reset_otel_correlation();
 	bpf_tail_call(ctx, &otel_tc_perf, key);
 	return 0;
 }

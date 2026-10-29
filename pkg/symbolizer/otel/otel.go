@@ -16,20 +16,22 @@ package otel
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
 	"sync"
 	"time"
 
-	cebpf "github.com/cilium/ebpf"
 	log "github.com/sirupsen/logrus"
 	otelinterpreterconfig "go.opentelemetry.io/ebpf-profiler/interpreter/interpreterconfig"
 	"go.opentelemetry.io/ebpf-profiler/libpf"
 	otellog "go.opentelemetry.io/ebpf-profiler/log"
+	otelmetrics "go.opentelemetry.io/ebpf-profiler/metrics"
 	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
 	oteltimes "go.opentelemetry.io/ebpf-profiler/times"
 	oteltracer "go.opentelemetry.io/ebpf-profiler/tracer"
+	"go.opentelemetry.io/otel/metric/noop"
 	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/symbolizer"
@@ -71,13 +73,13 @@ type otelResolverInstance struct {
 
 	trc *oteltracer.Tracer
 
-	// kprobeTrampoline holds the profiler's kprobe entry program
-	// (kprobe__external), loaded via the upstream RegisterCollectTrampoline
-	// API. Gadget kprobe/uprobe programs tail-call into it (via the
-	// otel_tc_kprobe prog array, populated in GetEbpfReplacements). It is
-	// retained for the lifetime of the instance so the program and its
-	// context map stay alive, and closed in Close().
-	kprobeTrampoline *collectTrampolineProbe
+	// trampolines holds the profiler's external probe entry programs
+	// (kprobe__external and perf_event__external) and their per-probe
+	// ext_probe_value maps, loaded via the upstream RegisterCollectTrampoline
+	// API. Gadget programs tail-call into them (via the otel_tc_kprobe and
+	// otel_tc_perf prog arrays). They are retained for the lifetime of the
+	// instance and closed in Close().
+	trampolines *collectTrampolineProbe
 
 	// mu protects correlationMap, waiters, and pruneCandidate.
 	// There is a single producer (the traceReporter callback, called
@@ -207,8 +209,8 @@ func (o *otelResolverInstance) pruneCorrelationMap(activeBPF map[uint64]bool) {
 }
 
 func (o *otelResolverInstance) Close() {
-	if o.kprobeTrampoline != nil {
-		o.kprobeTrampoline.Close()
+	if o.trampolines != nil {
+		o.trampolines.Unload()
 	}
 	if o.trc != nil {
 		o.trc.Close()
@@ -216,65 +218,64 @@ func (o *otelResolverInstance) Close() {
 }
 
 // collectTrampolineProbe implements the oteltracer.Probe interface. Its Load
-// method registers the profiler's kprobe entry program (kprobe__external) via
-// the RegisterCollectTrampoline API and retains a durable handle to it.
+// method registers the profiler's kprobe and perf_event entry programs
+// (kprobe__external, perf_event__external) via the RegisterCollectTrampoline
+// API.
+//
+// Each trampoline comes with its own per-CPU ext_probe_value map (CtxMap).
+// Before the tail call, the gadget writes a fresh correlation id into it; it
+// reaches unwind_stop as the trace's context value, which deduplicates
+// identical stacks and writes the id to use (the gadget's, or the one of the
+// cached stack) to generic_params. Using separate maps for kprobe and perf
+// keeps a perf_event NMI from overwriting the id of an interrupted kprobe.
 type collectTrampolineProbe struct {
-	// prog is the loaded kprobe__external trampoline program. IG holds this
-	// handle for the lifetime of the profiler so the program stays alive: the
-	// RegisterCollectTrampoline loader drops its own handle on return, and the
-	// program only gains a second kernel reference once GetEbpfReplacements
-	// inserts it into a gadget's otel_tc_kprobe prog array.
-	prog *cebpf.Program
-	// ctxMap is the per-probe payload map (ext_probe_value). IG never writes to
-	// it (the value is overwritten by unwind_stop with the correlation ID), but
-	// kprobe__external references it, so it is retained and closed on shutdown.
-	ctxMap *cebpf.Map
+	kprobe *oteltracer.CollectTrampolineRef
+	perf   *oteltracer.CollectTrampolineRef
 }
 
 func (p *collectTrampolineProbe) Load(_ context.Context, _ oteltracer.ProbeRegistrar, probeCtx *oteltracer.ProbeContext) error {
-	ref, err := probeCtx.RegisterCollectTrampoline(&samples.TypeMetadata{
-		SampleType: "events",
-		SampleUnit: "count",
-	})
-	if err != nil {
-		return fmt.Errorf("registering collect trampoline: %w", err)
+	// IG never exports OTel profiles, so the sample type is informative only.
+	meta := &samples.TypeMetadata{
+		SampleTypes: []samples.SampleType{{Type: "events", Unit: "count"}},
+		AppendValues: func(dst []int64, _ *samples.TraceEventMeta) []int64 {
+			return append(dst, 1)
+		},
 	}
-
-	// Acquire a durable handle to the trampoline program immediately: the
-	// RegisterCollectTrampoline loader drops its own handle on return, so
-	// without this the kernel could free the program before it is inserted
-	// into the gadget's otel_tc_kprobe prog array.
-	prog, err := cebpf.NewProgramFromID(cebpf.ProgramID(ref.TailCallDestinationID))
+	var err error
+	p.kprobe, err = probeCtx.RegisterCollectTrampoline(meta, oteltracer.ProbeKProbe)
 	if err != nil {
-		ref.CtxMap.Close()
-		return fmt.Errorf("opening collect trampoline program: %w", err)
+		return fmt.Errorf("registering kprobe collect trampoline: %w", err)
 	}
-	p.prog = prog
-	p.ctxMap = ref.CtxMap
+	p.perf, err = probeCtx.RegisterCollectTrampoline(meta, oteltracer.ProbePerfEvent)
+	if err != nil {
+		p.Unload()
+		return fmt.Errorf("registering perf_event collect trampoline: %w", err)
+	}
 	return nil
 }
 
-func (p *collectTrampolineProbe) Close() {
-	if p.prog != nil {
-		p.prog.Close()
+func (p *collectTrampolineProbe) Unload() error {
+	var errs []error
+	if p.kprobe != nil {
+		errs = append(errs, p.kprobe.Close())
+		p.kprobe = nil
 	}
-	if p.ctxMap != nil {
-		p.ctxMap.Close()
+	if p.perf != nil {
+		errs = append(errs, p.perf.Close())
+		p.perf = nil
 	}
+	return errors.Join(errs...)
 }
 
 func (o *otelResolverInstance) GetEbpfReplacements() map[string]any {
-	if o.trc == nil {
+	if o.trc == nil || o.trampolines == nil {
 		return nil
 	}
-	repl := map[string]any{
-		symbolizer.OtelEbpfProgramPerf:      o.trc.GetPerfEntryEbpfProgram(),
+	return map[string]any{
+		symbolizer.OtelEbpfProgramKprobe:    o.trampolines.kprobe,
+		symbolizer.OtelEbpfProgramPerf:      o.trampolines.perf,
 		symbolizer.OtelGenericParamsMapName: o.trc.GetGenericParamsEbpfMap(),
 	}
-	if o.kprobeTrampoline != nil {
-		repl[symbolizer.OtelEbpfProgramKprobe] = o.kprobeTrampoline.prog
-	}
-	return repl
 }
 
 func (o *otelResolverInstance) Resolve(task symbolizer.Task, stackQueries []symbolizer.StackItemQuery, stackResponses []symbolizer.StackItemResponse) ([]symbolizer.StackItemResponse, error) {
@@ -455,6 +456,11 @@ func (o *otelResolverInstance) startOtelEbpfProfiler(ctx context.Context) error 
 	// debug output.
 	otellog.SetLevel(logrusToSlogLevel(log.GetLevel()))
 
+	// Register the profiler's metric definitions. Without it, every metric
+	// the profiler reports is logged as an "Invalid metric id". The noop
+	// meter keeps them from being exported.
+	otelmetrics.Start(noop.Meter{})
+
 	monitorInterval := 2.0 * time.Second
 
 	var rep traceReporter
@@ -472,7 +478,14 @@ func (o *otelResolverInstance) startOtelEbpfProfiler(ctx context.Context) error 
 			}
 		}
 		stackStr := stackBuilder.String()
-		correlationID := uint64(meta.Value)
+		// The gadget's correlation id is the trace's single context value,
+		// written to ext_probe_value before the tail call.
+		if len(meta.ContextValues) != 1 {
+			log.Debugf("Ignoring OpenTelemetry trace with %d context values (pid %d, tid %d)",
+				len(meta.ContextValues), meta.PID, meta.TID)
+			return nil
+		}
+		correlationID := meta.ContextValues[0]
 		log.Debugf("Received OpenTelemetry trace (correlation ID %d, pid %d, tid %d):\n%s\n",
 			correlationID, meta.PID, meta.TID, stackStr)
 
@@ -499,7 +512,6 @@ func (o *otelResolverInstance) startOtelEbpfProfiler(ctx context.Context) error 
 		BPFVerifierLogLevel:    bpfVerifierLogLevel(),
 		ProbabilisticInterval:  0,
 		ProbabilisticThreshold: 0,
-		OffCPUThreshold:        0,
 		IncludeEnvVars:         nil,
 		TraceReporter:          rep,
 	})
@@ -508,19 +520,19 @@ func (o *otelResolverInstance) startOtelEbpfProfiler(ctx context.Context) error 
 	}
 	o.trc = trc
 
-	// Load the profiler's kprobe entry program (kprobe__external) via the
-	// upstream RegisterCollectTrampoline API. Gadget kprobe/uprobe programs
-	// tail-call into it to trigger stack unwinding. A single trampoline is
-	// shared across all kprobe gadgets: IG correlates traces to events via its
-	// own correlation ID (carried in trace->value and the generic_params
-	// write-back), not via the profiler's per-origin model, so one instance
-	// suffices.
+	// Load the profiler's external probe entry programs (kprobe__external and
+	// perf_event__external) via the upstream RegisterCollectTrampoline API.
+	// Gadget kprobe/uprobe and perf_event programs tail-call into them to
+	// trigger stack unwinding. One trampoline per program type is shared
+	// across all gadgets: IG correlates traces to events via its own
+	// correlation id (the trace's context value and the generic_params
+	// write-back), not via the profiler's per-origin model.
 	probe := &collectTrampolineProbe{}
 	if err := trc.Enable(ctx, probe); err != nil {
 		trc.Close()
-		return fmt.Errorf("enabling OTel kprobe collect trampoline: %w", err)
+		return fmt.Errorf("enabling OTel collect trampolines: %w", err)
 	}
-	o.kprobeTrampoline = probe
+	o.trampolines = probe
 
 	log.Infof("Starting OpenTelemetry eBPF Profiler: %v", trc)
 
