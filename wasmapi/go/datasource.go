@@ -151,6 +151,12 @@ func dataSourceCallback(cbID uint64, ds uint32, data uint32) {
 	case PacketFunc:
 		cb(DataSource(ds), Packet(data))
 	}
+
+	// The module runs in reactor mode, so Go's background goroutines (like
+	// the GC sweeper) only get scheduled when an exported function yields.
+	// Without this, memory is no longer reclaimed after a few hundred
+	// thousand callbacks and the module runs out of memory.
+	runtime.Gosched()
 }
 
 type (
