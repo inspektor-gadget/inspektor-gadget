@@ -712,6 +712,13 @@ func (i *ebpfInstance) PreStart(gadgetCtx operators.GadgetContext) error {
 	return nil
 }
 
+// otelTailCallTarget is the OTel eBPF Profiler entry program that gadgets tail
+// call into (oteltracer.CollectTrampolineRef). It is stored in the gadget
+// context under symbolizer.OtelEbpfProgramKprobe or OtelEbpfProgramPerf.
+type otelTailCallTarget interface {
+	InsertInto(progArray *ebpf.Map, key uint32) error
+}
+
 func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 	i.logger.Debugf("starting ebpfInstance")
 
@@ -912,9 +919,9 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		if !ok {
 			continue
 		}
-		otelEbpfProgram, ok := otelEbpfProgramI.(*ebpf.Program)
+		otelEbpfProgram, ok := otelEbpfProgramI.(otelTailCallTarget)
 		if !ok {
-			return fmt.Errorf("invalid otel ebpf program %q: expected *ebpf.Program, got %T", tc.progVar, otelEbpfProgramI)
+			return fmt.Errorf("invalid otel ebpf program %q: expected InsertInto(*ebpf.Map, uint32), got %T", tc.progVar, otelEbpfProgramI)
 		}
 		progMap, ok := collection.Maps[tc.mapName]
 		if !ok {
@@ -946,7 +953,7 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 			continue
 		}
 
-		if err := progMap.Update(uint32(0), otelEbpfProgram, ebpf.UpdateAny); err != nil {
+		if err := otelEbpfProgram.InsertInto(progMap, 0); err != nil {
 			return fmt.Errorf("updating %s map: %w", tc.mapName, err)
 		}
 	}
