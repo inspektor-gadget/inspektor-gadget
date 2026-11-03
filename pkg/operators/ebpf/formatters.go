@@ -65,8 +65,19 @@ func byteSliceAsUint64(in []byte, signed bool, ds datasource.DataSource) uint64 
 	return 0
 }
 
+// loadKernelSpec loads the running kernel's BTF. It is a variable so tests can
+// count the loads.
+var loadKernelSpec = btf.LoadKernelSpec
+
 func (i *ebpfInstance) initEnumFormatter(gadgetCtx operators.GadgetContext) error {
-	btfSpec, err := btf.LoadKernelSpec()
+	// The kernel's BTF is only needed to resolve enum names, and parsing it
+	// costs about 7 MB of heap per gadget. Most gadgets have no enum fields, so
+	// skip it for them.
+	if len(i.enums) == 0 {
+		return nil
+	}
+
+	btfSpec, err := loadKernelSpec()
 	if err != nil {
 		i.logger.Warnf("Kernel BTF information not available. Enums won't be resolved to strings")
 	}

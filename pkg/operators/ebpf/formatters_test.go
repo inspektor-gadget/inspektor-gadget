@@ -15,12 +15,14 @@
 package ebpfoperator
 
 import (
+	"context"
 	"testing"
 
 	"github.com/cilium/ebpf/btf"
 	"github.com/stretchr/testify/require"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
+	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
@@ -369,4 +371,38 @@ func constructNValuedEnum(keys []string, memberName string, isBitField bool) *en
 		},
 		memberName: memberName,
 	}
+}
+
+func TestInitEnumFormatterLoadsKernelBTFOnlyForEnums(t *testing.T) {
+	loads := 0
+	orig := loadKernelSpec
+	loadKernelSpec = func() (*btf.Spec, error) {
+		loads++
+		return nil, btf.ErrNotFound
+	}
+	t.Cleanup(func() { loadKernelSpec = orig })
+
+	newInstance := func(enums []*enum) *ebpfInstance {
+		return &ebpfInstance{
+			logger:     logger.DefaultLogger(),
+			enums:      enums,
+			formatters: make(map[datasource.DataSource][]func(datasource.DataSource, datasource.Data) error),
+		}
+	}
+
+	ctx := gadgetcontext.New(context.Background(), "test:latest")
+	t.Cleanup(ctx.Cancel)
+	ds, err := ctx.RegisterDataSource(datasource.TypeSingle, "events")
+	require.NoError(t, err)
+	in, err := ds.AddField("field1", api.Kind_Uint32)
+	require.NoError(t, err)
+	in.AddAnnotation(enumTargetNameAnnotation, "field1_str")
+
+	require.NoError(t, newInstance(nil).initEnumFormatter(ctx))
+	require.Zero(t, loads, "a gadget without enum fields must not load the kernel BTF")
+
+	withEnum := newInstance([]*enum{constructNValuedEnum([]string{"A", "B"}, "field1", false)})
+	require.NoError(t, withEnum.initEnumFormatter(ctx))
+	require.Equal(t, 1, loads)
+	require.Len(t, withEnum.formatters[ds], 1, "the gadget's own enum is still formatted without kernel BTF")
 }
