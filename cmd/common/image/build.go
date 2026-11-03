@@ -146,6 +146,51 @@ func checkBuildOptions(buildOpts buildOptions) error {
 	return nil
 }
 
+// checkBuildFilePath ensures path, relative to gadgetDir, does not point
+// outside of gadgetDir, including through symlinks. gadgetDir must already
+// have its symlinks resolved.
+func checkBuildFilePath(gadgetDir, path string) error {
+	if !filepath.IsLocal(path) {
+		return fmt.Errorf("%q must be a relative path inside the gadget directory", path)
+	}
+
+	// filepath.Join() lexically removes "..", which does not follow the
+	// filesystem resolution: "link/../x" would be checked as "x" while the
+	// kernel resolves ".." relative to the symlink target.
+	if slices.Contains(strings.Split(filepath.ToSlash(path), "/"), "..") {
+		return fmt.Errorf("%q must not contain \"..\"", path)
+	}
+
+	joined := filepath.Join(gadgetDir, path)
+
+	resolved, err := filepath.EvalSymlinks(joined)
+	if errors.Is(err, os.ErrNotExist) {
+		// The file may be created later (e.g. metadata with
+		// --update-metadata), so ensure it would be created inside gadgetDir.
+		if _, err := os.Lstat(joined); err == nil {
+			return fmt.Errorf("%q is a dangling symlink", path)
+		}
+
+		resolved, err = filepath.EvalSymlinks(filepath.Dir(joined))
+		if errors.Is(err, os.ErrNotExist) {
+			// Parent does not exist either, nothing can be created there.
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("resolving parent of %q: %w", path, err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("resolving %q: %w", path, err)
+	}
+
+	rel, err := filepath.Rel(gadgetDir, resolved)
+	if err != nil || !filepath.IsLocal(rel) {
+		return fmt.Errorf("%q points outside the gadget directory", path)
+	}
+
+	return nil
+}
+
 func buildPipeline(opts buildOptions) ([]buildStep, error) {
 	if err := checkBuildOptions(opts); err != nil {
 		return nil, fmt.Errorf("wrong build option detected: %w", err)
@@ -249,6 +294,31 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 
 		if err := os.Chdir(opts.path); err != nil {
 			return fmt.Errorf("changing directory: %w", err)
+		}
+	}
+
+	gadgetDir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("getting gadget directory: %w", err)
+	}
+	gadgetDir, err = filepath.EvalSymlinks(gadgetDir)
+	if err != nil {
+		return fmt.Errorf("resolving gadget directory: %w", err)
+	}
+
+	for _, f := range []struct {
+		name string
+		path string
+	}{
+		{"ebpfsource", conf.EBPFSource},
+		{"wasm", conf.Wasm},
+		{"metadata", conf.Metadata},
+	} {
+		if f.path == "" {
+			continue
+		}
+		if err := checkBuildFilePath(gadgetDir, f.path); err != nil {
+			return fmt.Errorf("build.yaml: %s: %w", f.name, err)
 		}
 	}
 
