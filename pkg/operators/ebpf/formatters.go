@@ -65,19 +65,20 @@ func byteSliceAsUint64(in []byte, signed bool, ds datasource.DataSource) uint64 
 	return 0
 }
 
-// loadKernelSpec loads the running kernel's BTF. It is a variable so tests can
-// count the loads.
-var loadKernelSpec = btf.LoadKernelSpec
+// kernelSpecFromCache returns the kernel BTF held by the operator's cache. It
+// is a variable so tests can observe which cache is used.
+var kernelSpecFromCache = (*btf.Cache).Kernel
 
 func (i *ebpfInstance) initEnumFormatter(gadgetCtx operators.GadgetContext) error {
-	// The kernel's BTF is only needed to resolve enum names, and parsing it
-	// costs about 7 MB of heap per gadget. Most gadgets have no enum fields, so
-	// skip it for them.
+	// The kernel's BTF is only needed to resolve enum names. Most gadgets have
+	// no enum fields, so skip it for them.
 	if len(i.enums) == 0 {
 		return nil
 	}
 
-	btfSpec, err := loadKernelSpec()
+	// Use the operator's cache, which program loading shares too, rather than
+	// btf.LoadKernelSpec: a fresh parse costs about 7 MB of heap per gadget.
+	btfSpec, err := kernelSpecFromCache(i.bpfOperator.btfCache)
 	if err != nil {
 		i.logger.Warnf("Kernel BTF information not available. Enums won't be resolved to strings")
 	}

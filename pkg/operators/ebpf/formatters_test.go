@@ -373,20 +373,22 @@ func constructNValuedEnum(keys []string, memberName string, isBitField bool) *en
 	}
 }
 
-func TestInitEnumFormatterLoadsKernelBTFOnlyForEnums(t *testing.T) {
-	loads := 0
-	orig := loadKernelSpec
-	loadKernelSpec = func() (*btf.Spec, error) {
-		loads++
+func TestInitEnumFormatterUsesSharedKernelBTFCache(t *testing.T) {
+	operator := &ebpfOperator{btfCache: btf.NewCache()}
+	var used []*btf.Cache
+	orig := kernelSpecFromCache
+	kernelSpecFromCache = func(c *btf.Cache) (*btf.Spec, error) {
+		used = append(used, c)
 		return nil, btf.ErrNotFound
 	}
-	t.Cleanup(func() { loadKernelSpec = orig })
+	t.Cleanup(func() { kernelSpecFromCache = orig })
 
 	newInstance := func(enums []*enum) *ebpfInstance {
 		return &ebpfInstance{
-			logger:     logger.DefaultLogger(),
-			enums:      enums,
-			formatters: make(map[datasource.DataSource][]func(datasource.DataSource, datasource.Data) error),
+			bpfOperator: operator,
+			logger:      logger.DefaultLogger(),
+			enums:       enums,
+			formatters:  make(map[datasource.DataSource][]func(datasource.DataSource, datasource.Data) error),
 		}
 	}
 
@@ -399,10 +401,10 @@ func TestInitEnumFormatterLoadsKernelBTFOnlyForEnums(t *testing.T) {
 	in.AddAnnotation(enumTargetNameAnnotation, "field1_str")
 
 	require.NoError(t, newInstance(nil).initEnumFormatter(ctx))
-	require.Zero(t, loads, "a gadget without enum fields must not load the kernel BTF")
+	require.Empty(t, used, "a gadget without enum fields must not read the kernel BTF")
 
 	withEnum := newInstance([]*enum{constructNValuedEnum([]string{"A", "B"}, "field1", false)})
 	require.NoError(t, withEnum.initEnumFormatter(ctx))
-	require.Equal(t, 1, loads)
+	require.Equal(t, []*btf.Cache{operator.btfCache}, used, "enum formatting must read the kernel BTF from the operator's shared cache")
 	require.Len(t, withEnum.formatters[ds], 1, "the gadget's own enum is still formatted without kernel BTF")
 }
