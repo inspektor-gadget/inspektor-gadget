@@ -109,7 +109,7 @@ func newGoBuildStep(opts buildOptions) buildStep {
 			// -buildmode=c-shared to build the wasm as a reactor module, see:
 			// https://github.com/WebAssembly/WASI/blob/main/legacy/application-abi.md#current-unstable-abi
 			"-buildmode=c-shared",
-			"-ldflags", "-w -s",
+			"-ldflags", "-w -s", "--",
 			filepath.Base(goBuildStep.opts.wasmSourcePath),
 		}
 		env := []string{
