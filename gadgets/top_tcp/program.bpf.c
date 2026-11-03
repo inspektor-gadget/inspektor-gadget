@@ -9,6 +9,7 @@
 #include <gadget/filter.h>
 #include <gadget/types.h>
 #include <gadget/macros.h>
+#include <gadget/sockets.h>
 
 /* Taken from kernel include/linux/socket.h. */
 #define AF_INET 2 /* Internet IP Protocol 	*/
@@ -69,36 +70,7 @@ static int probe_ip(bool receiving, struct sock *sk, size_t size)
 	ip_key.tid = tid;
 	ip_key.mntns_id = mntns_id;
 	bpf_get_current_comm(&ip_key.comm, sizeof(ip_key.comm));
-	ip_key.src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
-	ip_key.dst.port = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
-	ip_key.src.proto_raw = ip_key.dst.proto_raw = IPPROTO_TCP;
-	if (family == AF_INET) {
-		ip_key.src.version = ip_key.dst.version = 4;
-	} else {
-		ip_key.src.version = ip_key.dst.version = 6;
-	}
-
-	if (family == AF_INET) {
-		bpf_probe_read_kernel(&ip_key.src.addr_raw.v4,
-				      sizeof(sk->__sk_common.skc_rcv_saddr),
-				      &sk->__sk_common.skc_rcv_saddr);
-		bpf_probe_read_kernel(&ip_key.dst.addr_raw.v4,
-				      sizeof(sk->__sk_common.skc_daddr),
-				      &sk->__sk_common.skc_daddr);
-	} else {
-		/*
-		 * family == AF_INET6,
-		 * we already checked above family is correct.
-		 */
-		bpf_probe_read_kernel(
-			&ip_key.src.addr_raw.v6,
-			sizeof(sk->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32),
-			&sk->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
-		bpf_probe_read_kernel(
-			&ip_key.dst.addr_raw.v6,
-			sizeof(sk->__sk_common.skc_v6_daddr.in6_u.u6_addr32),
-			&sk->__sk_common.skc_v6_daddr.in6_u.u6_addr32);
-	}
+	gadget_l4endpoints_from_sock(&ip_key.src, &ip_key.dst, sk);
 
 	trafficp = bpf_map_lookup_elem(&ip_map, &ip_key);
 	if (!trafficp) {

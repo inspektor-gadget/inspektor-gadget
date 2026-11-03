@@ -16,6 +16,7 @@
 #include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
 #include <gadget/types.h>
+#include <gadget/sockets.h>
 
 /* The maximum number of items in maps */
 #define MAX_ENTRIES 8192
@@ -145,53 +146,23 @@ static __always_inline bool is_ipv6_zero(struct gadget_l4endpoint_t *endpoint)
 static __always_inline bool fill_tuple(struct tuple_key_t *tuple,
 				       struct sock *sk, int family)
 {
-	struct inet_sock *sockp = (struct inet_sock *)sk;
-
 	BPF_CORE_READ_INTO(&tuple->netns, sk, __sk_common.skc_net.net, ns.inum);
 
-	switch (family) {
-	case AF_INET:
-		BPF_CORE_READ_INTO(&tuple->src.addr_raw.v4, sk,
-				   __sk_common.skc_rcv_saddr);
-		if (tuple->src.addr_raw.v4 == 0)
-			return false;
+	if (gadget_l4endpoints_from_sock(&tuple->src, &tuple->dst, sk) < 0)
+		return false;
 
-		BPF_CORE_READ_INTO(&tuple->dst.addr_raw.v4, sk,
-				   __sk_common.skc_daddr);
-		if (tuple->dst.addr_raw.v4 == 0)
-			return false;
+	if (tuple->src.port == 0 || tuple->dst.port == 0)
+		return false;
 
-		tuple->src.version = tuple->dst.version = 4;
-		break;
-	case AF_INET6:
-		BPF_CORE_READ_INTO(
-			&tuple->src.addr_raw.v6, sk,
-			__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
-		if (is_ipv6_zero(&tuple->src))
+	if (family == AF_INET) {
+		if (tuple->src.addr_raw.v4 == 0 || tuple->dst.addr_raw.v4 == 0)
 			return false;
-		BPF_CORE_READ_INTO(&tuple->dst.addr_raw.v6, sk,
-				   __sk_common.skc_v6_daddr.in6_u.u6_addr32);
-		if (is_ipv6_zero(&tuple->dst))
+	} else if (family == AF_INET6) {
+		if (is_ipv6_zero(&tuple->src) || is_ipv6_zero(&tuple->dst))
 			return false;
-
-		tuple->src.version = tuple->dst.version = 6;
-		break;
-	/* it should not happen but to be sure let's handle this case */
-	default:
+	} else {
 		return false;
 	}
-
-	BPF_CORE_READ_INTO(&tuple->dst.port, sk, __sk_common.skc_dport);
-	tuple->dst.port = bpf_ntohs(tuple->dst.port);
-	if (tuple->dst.port == 0)
-		return false;
-
-	BPF_CORE_READ_INTO(&tuple->src.port, sockp, inet_sport);
-	tuple->src.port = bpf_ntohs(tuple->src.port);
-	if (tuple->src.port == 0)
-		return false;
-
-	tuple->src.proto_raw = tuple->dst.proto_raw = IPPROTO_TCP;
 
 	return true;
 }
