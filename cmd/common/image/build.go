@@ -593,13 +593,12 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 		return fmt.Errorf("building build pipeline: %w", err)
 	}
 
-	// The work mount ReadOnly field is updated as false, to allow Cargo.lock to compiled in /work folder for rust source code.
 	mounts := []mount.Mount{
 		{
 			Type:     mount.TypeBind,
 			Target:   "/work",
 			Source:   pathHost,
-			ReadOnly: false,
+			ReadOnly: true,
 		},
 		{
 			Type:   mount.TypeBind,

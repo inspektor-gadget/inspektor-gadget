@@ -142,6 +142,7 @@ func newCargoBuildStep(opts buildOptions) buildStep {
 		cmd = append(cmd,
 			"build",
 			"--target", "wasm32-wasip1", "--release",
+			"--locked",
 			"--manifest-path="+manifestPath,
 		)
 		env := []string{fmt.Sprintf("CARGO_TARGET_DIR=%s", cargoBuildStep.opts.outputDir)}
@@ -152,6 +153,7 @@ func newCargoBuildStep(opts buildOptions) buildStep {
 
 		metadataOut, _, err := runner.run([]string{
 			"cargo", "metadata", "--format-version=1", "--no-deps",
+			"--locked",
 			"--manifest-path=" + manifestPath,
 		}, nil)
 		if err != nil {
