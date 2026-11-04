@@ -64,17 +64,18 @@ type GadgetContext struct {
 	useInstance      bool
 	requestExtraInfo bool
 
-	lock           sync.Mutex
-	dataSources    map[string]datasource.DataSource
-	dataOperators  []operators.DataOperator
-	localOperators []operators.DataOperatorInstance
-	vars           map[string]any
-	params         []*api.Param
-	paramValues    api.ParamValues
-	loaded         bool
-	imageName      string
-	metadata       []byte
-	orasTarget     oras.ReadOnlyTarget
+	lock                  sync.Mutex
+	dataSources           map[string]datasource.DataSource
+	dataOperators         []operators.DataOperator
+	disabledDataOperators []string
+	localOperators        []operators.DataOperatorInstance
+	vars                  map[string]any
+	params                []*api.Param
+	paramValues           api.ParamValues
+	loaded                bool
+	imageName             string
+	metadata              []byte
+	orasTarget            oras.ReadOnlyTarget
 }
 
 func New(
@@ -145,6 +146,10 @@ func (c *GadgetContext) ImageName() string {
 
 func (c *GadgetContext) DataOperators() []operators.DataOperator {
 	return slices.Clone(c.dataOperators)
+}
+
+func (c *GadgetContext) DisabledDataOperators() []string {
+	return slices.Clone(c.disabledDataOperators)
 }
 
 func (c *GadgetContext) IsRemoteCall() bool {
