@@ -559,10 +559,10 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 	if inspektorGadetSrcPath != "" {
 		pathHost = inspektorGadetSrcPath
 		// find the gadget relative path to the inspektor-gadget source
-		if !strings.HasPrefix(cwd, inspektorGadetSrcPath) {
+		gadgetRelativePath, err := filepath.Rel(inspektorGadetSrcPath, cwd)
+		if err != nil || !filepath.IsLocal(gadgetRelativePath) {
 			return fmt.Errorf("the current directory %q is not under the inspektor-gadget source path %q", cwd, inspektorGadetSrcPath)
 		}
-		gadgetRelativePath := strings.TrimPrefix(cwd, inspektorGadetSrcPath)
 		gadgetSourcePath = filepath.Join("/work", gadgetRelativePath)
 
 		// use in-tree headers too
