@@ -230,6 +230,17 @@ func newBtfgenStep(targetArch string, opts buildOptions) buildStep {
 		bpfObjectPath := filepath.Join(btfgenStep.opts.outputDir, fmt.Sprintf("%s.bpf.o", btfgenStep.targetArch))
 		outputBtfDirPath := filepath.Join(btfgenStep.opts.outputDir, "btfs", translatedArch)
 		btfArchivePath := filepath.Join(btfgenStep.opts.outputDir, fmt.Sprintf("btfs-%s.tar.gz", translatedArch))
+		// Extract BTF files in the output directory rather than next to the
+		// archives, so the btfhub-archive directory is only read.
+		tmpBaseDir := filepath.Join(btfgenStep.opts.outputDir, "btfs-tmp")
+		tmpDir := filepath.Join(tmpBaseDir, translatedArch)
+
+		if _, _, err := runner.run([]string{"mkdir", "-p", tmpDir, outputBtfDirPath}, nil); err != nil {
+			return fmt.Errorf("creating btf directories: %w", err)
+		}
+		defer func() {
+			_, _, _ = runner.run([]string{"rm", "-rf", "--", tmpBaseDir}, nil)
+		}()
 
 		findOut, _, err := runner.run([]string{
 			"find", btfgenStep.opts.btfHubArchivePath,
@@ -246,20 +257,16 @@ func newBtfgenStep(targetArch string, opts buildOptions) buildStep {
 				continue
 			}
 
-			btfFilePath := strings.TrimSuffix(btfArchiveFile, ".tar.xz")
-			btfFilename := filepath.Base(btfFilePath)
+			btfFilename := filepath.Base(strings.TrimSuffix(btfArchiveFile, ".tar.xz"))
+			btfFilePath := filepath.Join(tmpDir, btfFilename)
 			outputBtfFilePath := filepath.Join(outputBtfDirPath, btfFilename)
 
 			if _, _, err := runner.run([]string{
 				"tar", "xfJ", btfArchiveFile,
-				"-C", filepath.Dir(btfArchiveFile),
+				"-C", tmpDir,
 				"--touch",
 			}, nil); err != nil {
 				return fmt.Errorf("extracting %s: %w", btfArchiveFile, err)
-			}
-
-			if _, _, err := runner.run([]string{"mkdir", "-p", outputBtfDirPath}, nil); err != nil {
-				return fmt.Errorf("creating btf output dir: %w", err)
 			}
 
 			if _, _, err := runner.run([]string{

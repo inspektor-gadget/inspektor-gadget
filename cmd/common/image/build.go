@@ -609,9 +609,10 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 
 	if opts.btfgen {
 		mounts = append(mounts, mount.Mount{
-			Type:   mount.TypeBind,
-			Target: "/btfhub-archive",
-			Source: opts.btfhubarchive,
+			Type:     mount.TypeBind,
+			Target:   "/btfhub-archive",
+			Source:   opts.btfhubarchive,
+			ReadOnly: true,
 		})
 	}
 
