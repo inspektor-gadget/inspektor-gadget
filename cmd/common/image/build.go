@@ -615,14 +615,37 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 		})
 	}
 
+	initProcess := true
+	pidsLimit := int64(1024)
 	containerCreateOptions := client.ContainerCreateOptions{
 		Config: &container.Config{
 			Image:      opts.builderImage,
 			Cmd:        []string{"sleep", "inf"},
 			WorkingDir: gadgetSourcePath,
+			// The root filesystem is read-only, so point every tool needing
+			// a writable home or cache to the /tmp tmpfs. GOCACHE and
+			// GOMODCACHE are already set to /tmp in the builder image.
+			Env: []string{
+				"HOME=/tmp/home",
+				"CARGO_HOME=/tmp/cargo",
+				// The toolchain is installed there by the builder image,
+				// keep it independent of HOME.
+				"RUSTUP_HOME=/root/.rustup",
+				"RUSTC=/root/.cargo/bin/rustc",
+			},
 		},
 		HostConfig: &container.HostConfig{
-			Mounts: mounts,
+			Mounts:         mounts,
+			CapDrop:        []string{"ALL"},
+			SecurityOpt:    []string{"no-new-privileges"},
+			ReadonlyRootfs: true,
+			Tmpfs: map[string]string{
+				"/tmp": "rw,exec,nosuid,nodev,mode=1777",
+			},
+			Init: &initProcess,
+			Resources: container.Resources{
+				PidsLimit: &pidsLimit,
+			},
 		},
 	}
 
