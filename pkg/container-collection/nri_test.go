@@ -27,13 +27,16 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-type fakeNRIRuntimeClient struct{}
+type fakeNRIRuntimeClient struct {
+	getContainerCalls int
+}
 
 func (*fakeNRIRuntimeClient) GetContainers() ([]*runtimeclient.ContainerData, error) {
 	return nil, nil
 }
 
-func (*fakeNRIRuntimeClient) GetContainer(id string) (*runtimeclient.ContainerData, error) {
+func (f *fakeNRIRuntimeClient) GetContainer(id string) (*runtimeclient.ContainerData, error) {
+	f.getContainerCalls++
 	return &runtimeclient.ContainerData{
 		Runtime: runtimeclient.RuntimeContainerData{
 			ContainerID:          id,
@@ -194,6 +197,46 @@ func TestNRIPluginEnrichesCrioImageMetadata(t *testing.T) {
 	require.NotNil(t, container)
 	require.Equal(t, "sha256:image-id", container.Runtime.ContainerImageID)
 	require.Equal(t, "sha256:image-digest", container.Runtime.ContainerImageDigest)
+}
+
+func TestNRIPluginUsesNRIMetadata(t *testing.T) {
+	cc := newNRIContainerCollection(t)
+	plugin := newNRIPlugin(t, cc)
+	plugin.runtimeName = types.RuntimeNameCrio
+	runtimeClient := &fakeNRIRuntimeClient{}
+	plugin.runtime = runtimeClient
+
+	pod := &api.PodSandbox{
+		Id: "pod", Name: "pod", Namespace: "namespace",
+		Labels: map[string]string{
+			"app":                          "demo",
+			"io.kubernetes.container.name": "POD",
+			"io.kubernetes.pod.name":       "pod",
+			"io.kubernetes.pod.namespace":  "namespace",
+			"io.kubernetes.pod.uid":        "uid",
+			"io.cri-containerd.kind":       "sandbox",
+			"oci_runtime_type":             "io.containerd.runc.v2",
+		},
+	}
+	require.NoError(t, plugin.StartContainer(context.Background(), pod, &api.Container{
+		Id: "container", Name: "container", Pid: 123,
+		Annotations: map[string]string{"io.kubernetes.cri-o.Name": "k8s_container_pod_namespace_uid_0"},
+		Image: &api.Image{
+			Name:         "docker.io/library/busybox:1.36",
+			Digest:       "sha256:manifest",
+			ConfigDigest: "sha256:config",
+		},
+	}))
+
+	container := cc.GetContainer("container")
+	require.NotNil(t, container)
+	require.Zero(t, runtimeClient.getContainerCalls)
+	require.Equal(t, "docker.io/library/busybox:1.36", container.Runtime.ContainerImageName)
+	require.Equal(t, "sha256:manifest", container.Runtime.ContainerImageDigest)
+	require.Equal(t, "sha256:config", container.Runtime.ContainerImageID)
+	require.Equal(t, "k8s_container_pod_namespace_uid_0", container.Runtime.ContainerName)
+	require.Equal(t, "container", container.K8s.ContainerName)
+	require.Equal(t, map[string]string{"app": "demo"}, container.K8s.PodLabels)
 }
 
 func TestNRIPluginDeferredEventsDoNotBlockLifecycle(t *testing.T) {
