@@ -61,8 +61,8 @@ github.com/containerd/fifo v1.1.0 h1:4I2mbh5stb1u6ycIABlBw9zgtlK8viPI9QkQNRQEEmY
 github.com/containerd/fifo v1.1.0/go.mod h1:bmC4NWMbXlt2EZ0Hc7Fx7QzTFxgPID13eH0Qu+MAb2o=
 github.com/containerd/log v0.1.0 h1:TCJt7ioM2cr/tfR8GPbGf9/VRAX8D2B4PjzCpfX540I=
 github.com/containerd/log v0.1.0/go.mod h1:VRRf09a7mHDIRezVKTRCrOq78v577GXq3bSa3EhrzVo=
-github.com/containerd/nri v0.11.0 h1:26mcQwNG58AZn0YkOrlJQ0yxQVmyZooflnVWJTqQrqQ=
-github.com/containerd/nri v0.11.0/go.mod h1:bjGTLdUA58WgghKHg8azFMGXr05n1wDHrt3NSVBHiGI=
+github.com/containerd/nri v0.12.5 h1:sPYUCT4fRbshF0ewiIaFXv2n6+tLIwY0kKII9ycMszY=
+github.com/containerd/nri v0.12.5/go.mod h1:KPI0bbRZeqYq4rRWNWQztAR1150JF937MGe5b45Zgrk=
 github.com/containerd/platforms v1.0.0-rc.2 h1:0SPgaNZPVWGEi4grZdV8VRYQn78y+nm6acgLGv/QzE4=
 github.com/containerd/platforms v1.0.0-rc.2/go.mod h1:J71L7B+aiM5SdIEqmd9wp6THLVRzJGXfNuWCZCllLA4=
 github.com/containerd/plugin v1.0.0 h1:c8Kf1TNl6+e2TtMHZt+39yAPDbouRH9WAToRjex483Y=
