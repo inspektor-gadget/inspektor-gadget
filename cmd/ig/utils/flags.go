@@ -18,11 +18,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/containerd/containerd/pkg/cri/constants"
 	securejoin "github.com/cyphar/filepath-securejoin"
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
+	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
@@ -216,7 +216,7 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 	command.PersistentFlags().StringVar(
 		&commonFlags.ContainerdNamespace,
 		"containerd-namespace",
-		constants.K8sContainerdNamespace,
+		runtimeclient.K8sContainerdNamespace,
 		"Namespace used by containerd",
 	)
 
