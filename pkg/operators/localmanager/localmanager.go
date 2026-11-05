@@ -61,6 +61,8 @@ const (
 	RuntimeProtocol        = "runtime-protocol"
 	EnrichWithK8sApiserver = "enrich-with-k8s-apiserver"
 	KubeconfigPath         = "kubeconfig"
+	ContainerHook          = "container-hook"
+	NRISocketPath          = "nri-socketpath"
 )
 
 type MountNsMapSetter interface {
@@ -149,6 +151,17 @@ func (l *localManager) GlobalParamDescs() params.ParamDescs {
 			Key:          KubeconfigPath,
 			DefaultValue: "", // Try in-cluster config by default
 			Description:  "Path to kubeconfig file. If not set, in-cluster config will be used.",
+		},
+		{
+			Key:            ContainerHook,
+			DefaultValue:   containercollection.ContainerHookFanotify,
+			Description:    "Mechanism to detect new containers: fanotify (all runtimes), nri (only containers managed via CRI, e.g. Kubernetes pods), auto (nri if its socket is reachable, else fanotify)",
+			PossibleValues: containercollection.ContainerHooks,
+		},
+		{
+			Key:          NRISocketPath,
+			DefaultValue: containercollection.DefaultNRISocketPath,
+			Description:  "NRI Unix socket path",
 		},
 	}
 }
@@ -251,7 +264,9 @@ func (l *localManager) Init(operatorParams *params.Params) error {
 
 	kubeconfig := operatorParams.Get(KubeconfigPath).AsString()
 	enrichWithK8s := operatorParams.Get(EnrichWithK8sApiserver).AsBool()
-	if err := l.initCollections(rc, kubeconfig, enrichWithK8s); err != nil {
+	containerHook := operatorParams.Get(ContainerHook).AsString()
+	nriSocketPath := operatorParams.Get(NRISocketPath).AsString()
+	if err := l.initCollections(rc, kubeconfig, enrichWithK8s, containerHook, nriSocketPath); err != nil {
 		log.Warnf("Failed to create container-collection")
 		log.Debugf("Failed to create container-collection: %s", err)
 	}
@@ -271,7 +286,7 @@ func hasEffectiveCap(cap capability.Cap) (bool, error) {
 }
 
 // initCollections initializes the container collection and tracer collection.
-func (l *localManager) initCollections(rc []*containerutilsTypes.RuntimeConfig, kubeconfig string, enrichWithK8s bool) error {
+func (l *localManager) initCollections(rc []*containerutilsTypes.RuntimeConfig, kubeconfig string, enrichWithK8s bool, containerHook, nriSocketPath string) error {
 	var cc containercollection.ContainerCollection
 
 	if err := rlimit.RemoveMemlock(); err != nil {
@@ -304,16 +319,18 @@ func (l *localManager) initCollections(rc []*containerutilsTypes.RuntimeConfig, 
 		containercollection.WithProcEnrichment(),
 	}...)
 
-	ok, err := hasEffectiveCap(capability.CAP_SYS_ADMIN)
+	hasSysAdmin, err := hasEffectiveCap(capability.CAP_SYS_ADMIN)
 	if err != nil {
 		log.Warnf("checking if binary has CAP_SYS_ADMIN: %v", err)
 	}
-
-	if ok {
-		ccOpts = append(ccOpts, containercollection.WithContainerFanotifyEbpf())
-	} else {
-		log.Warn("binary does not have CAP_SYS_ADMIN: new containers will not be detected")
+	fanotifyOpt := func(cc *containercollection.ContainerCollection) error {
+		if !hasSysAdmin {
+			log.Warn("binary does not have CAP_SYS_ADMIN: new containers will not be detected")
+			return nil
+		}
+		return containercollection.WithContainerFanotifyEbpf()(cc)
 	}
+	ccOpts = append(ccOpts, containercollection.WithContainerHook(containerHook, nriSocketPath, fanotifyOpt))
 
 	if kubeconfig != "" {
 		ccOpts = append(ccOpts, containercollection.WithKubeconfigPath(kubeconfig))
