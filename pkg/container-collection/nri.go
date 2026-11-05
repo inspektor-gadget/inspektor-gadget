@@ -26,6 +26,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cri"
 	ociannotations "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/oci-annotations"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
@@ -41,6 +42,8 @@ const (
 	// nriDefaultStartWait is used if the runtime did not send its request
 	// timeout. NRI's default request timeout is 2s.
 	nriDefaultStartWait = time.Second
+
+	crioContainerNameAnnotation = "io.kubernetes.cri-o.Name"
 )
 
 type nriPlugin struct {
@@ -268,10 +271,24 @@ func (p *nriPlugin) addContainer(pod *api.PodSandbox, container *api.Container) 
 		},
 		SandboxId: pod.GetId(),
 	}
-	if resolver, err := ociannotations.NewResolver(runtimeName.String()); err == nil {
+	if img := container.GetImage(); img != nil {
+		// Set by containerd >= 2.4, and by CRI-O with
+		// https://github.com/cri-o/cri-o/pull/10528. If name and digest are
+		// set, the runtime enricher below does not need a CRI call.
+		c.Runtime.ContainerImageName = img.GetName()
+		c.Runtime.ContainerImageDigest = img.GetDigest()
+		c.Runtime.ContainerImageID = img.GetConfigDigest()
+	}
+	if resolver, err := ociannotations.NewResolver(runtimeName.String()); err == nil && c.Runtime.ContainerImageName == "" {
 		c.Runtime.ContainerImageName = resolver.ContainerImageName(container.GetAnnotations())
 	}
-	c.SetPodLabels(pod.GetLabels())
+	if runtimeName == types.RuntimeNameCrio {
+		// Same composed name (k8s_<container>_<pod>_...) as the CRI client.
+		if name := container.GetAnnotations()[crioContainerNameAnnotation]; name != "" {
+			c.Runtime.ContainerName = name
+		}
+	}
+	c.SetPodLabels(cri.FilterPodLabels(pod.GetLabels()))
 	if ociConfig, err := ociConfigForContainer(c); err != nil {
 		log.Warnf("NRI: getting OCI config for container %s: %s", container.GetId(), err)
 	} else {
