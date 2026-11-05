@@ -105,17 +105,6 @@ func (m *Manager) RunGadget(instance *api.GadgetInstance) {
 	}
 	m.mu.Lock()
 	m.gadgetInstances[gi.id] = gi
-	// Adopt all clients in the waiting room
-	if m.asyncGadgetRunCreation {
-		m.waitingRoom.Range(func(key, value any) bool {
-			if value.(string) == gi.id {
-				log.Debugf("adopting client for gadget instance %q", gi.id)
-				gi.AddClient(key.(api.GadgetManager_RunGadgetServer))
-				m.waitingRoom.Delete(key)
-			}
-			return true
-		})
-	}
 	m.mu.Unlock()
 	go func() {
 		defer cancel()
@@ -130,13 +119,25 @@ func (m *Manager) RunGadget(instance *api.GadgetInstance) {
 		err := gi.Run(ctx, m.runtime, lwr)
 		if err != nil {
 			log.Errorf("running gadget: %v", err)
-			gi.mu.Lock()
-			gi.state = stateError
-			gi.error = err
-			gi.mu.Unlock()
 		}
 		gi.RemoveClients()
 	}()
+
+	// Adopt all clients in the waiting room. AddClient() waits for the gadget
+	// info, which only becomes available once the goroutine above has started
+	// the gadget, so this must not run inline.
+	if m.asyncGadgetRunCreation {
+		go func() {
+			m.waitingRoom.Range(func(key, value any) bool {
+				if value.(string) == gi.id {
+					log.Debugf("adopting client for gadget instance %q", gi.id)
+					m.waitingRoom.Delete(key)
+					gi.AddClient(key.(api.GadgetManager_RunGadgetServer))
+				}
+				return true
+			})
+		}()
+	}
 }
 
 func (m *Manager) LookupInstance(gadgetInstanceID string) *GadgetInstance {
