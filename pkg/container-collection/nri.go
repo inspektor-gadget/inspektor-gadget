@@ -18,11 +18,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/containerd/nri/pkg/api"
 	"github.com/containerd/nri/pkg/stub"
+	securejoin "github.com/cyphar/filepath-securejoin"
 	log "github.com/sirupsen/logrus"
 
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
@@ -31,6 +33,7 @@ import (
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 const (
@@ -69,8 +72,12 @@ type nriPlugin struct {
 
 // WithNRI uses the Node Resource Interface to get initial containers and
 // container start/remove notifications from the runtime.
+//
+// If socketPath does not exist and HOST_ROOT is set (e.g. /host with "kubectl
+// debug node"), socketPath is looked up under HOST_ROOT.
 func WithNRI(socketPath string) ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
+		socketPath = resolveNRISocketPath(socketPath)
 		plugin := &nriPlugin{
 			cc:             cc,
 			closed:         make(chan struct{}, 1),
@@ -122,6 +129,53 @@ func WithNRI(socketPath string) ContainerCollectionOption {
 	}
 }
 
+// Container hooks to detect new containers, see WithContainerHook.
+const (
+	ContainerHookAuto     = "auto"
+	ContainerHookFanotify = "fanotify"
+	ContainerHookNRI      = "nri"
+)
+
+// ContainerHooks lists the values accepted by WithContainerHook.
+var ContainerHooks = []string{ContainerHookAuto, ContainerHookFanotify, ContainerHookNRI}
+
+// WithContainerHook detects new containers with fanotify, with NRI, or with
+// NRI if its socket is reachable and fanotify otherwise (auto). NRI only
+// reports containers managed via CRI, e.g. Kubernetes pods.
+func WithContainerHook(hook, nriSocketPath string, fanotify ContainerCollectionOption) ContainerCollectionOption {
+	return func(cc *ContainerCollection) error {
+		switch hook {
+		case ContainerHookFanotify:
+			return fanotify(cc)
+		case ContainerHookNRI:
+			return WithNRI(nriSocketPath)(cc)
+		case ContainerHookAuto:
+			if err := WithNRI(nriSocketPath)(cc); err != nil {
+				log.Debugf("NRI unavailable, using fanotify: %s", err)
+				return fanotify(cc)
+			}
+			log.Debugf("Using NRI to detect new containers")
+			return nil
+		default:
+			return fmt.Errorf("invalid container hook %q, supported values: %v", hook, ContainerHooks)
+		}
+	}
+}
+
+func resolveNRISocketPath(socketPath string) string {
+	if _, err := os.Stat(socketPath); err == nil || host.HostRoot == "/" {
+		return socketPath
+	}
+	hostSocketPath, err := securejoin.SecureJoin(host.HostRoot, socketPath)
+	if err != nil {
+		return socketPath
+	}
+	if _, err := os.Stat(hostSocketPath); err != nil {
+		return socketPath
+	}
+	return hostSocketPath
+}
+
 func (p *nriPlugin) Configure(_ context.Context, _ string, runtime, _ string) (stub.EventMask, error) {
 	runtimeName := types.String2RuntimeName(runtime)
 
@@ -132,6 +186,12 @@ func (p *nriPlugin) Configure(_ context.Context, _ string, runtime, _ string) (s
 	}
 	p.runtimeName = runtimeName
 	p.mu.Unlock()
+
+	if p.cc.runtimeEnrichment {
+		// The container collection already has enrichers using runtime
+		// clients configured by the caller, e.g. ig's localmanager.
+		return 0, nil
+	}
 
 	socketPath, err := getSocketPathFromConfig(runtimeName)
 	if err != nil {
@@ -309,6 +369,9 @@ func (p *nriPlugin) addContainer(pod *api.PodSandbox, container *api.Container) 
 	p.mu.Lock()
 	p.containers[container.GetId()] = struct{}{}
 	p.mu.Unlock()
+	if !p.cc.k8sEnrichment {
+		return true
+	}
 	p.enqueueDeferred(func(ctx context.Context) {
 		if p.cc.GetContainer(container.GetId()) != c {
 			return

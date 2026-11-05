@@ -83,6 +83,13 @@ type ContainerCollection struct {
 	// disableContainerRuntimeWarnings is used to disable warnings about container runtimes.
 	disableContainerRuntimeWarnings bool
 
+	// runtimeEnrichment is set when WithContainerRuntimeEnrichment added an
+	// enricher using a runtime client.
+	runtimeEnrichment bool
+
+	// k8sEnrichment is set by WithKubernetesEnrichment.
+	k8sEnrichment bool
+
 	// kubeconfigPath is the path to the kubeconfig file, or empty for in-cluster config.
 	// Some options like WithPodInformer will use it.
 	kubeconfigPath string

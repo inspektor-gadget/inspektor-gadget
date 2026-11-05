@@ -198,6 +198,7 @@ func WithContainerRuntimeEnrichment(runtime *containerutilsTypes.RuntimeConfig) 
 			// containers fails. We do it because the runtime could be temporarily
 			// unavailable and once it is up, we will start receiving the
 			// notifications for its containers thus we will be able to enrich them.
+			cc.runtimeEnrichment = true
 			cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
 				return containerRuntimeEnricher(runtime.Name, runtimeClient, container, false)
 			})
@@ -545,6 +546,7 @@ func WithKubernetesEnrichment(nodeName string) ContainerCollectionOption {
 		if err != nil {
 			return fmt.Errorf("getting Kubernetes client: %w", err)
 		}
+		cc.k8sEnrichment = true
 
 		// Future containers
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
