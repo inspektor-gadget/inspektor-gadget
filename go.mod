@@ -7,7 +7,7 @@ require (
 	github.com/cilium/ebpf v0.22.0
 	github.com/cloudflare/cbpfc v0.0.0-20240920015331-ff978e94500b
 	github.com/containerd/errdefs v1.0.0
-	github.com/containerd/nri v0.11.0
+	github.com/containerd/nri v0.12.5
 	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/cyphar/filepath-securejoin v0.7.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
