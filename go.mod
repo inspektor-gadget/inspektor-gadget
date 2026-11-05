@@ -191,7 +191,7 @@ require (
 	sigs.k8s.io/release-utils v0.11.1 // indirect
 )
 
-require github.com/NVIDIA/go-nvml v0.13.3-0
+require github.com/NVIDIA/go-nvml v0.13.4-1
 
 require github.com/moby/sys/capability v0.5.0
 
