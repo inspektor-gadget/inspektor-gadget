@@ -38,6 +38,7 @@ const igSubKey = "ig-key"
 func NewListContainersCmd() *cobra.Command {
 	var commonFlags utils.CommonFlags
 	var optionWatch bool
+	var containerHook, nriSocketPath string
 
 	cmd := &cobra.Command{
 		Use:   "list-containers",
@@ -50,7 +51,7 @@ func NewListContainersCmd() *cobra.Command {
 				return err
 			}
 
-			cc, err := initContainerCollection(commonFlags.RuntimeConfigs)
+			cc, err := initContainerCollection(commonFlags.RuntimeConfigs, containerHook, nriSocketPath)
 			if err != nil {
 				return fmt.Errorf("initializing container collection: %w", err)
 			}
@@ -139,6 +140,16 @@ func NewListContainersCmd() *cobra.Command {
 		"watch", "w",
 		false,
 		"After listing the containers, watch for new containers")
+	cmd.Flags().StringVar(
+		&containerHook,
+		"container-hook",
+		containercollection.ContainerHookFanotify,
+		"Mechanism to detect new containers: fanotify (all runtimes), nri (only containers managed via CRI, e.g. Kubernetes pods), auto (nri if its socket is reachable, else fanotify)")
+	cmd.Flags().StringVar(
+		&nriSocketPath,
+		"nri-socketpath",
+		containercollection.DefaultNRISocketPath,
+		"NRI Unix socket path")
 
 	utils.AddCommonFlags(cmd, &commonFlags)
 
@@ -186,7 +197,7 @@ func columnsWithAdjustedVisibility[T containercollection.Container | containerco
 	return cols
 }
 
-func initContainerCollection(runtimes []*containerutilsTypes.RuntimeConfig) (*containercollection.ContainerCollection, error) {
+func initContainerCollection(runtimes []*containerutilsTypes.RuntimeConfig, containerHook, nriSocketPath string) (*containercollection.ContainerCollection, error) {
 	var containerCollection containercollection.ContainerCollection
 
 	opts := []containercollection.ContainerCollectionOption{
@@ -196,7 +207,7 @@ func initContainerCollection(runtimes []*containerutilsTypes.RuntimeConfig) (*co
 		containercollection.WithLinuxNamespaceEnrichment(),
 		containercollection.WithMultipleContainerRuntimesEnrichment(runtimes),
 		containercollection.WithOCIConfigForInitialContainer(),
-		containercollection.WithContainerFanotifyEbpf(),
+		containercollection.WithContainerHook(containerHook, nriSocketPath, containercollection.WithContainerFanotifyEbpf()),
 		containercollection.WithProcEnrichment(),
 	}
 

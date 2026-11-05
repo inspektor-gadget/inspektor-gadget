@@ -90,6 +90,26 @@ reference](https://kubernetes.io/docs/concepts/overview/working-with-objects/own
 
 Default: `false`
 
+### `container-hook`
+
+Mechanism to detect new containers:
+
+- `fanotify`: works with all runtimes.
+- `nri`: uses the [Node Resource Interface](https://github.com/containerd/nri)
+  of containerd or CRI-O. It only reports containers managed via CRI, e.g.
+  Kubernetes pods, not containers started with docker, podman, nerdctl or
+  ctr.
+- `auto`: `nri` if its socket is reachable, else `fanotify`.
+
+Default: `fanotify`
+
+### `nri-socketpath`
+
+NRI Unix socket path. If the path does not exist and `HOST_ROOT` is set (e.g.
+`/host` with `kubectl debug node`), it is looked up under `HOST_ROOT`.
+
+Default: `/run/nri/nri.sock`
+
 ## Instance Parameters
 
 ### `containername` / `runtime-containername`

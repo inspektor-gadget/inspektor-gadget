@@ -16,6 +16,8 @@ package containercollection
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -25,7 +27,28 @@ import (
 
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
+
+func TestResolveNRISocketPath(t *testing.T) {
+	hostRoot := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(hostRoot, "ig-test/nri"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(hostRoot, "ig-test/nri/nri.sock"), nil, 0o600))
+	// Absolute symlinks must resolve inside the host root.
+	require.NoError(t, os.Symlink("/ig-test", filepath.Join(hostRoot, "ig-test-link")))
+
+	oldHostRoot := host.HostRoot
+	host.HostRoot = hostRoot
+	t.Cleanup(func() { host.HostRoot = oldHostRoot })
+
+	require.Equal(t, filepath.Join(hostRoot, "ig-test/nri/nri.sock"), resolveNRISocketPath("/ig-test/nri/nri.sock"))
+	require.Equal(t, filepath.Join(hostRoot, "ig-test/nri/nri.sock"), resolveNRISocketPath("/ig-test-link/nri/nri.sock"))
+	require.Equal(t, "/missing/nri.sock", resolveNRISocketPath("/missing/nri.sock"))
+
+	existing := filepath.Join(t.TempDir(), "nri.sock")
+	require.NoError(t, os.WriteFile(existing, nil, 0o600))
+	require.Equal(t, existing, resolveNRISocketPath(existing))
+}
 
 type fakeNRIRuntimeClient struct {
 	getContainerCalls int
