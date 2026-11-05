@@ -56,9 +56,9 @@ func (i *igHook) Type() string {
 	return "ighook"
 }
 
-func (i *igHook) Invoke(ctx context.Context, r *types.Request) (*types.Result, error) {
+func (i *igHook) Invoke(ctx context.Context, r *types.Request) (*types.Result, error) { //nolint:staticcheck // legacy NRI v0.1.0 hook
 	// Ignore sandbox containers
-	if !r.IsSandbox() && (r.State == types.Create || r.State == types.Delete) {
+	if !r.IsSandbox() && (r.State == types.Create || r.State == types.Delete) { //nolint:staticcheck // legacy NRI v0.1.0 hook
 		conf := igHookConf{}
 		err := json.Unmarshal(r.Conf, &conf)
 		if err != nil {
@@ -70,7 +70,7 @@ func (i *igHook) Invoke(ctx context.Context, r *types.Request) (*types.Result, e
 		}
 	}
 
-	result := r.NewResult("ighook")
+	result := r.NewResult("ighook") //nolint:staticcheck // legacy NRI v0.1.0 hook
 	return result, nil
 }
 
@@ -84,7 +84,7 @@ func main() {
 	}
 }
 
-func processContainer(r *types.Request, conf *igHookConf) error {
+func processContainer(r *types.Request, conf *igHookConf) error { //nolint:staticcheck // legacy NRI v0.1.0 hook
 	// Validate state
 	if r.ID == "" || (r.Pid == 0 && r.State == types.Create) {
 		return fmt.Errorf("invalid OCI state: %v %v", r.ID, r.Pid)
