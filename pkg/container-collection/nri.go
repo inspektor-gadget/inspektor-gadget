@@ -38,6 +38,9 @@ const (
 	nriReconnectDelay     = time.Second
 	nriMaxReconnectDelay  = time.Minute
 	nriOwnerLookupTimeout = 30 * time.Second
+	// nriDefaultStartWait is used if the runtime did not send its request
+	// timeout. NRI's default request timeout is 2s.
+	nriDefaultStartWait = time.Second
 )
 
 type nriPlugin struct {
@@ -76,7 +79,8 @@ func WithNRI(socketPath string) ContainerCollectionOption {
 		nriStub, err := stub.New(
 			plugin,
 			stub.WithPluginName("inspektor-gadget"),
-			stub.WithPluginIdx("10"),
+			// Only observe containers, after other plugins adjusted them.
+			stub.WithPluginIdx("90"),
 			stub.WithSocketPath(socketPath),
 			stub.WithOnClose(func() {
 				select {
@@ -185,10 +189,30 @@ func (p *nriPlugin) synchronize(pods []*api.PodSandbox, containers []*api.Contai
 	}
 }
 
-func (p *nriPlugin) PostStartContainer(_ context.Context, pod *api.PodSandbox, container *api.Container) error {
+// StartContainer is called after the container's process is created, but
+// before it is resumed. Wait until the container is added so that gadgets see
+// it before its entrypoint runs. The add goes through the event queue so it
+// stays ordered after a pending Synchronize. Waiting is bounded below the NRI
+// request timeout, because a timeout makes the runtime drop the plugin.
+func (p *nriPlugin) StartContainer(ctx context.Context, pod *api.PodSandbox, container *api.Container) error {
+	done := make(chan struct{})
 	p.enqueue(func() {
+		defer close(done)
 		p.addContainer(pod, container)
 	})
+
+	wait := nriDefaultStartWait
+	if p.stub != nil && p.stub.RequestTimeout() > 0 {
+		wait = p.stub.RequestTimeout() / 2
+	}
+	timer := time.NewTimer(wait)
+	defer timer.Stop()
+	select {
+	case <-done:
+	case <-ctx.Done():
+	case <-timer.C:
+		log.Debugf("NRI: container %s not added within %s, continuing asynchronously", container.GetId(), wait)
+	}
 	return nil
 }
 
@@ -207,7 +231,9 @@ func (p *nriPlugin) RemoveContainer(_ context.Context, _ *api.PodSandbox, contai
 }
 
 func (p *nriPlugin) removeContainer(id string) {
+	p.mu.Lock()
 	delete(p.containers, id)
+	p.mu.Unlock()
 	p.cc.RemoveContainer(id)
 }
 
@@ -263,7 +289,9 @@ func (p *nriPlugin) addContainer(pod *api.PodSandbox, container *api.Container) 
 		return false
 	}
 
+	p.mu.Lock()
 	p.containers[container.GetId()] = struct{}{}
+	p.mu.Unlock()
 	p.enqueueDeferred(func(ctx context.Context) {
 		if p.cc.GetContainer(container.GetId()) != c {
 			return
@@ -372,10 +400,13 @@ func (p *nriPlugin) closeRuntime() {
 }
 
 func (p *nriPlugin) removeAllContainers() {
-	for id := range p.containers {
+	p.mu.Lock()
+	containers := p.containers
+	p.containers = make(map[string]struct{})
+	p.mu.Unlock()
+	for id := range containers {
 		p.cc.RemoveContainer(id)
 	}
-	p.containers = make(map[string]struct{})
 }
 
 func (p *nriPlugin) reconnect(ctx context.Context) {
