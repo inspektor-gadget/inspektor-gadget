@@ -151,9 +151,8 @@ func TestNRIPluginContainerLifecycle(t *testing.T) {
 	require.Equal(t, pod.Labels, container.K8s.PodLabels)
 
 	started := &api.Container{Id: "started", Name: "second", Pid: 789}
-	require.NoError(t, plugin.PostStartContainer(context.Background(), pod, started))
-	waitNRIPlugin(t, plugin)
-	require.NotNil(t, cc.GetContainer(started.Id))
+	require.NoError(t, plugin.StartContainer(context.Background(), pod, started))
+	require.NotNil(t, cc.GetContainer(started.Id), "container must be added before StartContainer returns")
 
 	_, err = plugin.Synchronize(context.Background(), []*api.PodSandbox{pod}, []*api.Container{
 		{
@@ -177,8 +176,7 @@ func TestNRIPluginContainerLifecycle(t *testing.T) {
 func TestNRIPluginIgnoresIncompleteContainer(t *testing.T) {
 	cc := newNRIContainerCollection(t)
 	plugin := newNRIPlugin(t, cc)
-	require.NoError(t, plugin.PostStartContainer(context.Background(), &api.PodSandbox{}, &api.Container{Id: "no-pid"}))
-	waitNRIPlugin(t, plugin)
+	require.NoError(t, plugin.StartContainer(context.Background(), &api.PodSandbox{}, &api.Container{Id: "no-pid"}))
 	require.Zero(t, cc.ContainerLen())
 }
 
@@ -188,10 +186,9 @@ func TestNRIPluginEnrichesCrioImageMetadata(t *testing.T) {
 	plugin.runtimeName = types.RuntimeNameCrio
 
 	pod := &api.PodSandbox{Id: "pod", Name: "pod", Namespace: "namespace"}
-	require.NoError(t, plugin.PostStartContainer(context.Background(), pod, &api.Container{
+	require.NoError(t, plugin.StartContainer(context.Background(), pod, &api.Container{
 		Id: "container", Name: "container", Pid: 123,
 	}))
-	waitNRIPlugin(t, plugin)
 
 	container := cc.GetContainer("container")
 	require.NotNil(t, container)
@@ -248,12 +245,34 @@ func TestNRIPluginSerializesLifecycleEvents(t *testing.T) {
 	require.NoError(t, err)
 	<-syncStarted
 
-	require.NoError(t, plugin.PostStartContainer(context.Background(), pod, &api.Container{
-		Id: "started", Name: "second", Pid: 456,
-	}))
+	startDone := make(chan error)
+	go func() {
+		startDone <- plugin.StartContainer(context.Background(), pod, &api.Container{
+			Id: "started", Name: "second", Pid: 456,
+		})
+	}()
 	close(continueSync)
-	waitNRIPlugin(t, plugin)
+	require.NoError(t, <-startDone)
 
 	require.NotNil(t, cc.GetContainer("synchronized"))
 	require.NotNil(t, cc.GetContainer("started"))
+}
+
+func TestNRIPluginStartContainerWaitIsBounded(t *testing.T) {
+	cc := newNRIContainerCollection(t)
+	plugin := newNRIPlugin(t, cc)
+	release := make(chan struct{})
+	plugin.enqueue(func() {
+		<-release
+	})
+
+	start := time.Now()
+	require.NoError(t, plugin.StartContainer(context.Background(), &api.PodSandbox{Id: "pod", Name: "pod", Namespace: "namespace"},
+		&api.Container{Id: "late", Name: "late", Pid: 123}))
+	require.Less(t, time.Since(start), 2*time.Second)
+	require.Nil(t, cc.GetContainer("late"))
+
+	close(release)
+	waitNRIPlugin(t, plugin)
+	require.NotNil(t, cc.GetContainer("late"))
 }
