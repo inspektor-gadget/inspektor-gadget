@@ -62,13 +62,21 @@ func (c *K8sContainer) Start(t *testing.T) {
 	require.False(t, c.options.privileged, "testutils/kubernetes: privileged containers are not supported yet")
 	require.Nil(t, c.options.portBindings, "testutils/kubernetes: port bindings are not supported yet")
 
+	limits := c.options.limits
+	if c.options.gpus {
+		if limits == nil {
+			limits = make(map[string]string)
+		}
+		limits["nvidia.com/gpu"] = "1"
+	}
+
 	waitCommand := waitUntilPodReadyCommand(t, c.options.namespace, c.name)
 	if c.options.waitOrOomKilled {
 		waitCommand = waitUntilPodReadyOrOOMKilledCommand(t, c.options.namespace, c.name)
 	}
 
 	testSteps := []igtesting.TestStep{
-		podCommand(t, c.name, c.options.image, c.options.namespace, `["/bin/sh", "-c"]`, c.cmd, c.options.limits),
+		podCommand(t, c.name, c.options.image, c.options.namespace, `["/bin/sh", "-c"]`, c.cmd, limits),
 		waitCommand,
 	}
 	if !c.options.useExistingNamespace {
