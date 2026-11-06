@@ -21,7 +21,6 @@ import (
 	"os/user"
 	"path/filepath"
 	"strconv"
-	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -174,7 +173,7 @@ All these options should be set at the same time to enable TLS connection`,
 			options = append(options, grpc.Creds(credentials.NewTLS(tlsConfig)))
 
 			log.Debugf("TLS is enabled using %v, %v and %v", serverKey, serverCert, clientCA)
-		} else if !strings.HasPrefix(socketPath, "unix") {
+		} else if socketType != "unix" {
 			if useInsecureTLS {
 				log.Warnf("no TLS configuration provided, communication between daemon and CLI will not be encrypted")
 			} else {
