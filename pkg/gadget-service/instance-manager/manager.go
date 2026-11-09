@@ -170,12 +170,15 @@ func (m *Manager) InstanceState(gadgetInstanceID string) (*api.GadgetInstanceSta
 	if gi == nil {
 		return nil, ErrNotFound
 	}
+	gi.mu.Lock()
+	state, err := gi.state, gi.error
+	gi.mu.Unlock()
 	var msg string
-	if gi.error != nil {
-		msg = gi.error.Error()
+	if err != nil {
+		msg = err.Error()
 	}
 	return &api.GadgetInstanceState{
-		Status:  gi.state.ToGadgetStatus(),
+		Status:  state.ToGadgetStatus(),
 		Message: msg,
 	}, nil
 }
