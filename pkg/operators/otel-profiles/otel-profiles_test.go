@@ -254,3 +254,144 @@ func TestOtelProfilesOperator(t *testing.T) {
 		})
 	}
 }
+
+func TestOtelProfilesSampleAttributeNames(t *testing.T) {
+	t.Parallel()
+
+	for _, sanitize := range []bool{false, true} {
+		t.Run(fmt.Sprintf("sanitize=%t", sanitize), func(t *testing.T) {
+			t.Parallel()
+			testSampleAttributeNames(t, sanitize)
+		})
+	}
+}
+
+func testSampleAttributeNames(t *testing.T, sanitize bool) {
+	tt := initTest(t)
+	tt.opInst.sanitizeLabels = sanitize
+	tt.ds.AddAnnotation(stackFieldsAnnotation, "stack")
+	tt.ds.AddAnnotation(valueFieldAnnotation, "value")
+	stackField, err := tt.ds.AddField("stack", api.Kind_String)
+	require.NoError(t, err)
+	valueField, err := tt.ds.AddField("value", api.Kind_Int64)
+	require.NoError(t, err)
+
+	attributes := []struct {
+		fieldName string
+		labelName string
+		kind      api.Kind
+		value     any
+	}{
+		{"k8s.namespace", "k8s_namespace", api.Kind_String, "ray-training"},
+		{"k8s.podName", "k8s_podName", api.Kind_String, "gpu-worker"},
+		{"proc.comm", "proc_comm", api.Kind_CString, "python"},
+		{"runtime.container.name", "runtime_container_name", api.Kind_String, "worker"},
+		{"already_normalized", "already_normalized", api.Kind_String, "unchanged"},
+		{"proc.pid", "proc_pid", api.Kind_Int64, int64(42)},
+		{"custom.enabled", "custom_enabled", api.Kind_Bool, true},
+		{"custom.ratio", "custom_ratio", api.Kind_Float64, 1.5},
+	}
+	fields := make([]datasource.FieldAccessor, len(attributes))
+	expected := make(map[string]any, len(attributes))
+	for i, attr := range attributes {
+		fields[i], err = tt.ds.AddField(attr.fieldName, attr.kind,
+			datasource.WithAnnotations(map[string]string{sampleAttributeAnnotation: "true"}))
+		require.NoError(t, err)
+		if sanitize {
+			expected[attr.labelName] = attr.value
+		} else {
+			expected[attr.fieldName] = attr.value
+		}
+	}
+	_, err = tt.ds.AddField("k8s_podName", api.Kind_String)
+	require.NoError(t, err)
+	require.NoError(t, tt.opInst.PreStart(tt.gadgetCtx))
+
+	dataArray, err := tt.ds.NewPacketArray()
+	require.NoError(t, err)
+	for i := 0; i < 3; i++ {
+		data := dataArray.New()
+		require.NoError(t, stackField.PutString(data, "allocate; train"))
+		require.NoError(t, valueField.PutInt64(data, int64(i+1)))
+		for j, attr := range attributes {
+			switch val := attr.value.(type) {
+			case string:
+				require.NoError(t, fields[j].PutString(data, val))
+			case int64:
+				require.NoError(t, fields[j].PutInt64(data, val))
+			case bool:
+				require.NoError(t, fields[j].PutBool(data, val))
+			case float64:
+				require.NoError(t, fields[j].PutFloat64(data, val))
+			default:
+				t.Fatalf("unsupported test attribute value %T", val)
+			}
+		}
+		dataArray.Append(data)
+	}
+	require.NoError(t, tt.ds.EmitAndRelease(dataArray))
+	require.Len(t, tt.mockClient.exportReq, 1)
+
+	wire, err := tt.mockClient.exportReq[0].MarshalProto()
+	require.NoError(t, err)
+	request := pprofileotlp.NewExportRequest()
+	require.NoError(t, request.UnmarshalProto(wire))
+	profiles := request.Profiles()
+	dic := profiles.Dictionary()
+	require.Equal(t, len(attributes)+1, dic.AttributeTable().Len())
+	rp := profiles.ResourceProfiles().At(0)
+	serviceName, ok := rp.Resource().Attributes().Get("service.name")
+	require.True(t, ok)
+	require.Equal(t, "inspektor-gadget", serviceName.Str())
+	samples := rp.ScopeProfiles().At(0).Profiles().At(0).Samples()
+	require.Equal(t, 3, samples.Len())
+	for i := 0; i < samples.Len(); i++ {
+		sample := samples.At(i)
+		require.Equal(t, int64(i+1), sample.Values().At(0))
+		require.Equal(t, len(attributes), sample.AttributeIndices().Len())
+		actual := make(map[string]any, len(attributes))
+		for j := 0; j < sample.AttributeIndices().Len(); j++ {
+			attr := dic.AttributeTable().At(int(sample.AttributeIndices().At(j)))
+			name := dic.StringTable().At(int(attr.KeyStrindex()))
+			require.NotContains(t, actual, name)
+			actual[name] = attr.Value().AsRaw()
+		}
+		require.Equal(t, expected, actual)
+	}
+}
+
+func TestOtelProfilesSampleAttributeNameCollision(t *testing.T) {
+	t.Parallel()
+
+	for _, names := range [][]string{
+		{"k8s.podName", "k8s_podName"},
+		{"k8s_podName", "k8s.podName"},
+		{"runtime.container.name", "runtime_container.name"},
+	} {
+		t.Run(names[0]+" and "+names[1], func(t *testing.T) {
+			t.Parallel()
+
+			tt := initTest(t)
+			tt.opInst.sanitizeLabels = true
+			tt.ds.AddAnnotation(stackFieldsAnnotation, "stack")
+			tt.ds.AddAnnotation(valueFieldAnnotation, "value")
+			_, err := tt.ds.AddField("stack", api.Kind_String)
+			require.NoError(t, err)
+			_, err = tt.ds.AddField("value", api.Kind_Int64)
+			require.NoError(t, err)
+			for _, name := range names {
+				_, err := tt.ds.AddField(name, api.Kind_String,
+					datasource.WithAnnotations(map[string]string{sampleAttributeAnnotation: "true"}))
+				require.NoError(t, err)
+			}
+
+			err = tt.opInst.PreStart(tt.gadgetCtx)
+			require.ErrorContains(t, err, "sample attribute name collision")
+			require.ErrorContains(t, err, "test-datasource")
+			for _, name := range names {
+				require.ErrorContains(t, err, name)
+			}
+			require.Empty(t, tt.mockClient.exportReq)
+		})
+	}
+}

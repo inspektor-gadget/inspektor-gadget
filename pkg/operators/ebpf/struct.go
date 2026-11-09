@@ -16,6 +16,7 @@ package ebpfoperator
 
 import (
 	"maps"
+	"math"
 	"reflect"
 	"slices"
 	"strings"
@@ -187,11 +188,23 @@ func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, 
 
 	tags = append(tags, "name:"+member.Name, api.TagSrcEbpf)
 
+	// A gadget image fully controls the BTF, so member offsets and array
+	// lengths are attacker-controlled. Field.Offset and Field.Size are uint32
+	// and the only bounds check (pkg/datasource) also adds them in uint32, so an
+	// offset or offset+size that exceeds the uint32 range wraps and slips past
+	// that guard, later panicking the daemon on an out-of-range payload slice.
+	// Compute the geometry in 64-bit and drop any member that would overflow.
+	fieldOffset := uint64(offset) + uint64(member.Offset.Bytes())
+
 	newField := func(size uint32, kind api.Kind) *Field {
+		if fieldOffset+uint64(size) > math.MaxUint32 {
+			i.logger.Debugf(" skipping field %q (%T): offset+size overflows uint32", prefix+member.Name, member.Type)
+			return nil
+		}
 		return &Field{
 			Size:        size,
 			Tags:        tags,
-			Offset:      offset + member.Offset.Bytes(),
+			Offset:      uint32(fieldOffset),
 			parent:      parent,
 			name:        member.Name,
 			kind:        kind,
@@ -203,6 +216,9 @@ func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, 
 	if t, ok := member.Type.(*btf.Struct); ok {
 		// Add outer struct as well
 		field := newField(t.Size, api.Kind_Bytes)
+		if field == nil {
+			return
+		}
 		newParent := len(*fields)
 		*fields = append(*fields, field)
 
@@ -214,6 +230,9 @@ func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, 
 	if t, ok := member.Type.(*btf.Union); ok {
 		// Add outer struct as well
 		field := newField(t.Size, api.Kind_Bytes)
+		if field == nil {
+			return
+		}
 		newParent := len(*fields)
 		*fields = append(*fields, field)
 
@@ -224,6 +243,11 @@ func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, 
 
 	if refType == nil {
 		i.logger.Debugf(" skipping field %q (%T)", prefix+member.Name, member.Type)
+		return
+	}
+
+	if refType.Size() > math.MaxUint32 {
+		i.logger.Debugf(" skipping field %q (%T): size overflows uint32", prefix+member.Name, member.Type)
 		return
 	}
 
@@ -243,6 +267,9 @@ func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, 
 	kind := getFieldKind(refType, tags)
 
 	field := newField(fsize, kind)
+	if field == nil {
+		return
+	}
 
 	i.logger.Debugf(" adding field %q (%s) (kind: %s) at %d (parent %d) (%v)",
 		prefix+field.name, fieldType, kind.String(), field.Offset, parent, tags)
