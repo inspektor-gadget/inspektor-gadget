@@ -16,6 +16,7 @@ package datasource
 
 import (
 	"crypto/rand"
+	"math"
 	"slices"
 	"testing"
 
@@ -40,6 +41,101 @@ func TestDataSourceDuplicatedField(t *testing.T) {
 
 	_, err = ds.AddField("foo", api.Kind_Int32)
 	require.Error(t, err)
+}
+
+func TestFieldAccessorGetBounds(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		name         string
+		payloadIndex uint32
+		offs         uint32
+		size         uint32
+		payload      [][]byte
+		expected     []byte
+	}
+
+	tests := []testCase{
+		{
+			name:         "payload index out of range",
+			payloadIndex: 1,
+			size:         4,
+			payload:      [][]byte{{1, 2, 3, 4}},
+		},
+		{
+			name:    "nil payload",
+			size:    4,
+			payload: nil,
+		},
+		{
+			name:    "truncated payload",
+			offs:    2,
+			size:    4,
+			payload: [][]byte{{1, 2, 3, 4}},
+		},
+		{
+			name:    "nil buffer for fixed-size field",
+			size:    4,
+			payload: [][]byte{nil},
+		},
+		{
+			name:    "offset plus size overflow",
+			offs:    math.MaxUint32,
+			size:    1,
+			payload: [][]byte{{1, 2, 3, 4}},
+		},
+		{
+			name:     "exact boundary",
+			offs:     4,
+			size:     4,
+			payload:  [][]byte{{0, 1, 2, 3, 4, 5, 6, 7}},
+			expected: []byte{4, 5, 6, 7},
+		},
+		{
+			name:     "field in the middle of the buffer",
+			offs:     2,
+			size:     2,
+			payload:  [][]byte{{0, 1, 2, 3, 4, 5, 6, 7}},
+			expected: []byte{2, 3},
+		},
+		{
+			name:     "dynamic field",
+			payload:  [][]byte{{1, 2, 3}},
+			expected: []byte{1, 2, 3},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			acc := &fieldAccessor{f: &field{
+				PayloadIndex: tc.payloadIndex,
+				Offs:         tc.offs,
+				Size:         tc.size,
+			}}
+			d := &data{Data: &api.DataElement{Payload: tc.payload}}
+
+			var got []byte
+			require.NotPanics(t, func() { got = acc.Get(d) })
+
+			if tc.expected == nil {
+				assert.Nil(t, got)
+				return
+			}
+
+			require.Equal(t, tc.expected, got)
+			if tc.size == 0 {
+				return
+			}
+
+			assert.Equal(t, len(got), cap(got))
+
+			orig := slices.Clone(tc.payload[tc.payloadIndex])
+			_ = append(got, 0xff)
+			assert.Equal(t, orig, tc.payload[tc.payloadIndex])
+		})
+	}
 }
 
 func TestDataSourceBadType(t *testing.T) {
