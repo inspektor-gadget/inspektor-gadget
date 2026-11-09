@@ -20,7 +20,7 @@ require (
 	github.com/expr-lang/expr v1.17.8
 	github.com/florianl/go-tc v0.4.8
 	github.com/fsnotify/fsnotify v1.10.1
-	github.com/godbus/dbus/v5 v5.2.2
+	github.com/godbus/dbus/v5 v5.2.4
 	github.com/gofrs/flock v0.13.1
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
