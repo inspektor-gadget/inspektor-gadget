@@ -431,3 +431,61 @@ func TestPreStart_ParentWithChildren_NotEmitted(t *testing.T) {
 	// sibling should be present
 	require.Contains(t, attrMap, "other")
 }
+
+func TestPreStart_NoAnnotations_UnsupportedFieldSkipped(t *testing.T) {
+	// A data source with no annotations falls back to adding all fields as
+	// attributes. Fields whose type can't be turned into an attribute (here an
+	// array, like the raw IPv6 address bytes of gadget_ip_addr_t) must be skipped
+	// instead of failing PreStart for the whole gadget.
+	ds, err := datasource.New(datasource.TypeSingle, "test-ds-array")
+	require.NoError(t, err)
+
+	fooField, err := ds.AddField("foo", api.Kind_String)
+	require.NoError(t, err)
+
+	_, err = ds.AddField("v6", api.ArrayOf(api.Kind_Uint8))
+	require.NoError(t, err)
+
+	exporter := &mockExporter{}
+	processor := sdklog.NewSimpleProcessor(exporter)
+	provider := sdklog.NewLoggerProvider(sdklog.WithProcessor(processor))
+	logger := provider.Logger("test-logger")
+
+	inst := &otelLogsOperatorInstance{
+		loggers: map[datasource.DataSource]otellog.Logger{
+			ds: logger,
+		},
+	}
+
+	gadgetCtx := &gadgetcontext.MockGadgetContext{
+		Ctx: context.Background(),
+		DataSources: map[string]datasource.DataSource{
+			"test-ds-array": ds,
+		},
+	}
+
+	err = inst.PreStart(gadgetCtx)
+	require.NoError(t, err)
+
+	packet, err := ds.NewPacketSingle()
+	require.NoError(t, err)
+
+	err = fooField.PutString(packet, "hello")
+	require.NoError(t, err)
+
+	err = ds.EmitAndRelease(packet)
+	require.NoError(t, err)
+
+	require.Len(t, exporter.records, 1)
+	rec := exporter.records[0]
+
+	attrMap := make(map[string]attribute.Value)
+	rec.WalkAttributes(func(kv attribute.KeyValue) bool {
+		attrMap[string(kv.Key)] = kv.Value
+		return true
+	})
+
+	require.Contains(t, attrMap, "foo")
+	assert.Equal(t, attribute.StringValue("hello"), attrMap["foo"])
+	assert.NotContains(t, attrMap, "v6")
+}
