@@ -28,6 +28,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -87,6 +88,9 @@ type ContainerCollection struct {
 	// enricher using a runtime client.
 	runtimeEnrichment bool
 
+	// runtimeClients are the clients used by the runtime enrichers. They are
+	// only added by options, before container hooks start.
+	runtimeClients map[eventtypes.RuntimeName]runtimeclient.ContainerRuntimeClient
 	// k8sEnrichment is set by WithKubernetesEnrichment.
 	k8sEnrichment bool
 

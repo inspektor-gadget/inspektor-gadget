@@ -16,6 +16,7 @@ package containercollection
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -52,6 +53,7 @@ func TestResolveNRISocketPath(t *testing.T) {
 
 type fakeNRIRuntimeClient struct {
 	getContainerCalls int
+	pid               int
 }
 
 func (*fakeNRIRuntimeClient) GetContainers() ([]*runtimeclient.ContainerData, error) {
@@ -69,8 +71,11 @@ func (f *fakeNRIRuntimeClient) GetContainer(id string) (*runtimeclient.Container
 	}, nil
 }
 
-func (*fakeNRIRuntimeClient) GetContainerDetails(string) (*runtimeclient.ContainerDetailsData, error) {
-	return nil, nil
+func (f *fakeNRIRuntimeClient) GetContainerDetails(string) (*runtimeclient.ContainerDetailsData, error) {
+	if f.pid == 0 {
+		return nil, errors.New("no PID")
+	}
+	return &runtimeclient.ContainerDetailsData{Pid: f.pid}, nil
 }
 
 func (*fakeNRIRuntimeClient) Close() error {
@@ -214,6 +219,31 @@ func TestNRIPluginConfigureExpectedRuntime(t *testing.T) {
 	plugin = &nriPlugin{cc: cc}
 	_, err = plugin.Configure(context.Background(), "", "cri-o", "1.36.0")
 	require.NoError(t, err)
+}
+
+func TestNRIPluginGetsMissingPidFromRuntime(t *testing.T) {
+	pod := &api.PodSandbox{Id: "pod-id", Name: "pod-name", Namespace: "namespace"}
+
+	// kubemanager: the plugin has its own runtime client
+	cc := newNRIContainerCollection(t)
+	plugin := newNRIPlugin(t, cc)
+	plugin.runtime = &fakeNRIRuntimeClient{pid: 4242}
+	require.NoError(t, plugin.StartContainer(context.Background(), pod, &api.Container{Id: "c1", Name: "c1"}))
+	container := cc.GetContainer("c1")
+	require.NotNil(t, container)
+	require.Equal(t, uint32(4242), container.Runtime.ContainerPID)
+
+	// ig: the runtime enricher has the runtime client
+	cc = newNRIContainerCollection(t)
+	cc.runtimeClients = map[types.RuntimeName]runtimeclient.ContainerRuntimeClient{
+		types.RuntimeNameContainerd: &fakeNRIRuntimeClient{pid: 4343},
+	}
+	plugin = newNRIPlugin(t, cc)
+	plugin.runtime = nil
+	require.NoError(t, plugin.StartContainer(context.Background(), pod, &api.Container{Id: "c2", Name: "c2"}))
+	container = cc.GetContainer("c2")
+	require.NotNil(t, container)
+	require.Equal(t, uint32(4343), container.Runtime.ContainerPID)
 }
 
 func TestNRIPluginIgnoresIncompleteContainer(t *testing.T) {

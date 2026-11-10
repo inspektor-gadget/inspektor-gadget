@@ -199,6 +199,10 @@ func WithContainerRuntimeEnrichment(runtime *containerutilsTypes.RuntimeConfig) 
 			// unavailable and once it is up, we will start receiving the
 			// notifications for its containers thus we will be able to enrich them.
 			cc.runtimeEnrichment = true
+			if cc.runtimeClients == nil {
+				cc.runtimeClients = make(map[types.RuntimeName]runtimeclient.ContainerRuntimeClient)
+			}
+			cc.runtimeClients[runtime.Name] = runtimeClient
 			cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
 				return containerRuntimeEnricher(runtime.Name, runtimeClient, container, false)
 			})

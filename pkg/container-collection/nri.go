@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"sync"
 	"time"
@@ -323,9 +324,9 @@ func (p *nriPlugin) removeContainer(id string) {
 }
 
 func (p *nriPlugin) addContainer(pod *api.PodSandbox, container *api.Container) bool {
-	if pod == nil || container.GetId() == "" || container.GetPid() == 0 {
-		log.Warnf("NRI: ignoring container with incomplete metadata: pod=%v container=%q pid=%d",
-			pod != nil, container.GetId(), container.GetPid())
+	if pod == nil || container.GetId() == "" {
+		log.Warnf("NRI: ignoring container with incomplete metadata: pod=%v container=%q",
+			pod != nil, container.GetId())
 		return false
 	}
 
@@ -333,13 +334,22 @@ func (p *nriPlugin) addContainer(pod *api.PodSandbox, container *api.Container) 
 	runtimeName := p.runtimeName
 	p.mu.Unlock()
 
+	pid := container.GetPid()
+	if pid == 0 {
+		pid = p.containerPidFromRuntime(runtimeName, container.GetId())
+	}
+	if pid == 0 {
+		log.Warnf("NRI: ignoring container %q without PID", container.GetId())
+		return false
+	}
+
 	c := &Container{
 		Runtime: RuntimeMetadata{
 			BasicRuntimeMetadata: types.BasicRuntimeMetadata{
 				RuntimeName:   runtimeName,
 				ContainerID:   container.GetId(),
 				ContainerName: container.GetName(),
-				ContainerPID:  container.GetPid(),
+				ContainerPID:  pid,
 			},
 		},
 		K8s: K8sMetadata{
@@ -406,6 +416,31 @@ func (p *nriPlugin) addContainer(pod *api.PodSandbox, container *api.Container) 
 		}
 	})
 	return true
+}
+
+// containerPidFromRuntime gets the container PID with a CRI ContainerStatus
+// call. CRI-O < 1.36.0 does not set the PID in NRI events; it was added by
+// https://github.com/cri-o/cri-o/pull/9706. It returns 0 on failure.
+func (p *nriPlugin) containerPidFromRuntime(runtimeName types.RuntimeName, id string) uint32 {
+	p.mu.Lock()
+	runtimeClient := p.runtime
+	p.mu.Unlock()
+	if runtimeClient == nil {
+		// e.g. ig, where the runtime enrichers have the runtime clients
+		runtimeClient = p.cc.runtimeClients[runtimeName]
+	}
+	if runtimeClient == nil {
+		return 0
+	}
+	details, err := runtimeClient.GetContainerDetails(id)
+	if err != nil {
+		log.Warnf("NRI: getting PID of container %s from %s: %s", id, runtimeName, err)
+		return 0
+	}
+	if details.Pid <= 0 || details.Pid > math.MaxUint32 {
+		return 0
+	}
+	return uint32(details.Pid)
 }
 
 func (p *nriPlugin) enqueue(event func()) {
