@@ -58,6 +58,9 @@ type nriPlugin struct {
 	wakeup         chan struct{}
 	deferredWakeup chan struct{}
 
+	// expectedRuntime, if set, is the runtime NRI must be served by.
+	expectedRuntime types.RuntimeName
+
 	mu sync.Mutex
 
 	eventsMu sync.Mutex
@@ -76,14 +79,22 @@ type nriPlugin struct {
 // If socketPath does not exist and HOST_ROOT is set (e.g. /host with "kubectl
 // debug node"), socketPath is looked up under HOST_ROOT.
 func WithNRI(socketPath string) ContainerCollectionOption {
+	return WithNRIForRuntime(socketPath, "")
+}
+
+// WithNRIForRuntime is like WithNRI, but fails if the runtime serving NRI is
+// not expectedRuntime, e.g. the kubelet's container runtime. An empty
+// expectedRuntime accepts any runtime.
+func WithNRIForRuntime(socketPath string, expectedRuntime types.RuntimeName) ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
 		socketPath = resolveNRISocketPath(socketPath)
 		plugin := &nriPlugin{
-			cc:             cc,
-			closed:         make(chan struct{}, 1),
-			wakeup:         make(chan struct{}, 1),
-			deferredWakeup: make(chan struct{}, 1),
-			containers:     make(map[string]struct{}),
+			cc:              cc,
+			expectedRuntime: expectedRuntime,
+			closed:          make(chan struct{}, 1),
+			wakeup:          make(chan struct{}, 1),
+			deferredWakeup:  make(chan struct{}, 1),
+			containers:      make(map[string]struct{}),
 		}
 
 		nriStub, err := stub.New(
@@ -178,6 +189,17 @@ func resolveNRISocketPath(socketPath string) string {
 
 func (p *nriPlugin) Configure(_ context.Context, _ string, runtime, _ string) (stub.EventMask, error) {
 	runtimeName := types.String2RuntimeName(runtime)
+
+	// The NRI socket can be served by a runtime that is not the one creating
+	// the pods. For example, with cri-dockerd (e.g. minikube's docker
+	// driver), the kubelet uses dockerd, which runs on top of containerd.
+	// containerd serves NRI, but dockerd creates the containers through
+	// containerd's native API, and only containerd's CRI plugin calls NRI.
+	// NRI would then never report the pods. Failing here makes the stub fail
+	// to start, so the caller can use another hook.
+	if p.expectedRuntime != "" && runtimeName != p.expectedRuntime {
+		return 0, fmt.Errorf("NRI is served by %q but containers are created by %q", runtime, p.expectedRuntime)
+	}
 
 	p.mu.Lock()
 	if p.runtime != nil {

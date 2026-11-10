@@ -15,17 +15,22 @@
 package kubemanager
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	containerhook "github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
@@ -154,7 +159,7 @@ func hookMode2ccOpts(node, hookMode, nriSocketPath string, fallbackPodInformer b
 		podInformerUsed = true
 	case "nri":
 		log.Infof("KubeManager: hook mode: nri")
-		ccOpts = append(ccOpts, containercollection.WithNRI(nriSocketPath))
+		ccOpts = append(ccOpts, nriOption(node, nriSocketPath))
 	case "podinformer":
 		log.Infof("KubeManager: hook mode: podinformer")
 		ccOpts = append(ccOpts, containercollection.WithPodInformer(node))
@@ -176,9 +181,35 @@ func hookMode2ccOpts(node, hookMode, nriSocketPath string, fallbackPodInformer b
 	return ccOpts, nil
 }
 
+// nodeRuntimeName returns the container runtime used by the kubelet, as
+// reported by the node, e.g. "containerd://2.2.1" gives "containerd".
+func nodeRuntimeName(node string) (types.RuntimeName, error) {
+	clientset, err := k8sutil.NewClientset("", "kubemanager/nri")
+	if err != nil {
+		return "", err
+	}
+	n, err := clientset.CoreV1().Nodes().Get(context.TODO(), node, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	name, _, _ := strings.Cut(n.Status.NodeInfo.ContainerRuntimeVersion, "://")
+	return types.String2RuntimeName(name), nil
+}
+
+// nriOption uses NRI only if NRI is served by the kubelet's container runtime.
+func nriOption(node, nriSocketPath string) containercollection.ContainerCollectionOption {
+	return func(cc *containercollection.ContainerCollection) error {
+		runtimeName, err := nodeRuntimeName(node)
+		if err != nil {
+			return fmt.Errorf("getting the node container runtime: %w", err)
+		}
+		return containercollection.WithNRIForRuntime(nriSocketPath, runtimeName)(cc)
+	}
+}
+
 func autoHookOption(node, nriSocketPath string, fallbackPodInformer bool) containercollection.ContainerCollectionOption {
 	return func(cc *containercollection.ContainerCollection) error {
-		if err := containercollection.WithNRI(nriSocketPath)(cc); err == nil {
+		if err := nriOption(node, nriSocketPath)(cc); err == nil {
 			log.Infof("KubeManager: hook mode: nri (auto)")
 			if fallbackPodInformer {
 				return containercollection.WithFallbackPodInformer(node)(cc)

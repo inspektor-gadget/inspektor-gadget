@@ -199,6 +199,23 @@ func TestNRIPluginContainerLifecycle(t *testing.T) {
 	require.Nil(t, cc.GetContainer(started.Id))
 }
 
+func TestNRIPluginConfigureExpectedRuntime(t *testing.T) {
+	// runtimeEnrichment avoids creating a runtime client in Configure.
+	cc := &ContainerCollection{runtimeEnrichment: true}
+
+	plugin := &nriPlugin{cc: cc, expectedRuntime: types.RuntimeNameDocker}
+	_, err := plugin.Configure(context.Background(), "", "containerd", "2.2.1")
+	require.Error(t, err)
+
+	plugin = &nriPlugin{cc: cc, expectedRuntime: types.RuntimeNameContainerd}
+	_, err = plugin.Configure(context.Background(), "", "containerd", "2.2.1")
+	require.NoError(t, err)
+
+	plugin = &nriPlugin{cc: cc}
+	_, err = plugin.Configure(context.Background(), "", "cri-o", "1.36.0")
+	require.NoError(t, err)
+}
+
 func TestNRIPluginIgnoresIncompleteContainer(t *testing.T) {
 	cc := newNRIContainerCollection(t)
 	plugin := newNRIPlugin(t, cc)
