@@ -37,6 +37,8 @@ func GetIPForVersion(data datasource.Data, version, ipAddr datasource.FieldAcces
 
 	var ipStr string
 	switch v {
+	case 0:
+		return "", nil
 	case 4:
 		ipStr, err = net.IP(ip[:4]).String(), nil
 	case 6:
