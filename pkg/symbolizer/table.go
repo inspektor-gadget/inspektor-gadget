@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/safeelf"
@@ -68,7 +69,7 @@ func NewSymbolTableFromFile(file *os.File) (*SymbolTable, error) {
 		}
 		name := sym.Name
 		if len(name) > MaxSymbolLength {
-			name = name[:MaxSymbolLength]
+			name = strings.Clone(name[:MaxSymbolLength])
 		}
 		symbols = append(symbols, &Symbol{
 			Name:  name,
