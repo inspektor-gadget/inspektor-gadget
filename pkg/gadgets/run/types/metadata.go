@@ -94,6 +94,12 @@ func Populate(m *metadatav1.GadgetMetadata, spec *ebpf.CollectionSpec) error {
 		m.DataSources = make(map[string]*metadatav1.DataSource)
 	}
 
+	// Gadgets without an eBPF program (e.g. bpfstats) don't have anything else
+	// to populate.
+	if spec == nil {
+		return nil
+	}
+
 	if err := populateTracers(m, spec); err != nil {
 		return fmt.Errorf("handling tracers: %w", err)
 	}
@@ -469,6 +475,10 @@ func populateEbpfParams(m *metadatav1.GadgetMetadata, spec *ebpf.CollectionSpec)
 }
 
 func checkParamVar(spec *ebpf.CollectionSpec, name string) error {
+	if spec == nil {
+		return fmt.Errorf("variable %q not found: gadget doesn't have an eBPF program", name)
+	}
+
 	var btfVar *btf.Var
 	err := spec.Types.TypeByName(name, &btfVar)
 	if err != nil {

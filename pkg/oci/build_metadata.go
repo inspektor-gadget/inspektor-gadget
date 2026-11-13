@@ -86,7 +86,7 @@ func validateMetadataFile(ctx context.Context, opts *BuildGadgetImageOpts) error
 
 func createOrUpdateMetadataFile(ctx context.Context, opts *BuildGadgetImageOpts) error {
 	spec, err := getAnySpec(opts)
-	if err != nil {
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("loading spec: %w", err)
 	}
 

@@ -93,6 +93,24 @@ func TestValidate(t *testing.T) {
 			},
 			expectedErrString: "\"param3\" is not const",
 		},
+		"no_ebpf_program": {
+			metadata: &metadatav1.GadgetMetadata{
+				Name: "foo",
+			},
+		},
+		"param_no_ebpf_program": {
+			metadata: &metadatav1.GadgetMetadata{
+				Name: "foo",
+				Params: map[string]map[string]params.ParamDesc{
+					"ebpf": {
+						"param": {
+							Key: "param",
+						},
+					},
+				},
+			},
+			expectedErrString: "variable \"param\" not found: gadget doesn't have an eBPF program",
+		},
 	}
 
 	for name, test := range tests {
@@ -100,10 +118,14 @@ func TestValidate(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			spec, err := ebpf.LoadCollectionSpec(test.objectPath)
-			require.NoError(t, err)
+			var spec *ebpf.CollectionSpec
+			if test.objectPath != "" {
+				var err error
+				spec, err = ebpf.LoadCollectionSpec(test.objectPath)
+				require.NoError(t, err)
+			}
 
-			err = Validate(test.metadata, spec)
+			err := Validate(test.metadata, spec)
 			if test.expectedErrString == "" {
 				require.NoError(t, err)
 			} else {
@@ -189,6 +211,16 @@ func TestPopulate(t *testing.T) {
 				},
 			},
 		},
+		"no_ebpf_program": {
+			expectedMetadata: &metadatav1.GadgetMetadata{
+				Name:             "TODO: Fill the gadget name",
+				Description:      "TODO: Fill the gadget description",
+				HomepageURL:      "TODO: Fill the gadget homepage URL",
+				DocumentationURL: "TODO: Fill the gadget documentation URL",
+				SourceURL:        "TODO: Fill the gadget source code URL",
+				DataSources:      map[string]*metadatav1.DataSource{},
+			},
+		},
 	}
 
 	for name, test := range tests {
@@ -196,15 +228,19 @@ func TestPopulate(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			spec, err := ebpf.LoadCollectionSpec(test.objectPath)
-			require.NoError(t, err)
+			var spec *ebpf.CollectionSpec
+			if test.objectPath != "" {
+				var err error
+				spec, err = ebpf.LoadCollectionSpec(test.objectPath)
+				require.NoError(t, err)
+			}
 
 			metadata := test.initialMetadata
 			if metadata == nil {
 				metadata = &metadatav1.GadgetMetadata{}
 			}
 
-			err = Populate(metadata, spec)
+			err := Populate(metadata, spec)
 			if test.expectedErrString != "" {
 				require.ErrorContains(t, err, test.expectedErrString)
 				return
