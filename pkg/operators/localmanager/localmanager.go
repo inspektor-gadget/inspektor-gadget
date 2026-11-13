@@ -24,7 +24,6 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/rlimit"
-	"github.com/containerd/containerd/pkg/cri/constants"
 	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/google/uuid"
 	"github.com/moby/sys/capability"
@@ -132,7 +131,7 @@ func (l *localManager) GlobalParamDescs() params.ParamDescs {
 		},
 		{
 			Key:          ContainerdNamespace,
-			DefaultValue: constants.K8sContainerdNamespace,
+			DefaultValue: runtimeclient.K8sContainerdNamespace,
 			Description:  "Containerd namespace to use",
 		},
 		{
