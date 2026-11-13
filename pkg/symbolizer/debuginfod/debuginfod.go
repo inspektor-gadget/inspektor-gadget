@@ -101,8 +101,11 @@ func (d *debuginfodResolverInstance) newSymbolTableFromPath(path string, buildID
 	file, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			if !d.missingBuildIDs[buildIDStr] {
-				d.missingBuildIDs[buildIDStr] = true
+			d.lockSymbolTablesFromBuildID.Lock()
+			warned := d.missingBuildIDs[buildIDStr]
+			d.missingBuildIDs[buildIDStr] = true
+			d.lockSymbolTablesFromBuildID.Unlock()
+			if !warned {
 				suggestedCmd := fmt.Sprintf("DEBUGINFOD_CACHE_PATH=%s DEBUGINFOD_URLS=https://debuginfod.elfutils.org debuginfod-find debuginfo %s",
 					d.options.DebuginfodCachePath, buildIDStr)
 				log.Warnf("Debuginfo %s for %s not found in %s. Suggested remedial: %q", buildIDStr, task.Name, path, suggestedCmd)
