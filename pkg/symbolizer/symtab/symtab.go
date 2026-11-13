@@ -92,7 +92,7 @@ func (s *symtabResolverInstance) PruneOldObjects(now time.Time, ttl time.Duratio
 	tableRemovedCount := 0
 	symbolRemovedCount := 0
 	for key, table := range s.symbolTables {
-		if now.Sub(table.Timestamp) > ttl {
+		if now.Sub(table.LastUsed()) > ttl {
 			s.symbolCountTotal -= len(table.Symbols)
 			delete(s.symbolTables, key)
 			tableRemovedCount++
@@ -217,7 +217,7 @@ func newSymbolTableFromPid(pid uint32, symbolTableKeyFromEbpf symbolizer.SymbolT
 }
 
 func (s *symtabResolverInstance) resolveStackItemsWithTable(task symbolizer.Task, table *symbolizer.SymbolTable, pid uint32, stackQueries []symbolizer.StackItemQuery, res []symbolizer.StackItemResponse) error {
-	table.Timestamp = time.Now()
+	table.Touch()
 
 	var runtimeBaseAddr uint64
 	var err error

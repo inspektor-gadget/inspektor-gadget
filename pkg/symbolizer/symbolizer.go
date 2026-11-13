@@ -18,6 +18,7 @@ package symbolizer
 
 import (
 	"context"
+	"sync/atomic"
 	"time"
 )
 
@@ -79,7 +80,20 @@ type SymbolTable struct {
 	// CLONE_VM or CLONE_THREADS).
 	RuntimeBaseAddrCache map[BaseAddrCacheKey]uint64
 
-	Timestamp time.Time
+	// lastUsed is the last time the table was used, in Unix nanoseconds.
+	// It is atomic because it is updated by concurrent readers holding only
+	// a read lock.
+	lastUsed atomic.Int64
+}
+
+// Touch records that the symbol table has just been used.
+func (t *SymbolTable) Touch() {
+	t.lastUsed.Store(time.Now().UnixNano())
+}
+
+// LastUsed returns the last time the symbol table was used.
+func (t *SymbolTable) LastUsed() time.Time {
+	return time.Unix(0, t.lastUsed.Load())
 }
 
 func NewSymbolizer(opts SymbolizerOptions) (*Symbolizer, error) {

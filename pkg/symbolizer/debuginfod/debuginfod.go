@@ -84,7 +84,7 @@ func (d *debuginfodResolverInstance) PruneOldObjects(now time.Time, ttl time.Dur
 	buildIDRemovedCount := 0
 	buildIDSymbolRemovedCount := 0
 	for buildID, table := range d.symbolTablesFromBuildID {
-		if now.Sub(table.Timestamp) > ttl {
+		if now.Sub(table.LastUsed()) > ttl {
 			delete(d.symbolTablesFromBuildID, buildID)
 			buildIDRemovedCount++
 			buildIDSymbolRemovedCount += len(table.Symbols)
@@ -151,7 +151,7 @@ func (d *debuginfodResolverInstance) Resolve(task symbolizer.Task, stackQueries 
 		d.lockSymbolTablesFromBuildID.RLock()
 		table, ok := d.symbolTablesFromBuildID[buildIDStr]
 		if ok {
-			table.Timestamp = time.Now()
+			table.Touch()
 			symbol := table.LookupByAddr(stackQueries[i].Offset)
 			if symbol != "" {
 				stackResponses[i].Found = true
@@ -179,7 +179,7 @@ func (d *debuginfodResolverInstance) Resolve(task symbolizer.Task, stackQueries 
 		d.symbolTablesFromBuildID[buildIDStr] = table
 		delete(d.missingBuildIDs, buildIDStr)
 
-		table.Timestamp = time.Now()
+		table.Touch()
 		symbol := table.LookupByAddr(stackQueries[i].Offset)
 		if symbol != "" {
 			stackResponses[i].Found = true

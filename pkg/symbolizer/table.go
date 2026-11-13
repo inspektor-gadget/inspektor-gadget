@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"os"
 	"slices"
-	"time"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/safeelf"
 )
@@ -110,11 +109,12 @@ func NewSymbolTableFromFile(file *os.File) (*SymbolTable, error) {
 		}
 	}
 
-	return &SymbolTable{
+	table := &SymbolTable{
 		Symbols:              symbols,
 		IsPIE:                elfFile.Type == elf.ET_DYN,
 		ElfBaseAddr:          elfBaseAddr,
-		Timestamp:            time.Now(),
 		RuntimeBaseAddrCache: make(map[BaseAddrCacheKey]uint64),
-	}, nil
+	}
+	table.Touch()
+	return table, nil
 }
