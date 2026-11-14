@@ -1,4 +1,4 @@
-// Copyright 2024-2025 The Inspektor Gadget authors
+// Copyright 2024-2026 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -47,15 +47,37 @@ const (
 	disabledProgram = "gadget_program_disabled"
 )
 
+// splitTracepoint splits a tracepoint target of the form "<group>/<name>".
+func splitTracepoint(attachTo string) (string, string, error) {
+	group, name, ok := strings.Cut(attachTo, "/")
+	if !ok || group == "" || name == "" || strings.Contains(name, "/") {
+		return "", "", fmt.Errorf("invalid tracepoint %q: expected <group>/<name>", attachTo)
+	}
+	return group, name, nil
+}
+
+// applyAttachTo applies programs.<name>.attach_to to the program specs. It must
+// run before loading: the kernel resolves the target of fentry, fexit, tp_btf,
+// iter and LSM programs at load time.
+func (i *ebpfInstance) applyAttachTo() {
+	if i.config == nil {
+		return
+	}
+	for _, p := range i.collectionSpec.Programs {
+		attachTo := i.config.GetString("programs." + p.Name + ".attach_to")
+		// A disabled program is still loaded, so keep a target it can load with
+		if attachTo == "" || attachTo == disabledProgram {
+			continue
+		}
+		i.logger.Debugf("Overriding attachTo with %q for program %q", attachTo, p.Name)
+		p.AttachTo = attachTo
+	}
+}
+
 func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.ProgramSpec, prog *ebpf.Program) (link.Link, error) {
 	attachTo := p.AttachTo
 
-	if attachToCfg := i.config.GetString("programs." + p.Name + ".attach_to"); attachToCfg != "" {
-		i.logger.Debugf("Overriding attachTo with %q for program %q", attachToCfg, p.Name)
-		attachTo = attachToCfg
-	}
-
-	if attachTo == disabledProgram {
+	if i.config.GetString("programs."+p.Name+".attach_to") == disabledProgram {
 		i.logger.Debugf("Skipping program %q as it is disabled", p.Name)
 		return nil, nil
 	}
@@ -85,8 +107,11 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 		return nil, fmt.Errorf("unsupported section name %q for program %q", p.SectionName, p.Name)
 	case ebpf.TracePoint:
 		i.logger.Debugf("Attaching tracepoint %q to %q", p.Name, attachTo)
-		parts := strings.Split(attachTo, "/")
-		return link.Tracepoint(parts[0], parts[1], prog, nil)
+		group, name, err := splitTracepoint(attachTo)
+		if err != nil {
+			return nil, fmt.Errorf("program %q: %w", p.Name, err)
+		}
+		return link.Tracepoint(group, name, prog, nil)
 	case ebpf.SocketFilter:
 		i.logger.Debugf("Attaching socket filter %q to %q", p.Name, attachTo)
 		networkTracer := i.networkTracers[p.Name]
@@ -132,7 +157,7 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 				AttachType: ebpf.AttachTraceFExit,
 			})
 		case strings.HasPrefix(p.SectionName, tpBtfPrefix):
-			i.logger.Debugf("Attaching tp_btf %q to %q", p.Name, p.AttachTo)
+			i.logger.Debugf("Attaching tp_btf %q to %q", p.Name, attachTo)
 			return link.AttachTracing(link.TracingOptions{
 				Program:    prog,
 				AttachType: ebpf.AttachTraceRawTp,
