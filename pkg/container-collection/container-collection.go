@@ -28,6 +28,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -83,6 +84,16 @@ type ContainerCollection struct {
 	// disableContainerRuntimeWarnings is used to disable warnings about container runtimes.
 	disableContainerRuntimeWarnings bool
 
+	// runtimeEnrichment is set when WithContainerRuntimeEnrichment added an
+	// enricher using a runtime client.
+	runtimeEnrichment bool
+
+	// runtimeClients are the clients used by the runtime enrichers. They are
+	// only added by options, before container hooks start.
+	runtimeClients map[eventtypes.RuntimeName]runtimeclient.ContainerRuntimeClient
+	// k8sEnrichment is set by WithKubernetesEnrichment.
+	k8sEnrichment bool
+
 	// kubeconfigPath is the path to the kubeconfig file, or empty for in-cluster config.
 	// Some options like WithPodInformer will use it.
 	kubeconfigPath string
@@ -106,6 +117,12 @@ func (cc *ContainerCollection) Initialize(options ...ContainerCollectionOption) 
 	for _, o := range options {
 		err := o(cc)
 		if err != nil {
+			// Stop option-owned workers before running their cleanup functions.
+			close(cc.done)
+			for i := len(cc.cleanUpFuncs) - 1; i >= 0; i-- {
+				cc.cleanUpFuncs[i]()
+			}
+			cc.cleanUpFuncs = nil
 			return err
 		}
 	}
@@ -211,6 +228,9 @@ func (cc *ContainerCollection) AddContainer(container *Container) {
 		return
 	}
 
+	if container.K8s.ownerReferenceMu == nil {
+		container.K8s.ownerReferenceMu = &sync.Mutex{}
+	}
 	for _, enricher := range cc.containerEnrichers {
 		ok := enricher(container)
 		// Enrichers can decide to drop a container
@@ -220,8 +240,12 @@ func (cc *ContainerCollection) AddContainer(container *Container) {
 		}
 	}
 
-	_, loaded := cc.containers.LoadOrStore(container.Runtime.ContainerID, container)
+	stored, loaded := cc.containers.LoadOrStore(container.Runtime.ContainerID, container)
 	if loaded {
+		if stored != container {
+			// Enrichers may have attached resources before duplicate detection.
+			container.close()
+		}
 		return
 	}
 	cc.mu.Lock()
@@ -521,17 +545,16 @@ func (cc *ContainerCollection) Unsubscribe(key interface{}) {
 
 func (cc *ContainerCollection) Close() {
 	cc.mu.Lock()
-	defer cc.mu.Unlock()
-
-	close(cc.done)
-
 	if !cc.initialized || cc.closed {
+		cc.mu.Unlock()
 		panic("ContainerCollection is not initialized or has been closed")
 	}
 
 	// TODO: it's not clear if we want/can allow to re-initialize
 	// this instance yet, so we don't set cc.initialized = false.
 	cc.closed = true
+	close(cc.done)
+	cc.mu.Unlock()
 
 	for _, f := range cc.cleanUpFuncs {
 		f()
@@ -539,6 +562,8 @@ func (cc *ContainerCollection) Close() {
 
 	// Similar to RemoveContainer() on all containers but without publishing
 	// events.
+	cc.mu.Lock()
+	defer cc.mu.Unlock()
 	cc.containers.Range(func(key, value interface{}) bool {
 		c := value.(*Container)
 		c.close()
