@@ -19,6 +19,13 @@ datasources:
       mode:
         annotations:
           description: File access mode
+      resolve_raw:
+        annotations:
+          columns.hidden: true
+      resolve:
+        annotations:
+          description: openat2() resolve flags. Empty for open() and openat()
+          columns.width: 16
       error_raw:
         annotations:
           columns.hidden: true
