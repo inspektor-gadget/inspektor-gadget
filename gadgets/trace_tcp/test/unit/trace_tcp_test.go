@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/unix"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
@@ -234,6 +235,124 @@ func TestTraceTcpGadget(t *testing.T) {
 			testCase.validateEvent(t, runner.Info, fd, acceptFd, gadgetRunner.CapturedEvents)
 		})
 	}
+}
+
+// TestTraceTcpGadgetV4MappedConnectsDoNotLeak checks that connects from an
+// AF_INET6 socket to an IPv4-mapped address don't leave stale entries in the
+// gadget's internal map. If they did, the map would fill up and new connects
+// would stop being reported.
+func TestTraceTcpGadgetV4MappedConnectsDoNotLeak(t *testing.T) {
+	gadgettesting.InitUnitTest(t)
+
+	const (
+		port = 9072
+		// Must be bigger than MAX_ENTRIES in gadgets/trace_tcp/ebpf/common.h
+		v4MappedConnects = 8192 + 512
+		// Different from the address used to fill the map: connects to an
+		// already leaked tuple would be reported even with a full map.
+		newDstAddr = "127.0.0.2"
+	)
+
+	runner := utils.NewRunnerWithTest(t, &utils.RunnerConfig{})
+
+	var genErr error
+	onGadgetRun := func(gadgetCtx operators.GadgetContext) error {
+		utils.RunWithRunner(t, runner, func() error {
+			genErr = generateV4MappedConnects(port, v4MappedConnects, newDstAddr)
+			return nil
+		})
+		return nil
+	}
+
+	gadgetRunner := gadgetrunner.NewGadgetRunner(t, gadgetrunner.GadgetRunnerOpts[ExpectedTraceTcpEvent]{
+		Image:       "trace_tcp",
+		Timeout:     20 * time.Second,
+		OnGadgetRun: onGadgetRun,
+	})
+
+	gadgetRunner.RunGadget()
+
+	if errors.Is(genErr, unix.EAFNOSUPPORT) {
+		t.Skip("IPv6 is not supported on this system")
+	}
+	require.NoError(t, genErr)
+
+	for _, event := range gadgetRunner.CapturedEvents {
+		if event.Type == "connect" && event.Dst.Addr == newDstAddr && event.Dst.Port == port {
+			return
+		}
+	}
+	t.Fatalf("connect to %s:%d wasn't captured after %d IPv4-mapped connects", newDstAddr, port, v4MappedConnects)
+}
+
+// generateV4MappedConnects does n connects from an AF_INET6 socket to
+// ::ffff:127.0.0.1 and then one connect from an AF_INET socket to newDstAddr.
+func generateV4MappedConnects(port, n int, newDstAddr string) error {
+	lfd, err := unix.Socket(unix.AF_INET, unix.SOCK_STREAM, 0)
+	if err != nil {
+		return fmt.Errorf("creating listener socket: %w", err)
+	}
+
+	if err := unix.SetsockoptInt(lfd, unix.SOL_SOCKET, unix.SO_REUSEADDR, 1); err != nil {
+		unix.Close(lfd)
+		return fmt.Errorf("setting SO_REUSEADDR: %w", err)
+	}
+	// Listen on all the addresses, so 127.0.0.1 and newDstAddr both work
+	if err := unix.Bind(lfd, &unix.SockaddrInet4{Port: port}); err != nil {
+		unix.Close(lfd)
+		return fmt.Errorf("binding listener: %w", err)
+	}
+	if err := unix.Listen(lfd, 1024); err != nil {
+		unix.Close(lfd)
+		return fmt.Errorf("listening: %w", err)
+	}
+
+	// Accept and close every connection, so the accept queue never fills up.
+	acceptDone := make(chan struct{})
+	go func() {
+		defer close(acceptDone)
+		for {
+			fd, _, err := unix.Accept(lfd)
+			if err != nil {
+				return
+			}
+			unix.Close(fd)
+		}
+	}()
+	defer func() {
+		// Shutdown wakes up the blocked accept, close alone doesn't
+		unix.Shutdown(lfd, unix.SHUT_RDWR)
+		<-acceptDone
+		unix.Close(lfd)
+	}()
+
+	mapped := &unix.SockaddrInet6{
+		Port: port,
+		Addr: [16]byte{10: 0xff, 11: 0xff, 12: 127, 15: 1}, // ::ffff:127.0.0.1
+	}
+	for i := 0; i < n; i++ {
+		fd, err := unix.Socket(unix.AF_INET6, unix.SOCK_STREAM, 0)
+		if err != nil {
+			return fmt.Errorf("creating AF_INET6 socket: %w", err)
+		}
+		err = unix.Connect(fd, mapped)
+		unix.Close(fd)
+		if err != nil {
+			return fmt.Errorf("connecting to ::ffff:127.0.0.1: %w", err)
+		}
+	}
+
+	// Give userspace some time to consume the events generated above
+	time.Sleep(500 * time.Millisecond)
+
+	ip := net.ParseIP(newDstAddr).To4()
+	if ip == nil {
+		return fmt.Errorf("invalid IPv4 address: %s", newDstAddr)
+	}
+	if err := rawDial([4]byte(ip), port, false, nil); err != nil {
+		return fmt.Errorf("connecting to %s: %w", newDstAddr, err)
+	}
+	return nil
 }
 
 func generateConnectEvent(t *testing.T, ipAddr string, port int, async bool, expectedErrno syscall.Errno, fdPtr *int, _ *int) {
