@@ -19,6 +19,7 @@ package otelprofiles
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -42,7 +43,8 @@ import (
 const (
 	opName = "otel-profiles"
 
-	ParamOtelProfilesExporter = "otel-profiles-exporter"
+	ParamOtelProfilesExporter       = "otel-profiles-exporter"
+	ParamOtelProfilesSanitizeLabels = "otel-profiles-sanitize-labels"
 
 	ExporterOTLPGRPC = "otlp-grpc"
 
@@ -138,6 +140,14 @@ func (o *otelProfilesOperator) InstanceParams() api.Params {
 			Description: "Exporter to use for profiles exporting",
 			Tags:        []string{tagGroupOtelProfiles},
 		},
+		&api.Param{
+			Key:          ParamOtelProfilesSanitizeLabels,
+			Title:        "Sanitize Profiles Labels",
+			Description:  "Replace dots with underscores in sample attribute names (e.g. k8s.podName -> k8s_podName), for compatibility with queries written for Pyroscope < 2.0",
+			DefaultValue: "false",
+			TypeHint:     api.TypeBool,
+			Tags:         []string{tagGroupOtelProfiles},
+		},
 	}
 }
 
@@ -151,9 +161,18 @@ func (o *otelProfilesOperator) InstantiateDataOperator(gadgetCtx operators.Gadge
 		return nil, fmt.Errorf("parsing name mappings: %w", err)
 	}
 
+	sanitizeLabels := false
+	if v := instanceParamValues[ParamOtelProfilesSanitizeLabels]; v != "" {
+		sanitizeLabels, err = strconv.ParseBool(v)
+		if err != nil {
+			return nil, fmt.Errorf("parsing %s: %w", ParamOtelProfilesSanitizeLabels, err)
+		}
+	}
+
 	inst := &otelProfilesOperatorInstance{
-		o:        o,
-		mappings: mappings,
+		o:              o,
+		mappings:       mappings,
+		sanitizeLabels: sanitizeLabels,
 	}
 
 	return inst, nil
@@ -164,8 +183,9 @@ func (o *otelProfilesOperator) Priority() int {
 }
 
 type otelProfilesOperatorInstance struct {
-	o        *otelProfilesOperator
-	mappings map[string]string
+	o              *otelProfilesOperator
+	mappings       map[string]string
+	sanitizeLabels bool
 }
 
 func (o *otelProfilesOperatorInstance) Name() string {
@@ -241,8 +261,20 @@ func (o *otelProfilesOperatorInstance) PreStart(gadgetCtx operators.GadgetContex
 		}
 
 		attributesGetter := make(map[string]func(data datasource.Data) (any, error))
+		attributeFields := make(map[string]string)
 		for _, f := range ds.Fields() {
 			if val, ok := f.Annotations[sampleAttributeAnnotation]; ok && val == "true" {
+				attributeName := f.FullName
+				if o.sanitizeLabels {
+					// Pyroscope < 2.0 sanitized label names; queries written for
+					// it expect underscores.
+					attributeName = strings.ReplaceAll(attributeName, ".", "_")
+				}
+				if previous, ok := attributeFields[attributeName]; ok {
+					return fmt.Errorf("data source %q: sample attribute name collision: fields %q and %q both export as %q",
+						ds.Name(), previous, f.FullName, attributeName)
+				}
+				attributeFields[attributeName] = f.FullName
 				field := ds.GetField(f.FullName)
 
 				getter := func(data datasource.Data) (any, error) {
@@ -276,7 +308,7 @@ func (o *otelProfilesOperatorInstance) PreStart(gadgetCtx operators.GadgetContex
 					}
 				}
 
-				attributesGetter[f.FullName] = getter
+				attributesGetter[attributeName] = getter
 			}
 		}
 

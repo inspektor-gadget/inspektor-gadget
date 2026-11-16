@@ -212,11 +212,19 @@ func (a *fieldAccessor) Get(d Data) []byte {
 	if FieldFlagEmpty.In(a.f.Flags) {
 		return nil
 	}
-	if a.f.Size > 0 {
-		// size and offset must be valid here; checks take place on initialization
-		return d.payload()[a.f.PayloadIndex][a.f.Offs : a.f.Offs+a.f.Size]
+	p := d.payload()
+	if uint64(a.f.PayloadIndex) >= uint64(len(p)) {
+		return nil
 	}
-	return d.payload()[a.f.PayloadIndex]
+	buf := p[a.f.PayloadIndex]
+	if a.f.Size > 0 {
+		end := uint64(a.f.Offs) + uint64(a.f.Size)
+		if uint64(len(buf)) < end {
+			return nil
+		}
+		return buf[a.f.Offs:end:end]
+	}
+	return buf
 }
 
 func (a *fieldAccessor) setHidden(hidden bool, recurse bool) {
