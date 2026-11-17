@@ -130,7 +130,15 @@ func getLessFunc[OT constraints.Ordered, T any](array []*T, column columns.Colum
 		if array[j] == nil {
 			return true
 		}
-		return (fieldFunc(array[i]) >= fieldFunc(array[j])) != order
+		// Use a strict comparison so that equal values are reported as
+		// "not less" in both directions. Returning true for equal values
+		// (as a ">=" comparison would for descending order) violates the
+		// strict weak ordering expected by sort.SliceStable and breaks
+		// stability, which multi-column sorting relies on.
+		if order == columns.OrderAsc {
+			return fieldFunc(array[i]) < fieldFunc(array[j])
+		}
+		return fieldFunc(array[i]) > fieldFunc(array[j])
 	}
 }
 
