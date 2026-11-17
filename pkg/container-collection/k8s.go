@@ -29,7 +29,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	securejoin "github.com/cyphar/filepath-securejoin"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -68,7 +67,7 @@ func NewK8sClient(nodeName string, kubeconfigPath string, userAgentComment strin
 	if err != nil {
 		log.Warnf("Failed to retrieve socket path for runtime client from kubelet: %v. Falling back to default container runtime", err)
 	} else {
-		socketPath, err = securejoin.SecureJoin(host.HostRoot, socketPath)
+		socketPath, err = host.GetSocketPath(socketPath)
 		if err != nil {
 			log.Warnf("securejoin failed: %s. Falling back to default container runtime", err)
 		}

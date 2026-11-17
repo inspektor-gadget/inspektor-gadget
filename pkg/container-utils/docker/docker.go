@@ -21,7 +21,6 @@ import (
 	"strings"
 	"time"
 
-	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
 	log "github.com/sirupsen/logrus"
@@ -56,7 +55,7 @@ func NewDockerClient(socketPath string, protocol string) (runtimeclient.Containe
 
 	case containerutilsTypes.RuntimeProtocolCRI:
 		// TODO: Configurable
-		joinedSocketPath, err := securejoin.SecureJoin(host.HostRoot, runtimeclient.CriDockerDefaultSocketPath)
+		joinedSocketPath, err := host.GetSocketPath(runtimeclient.CriDockerDefaultSocketPath)
 		if err != nil {
 			return nil, fmt.Errorf("securejoining %v to %v: %w", host.HostRoot, runtimeclient.CriDockerDefaultSocketPath, err)
 		}
