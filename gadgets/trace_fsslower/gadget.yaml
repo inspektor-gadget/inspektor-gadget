@@ -46,7 +46,7 @@ params:
       key: min
       alias: m
       title: Minimum Latency
-      defaultValue: "10000"
+      defaultValue: "0"
       description: Minimum latency in µs to trace
   wasm:
     filesystem:

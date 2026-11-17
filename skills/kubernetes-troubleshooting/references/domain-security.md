@@ -19,8 +19,8 @@ shipped images.
   for LSM hooks"). It emits process identity plus the `tracepoint` name, but not
   another LSM's return value, so it cannot by itself prove that AppArmor or
   SELinux denied an operation. Use node audit logs for the verdict; use
-  `trace_lsm` only to correlate hook activity. `--trace-all` defaults to false,
-  so pass it or a specific `--trace-<hook>` flag.
+  `trace_lsm` only to correlate hook activity. `--trace-all` defaults to true;
+  set `--trace-all=false` with a specific `--trace-<hook>` flag to narrow it.
 - **`audit_seccomp`** — records seccomp audit events with the syscall and
   seccomp `code` (for example ERRNO, TRAP, KILL, USER_NOTIF, or LOG). Use the
   code to distinguish a denial from a logged/notification action.

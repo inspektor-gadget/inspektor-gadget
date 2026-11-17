@@ -52,6 +52,11 @@ func (i *ebpfInstance) fillParamDefaults() error {
 				continue
 			}
 
+			// A default value from the gadget metadata has precedence
+			if param.DefaultValue != "" {
+				continue
+			}
+
 			// v.Offset and v.Size are uint32 fields coming from user data (the
 			// BTF Datasec); compute the end offset in uint64 so a crafted
 			// pair cannot wrap the bounds check (and the slice below).
