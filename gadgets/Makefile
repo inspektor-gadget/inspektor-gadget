@@ -306,11 +306,27 @@ push-existing: $(addsuffix -push-existing,$(GADGETS))
 .PHONY: sign
 sign: $(addsuffix -sign,$(GADGETS))
 
+# %-sign-existing: Cosign may push a sigstore bundle then exit non-zero on Rekor
+# 409 createLogEntryConflict ("an equivalent entry already exists"). Treat that
+# as success so a retry does not attach a second bundle and break verification
+# (several application/vnd.dev.sigstore.bundle referrers). See #5880.
 %-sign-existing: phony_explicit
 	@echo "Signing existing $*"
 	@digest=$$($(SUDO_E) $(IG) image list --no-trunc | grep "$* " | awk '{ print $$3 }') ; \
 	n=0; \
-	until $(COSIGN) sign $(COSIGN_FLAGS) --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$*@$$digest; do \
+	until \
+		sign_out=$$($(COSIGN) sign $(COSIGN_FLAGS) --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$*@$$digest 2>&1); \
+		sign_rc=$$?; \
+		printf '%s\n' "$$sign_out"; \
+		if [ $$sign_rc -eq 0 ]; then \
+			true; \
+		elif printf '%s\n' "$$sign_out" | grep -qE 'createLogEntryConflict|an equivalent entry already exists in the transparency log'; then \
+			echo "Rekor reported an equivalent entry for $*; treating sign as success"; \
+			true; \
+		else \
+			false; \
+		fi; \
+	do \
 		if [ $$n -ge $(GADGET_PUSH_RETRIES) ]; then \
 			echo "Signing of $* failed after $$n retries"; \
 			exit 1; \
