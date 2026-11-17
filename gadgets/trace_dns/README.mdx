@@ -50,7 +50,7 @@ Running the gadget:
         Before we jump to scenarios, it is important to understand DNS in Kubernetes is based on multiple components:
 
         - Application Pods: These are the pods that make DNS requests.
-        - `kube-dns` Service: The Kubernetes service to which application pods send requests ([`dnsPolicy=ClusterFirst`](https://kubernetes.io/docs/tasks/administer-cluster/nodelocaldns/https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy)).
+        - `kube-dns` Service: The Kubernetes service to which application pods send requests ([`dnsPolicy=ClusterFirst`](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy)).
         - CoreDNS: The DNS server that resolves DNS requests in Kubernetes.
         - Upstream DNS: The DNS server that CoreDNS forwards DNS requests to.
 

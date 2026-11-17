@@ -131,8 +131,8 @@ Note that, the AppArmor profile should already exists in the cluster to be used.
 ##### Deploying with a seccomp profile
 
 By default, Inspektor Gadget syscalls are not restricted.
-If the seccomp profile operator is [installed](https://github.com/kubernetes-sigs/security-profiles-operator/blob/main/installation-usage.md#install-operator), you can use the `--seccomp-profile` flag to deploy Inspektor Gadget with a custom seccomp profile.
-Note that, the profile should follow the [`SeccompProfile` format](https://github.com/kubernetes-sigs/security-profiles-operator/blob/main/installation-usage.md#create-a-seccomp-profile):
+If the seccomp profile operator is [installed](https://github.com/kubernetes-sigs/security-profiles-operator/blob/main/doc/installation.md), you can use the `--seccomp-profile` flag to deploy Inspektor Gadget with a custom seccomp profile.
+Note that, the profile should follow the [`SeccompProfile` format](https://github.com/kubernetes-sigs/security-profiles-operator/blob/main/doc/profiles.md#create-a-seccomp-profile):
 
 ```bash
 $ cat 'gadget-profile.yaml'
