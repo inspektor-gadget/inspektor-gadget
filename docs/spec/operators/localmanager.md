@@ -45,6 +45,18 @@ containerd, cri-o, podman.
 
 Default: `docker,containerd,cri-o,podman`
 
+When `docker` is the only selected runtime and `runtime-protocol` is `internal`,
+LocalManager follows Docker Engine API lifecycle events. This also discovers
+containers in Docker-compatible engines that do not execute an OCI runtime.
+Each change is checked against the current container ID, process, and namespace
+identity before updating the existing tracing filters and network attachments.
+
+The event subscription is established before reconciling current containers.
+Discovery reconnects with bounded backoff and reconciles again after a
+disconnect or queue overflow. A periodic reconciliation also repairs missed
+events without restarting the gadgets. Other runtime selections continue to
+use OCI runtime hooks.
+
 ### `docker-socketpath`
 
 Docker Engine API Unix socket path

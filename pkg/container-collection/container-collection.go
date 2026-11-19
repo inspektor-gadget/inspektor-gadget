@@ -205,6 +205,12 @@ func (cc *ContainerCollection) RemoveContainer(id string) {
 
 // AddContainer adds a container to the collection.
 func (cc *ContainerCollection) AddContainer(container *Container) {
+	cc.addContainer(container, nil)
+}
+
+// addContainer can validate a runtime snapshot after enrichment, before any
+// namespace filters or subscribers see it.
+func (cc *ContainerCollection) addContainer(container *Container, valid func(*Container) bool) {
 	if err := eventtypes.ValidateContainerID(container.Runtime.ContainerID); err != nil {
 		log.Warnf("container collection: ignoring container with invalid ID: %s", err)
 		container.close()
@@ -218,6 +224,11 @@ func (cc *ContainerCollection) AddContainer(container *Container) {
 			container.close()
 			return
 		}
+	}
+
+	if valid != nil && !valid(container) {
+		container.close()
+		return
 	}
 
 	_, loaded := cc.containers.LoadOrStore(container.Runtime.ContainerID, container)
