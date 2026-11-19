@@ -190,3 +190,62 @@ func TestFilterSortableColumns(t *testing.T) {
 	require.Len(t, valid, 2)
 	require.Equal(t, []string{"uint", "extractor"}, valid)
 }
+
+type stabilityData struct {
+	Key int    `column:"key"`
+	Seq int    `column:"seq"`
+	ID  string `column:"id"`
+}
+
+// TestStability ensures that sorting is stable, i.e. entries that compare equal
+// keep their relative input order. This is relied upon when sorting by multiple
+// columns (rules are applied from right to left). It must hold for descending
+// order too, which a non-strict (">=") comparison would break.
+func TestStability(t *testing.T) {
+	cols, err := columns.NewColumns[stabilityData]()
+	require.NoError(t, err, "Failed to initialize")
+	cmap := cols.GetColumnMap()
+
+	newEntries := func() []*stabilityData {
+		return []*stabilityData{
+			{Key: 1, Seq: 0, ID: "a"},
+			{Key: 1, Seq: 1, ID: "b"},
+			{Key: 1, Seq: 2, ID: "c"},
+			{Key: 1, Seq: 3, ID: "d"},
+			{Key: 1, Seq: 4, ID: "e"},
+		}
+	}
+
+	ids := func(entries []*stabilityData) []string {
+		out := make([]string, 0, len(entries))
+		for _, e := range entries {
+			out = append(out, e.ID)
+		}
+		return out
+	}
+
+	// Ascending: equal keys keep their input order.
+	entries := newEntries()
+	SortEntries(cmap, entries, []string{"key"})
+	require.Equal(t, []string{"a", "b", "c", "d", "e"}, ids(entries),
+		"ascending sort on equal keys must preserve input order")
+
+	// Descending: equal keys must also keep their input order.
+	entries = newEntries()
+	SortEntries(cmap, entries, []string{"-key"})
+	require.Equal(t, []string{"a", "b", "c", "d", "e"}, ids(entries),
+		"descending sort on equal keys must preserve input order")
+
+	// Multi-column: descending primary key with all values equal must preserve
+	// the ascending ordering applied by the secondary key.
+	entries = []*stabilityData{
+		{Key: 1, Seq: 4, ID: "e"},
+		{Key: 1, Seq: 2, ID: "c"},
+		{Key: 1, Seq: 0, ID: "a"},
+		{Key: 1, Seq: 3, ID: "d"},
+		{Key: 1, Seq: 1, ID: "b"},
+	}
+	SortEntries(cmap, entries, []string{"-key", "seq"})
+	require.Equal(t, []string{"a", "b", "c", "d", "e"}, ids(entries),
+		"descending primary sort must not scramble the secondary ordering of equal keys")
+}
