@@ -29,6 +29,7 @@ import (
 	"strings"
 	"syscall"
 
+	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/spf13/cobra"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -46,6 +47,22 @@ func init() {
 		HostRoot = "/"
 	}
 	HostProcFs = filepath.Join(HostRoot, "/proc")
+}
+
+// GetSocketPath returns a runtime socket path in the host filesystem.
+func GetSocketPath(socketPath string) (string, error) {
+	if HostRoot == "/" {
+		// Let the kernel resolve socket aliases when running on the host.
+		// Expanding a short symlink can exceed the Unix socket path limit.
+		if filepath.IsAbs(socketPath) {
+			return socketPath, nil
+		}
+		return "/" + socketPath, nil
+	}
+
+	// Absolute symlinks in a mounted host filesystem must resolve inside
+	// that filesystem, not in the container's own root.
+	return securejoin.SecureJoin(HostRoot, socketPath)
 }
 
 type Config struct {

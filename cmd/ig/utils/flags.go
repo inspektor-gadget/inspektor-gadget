@@ -19,7 +19,6 @@ import (
 	"strings"
 
 	"github.com/containerd/containerd/pkg/cri/constants"
-	securejoin "github.com/cyphar/filepath-securejoin"
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
@@ -100,14 +99,14 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 
 			switch runtimeName {
 			case types.RuntimeNameDocker:
-				socketPath, err = securejoin.SecureJoin(host.HostRoot, commonFlags.Docker)
+				socketPath, err = host.GetSocketPath(commonFlags.Docker)
 			case types.RuntimeNameContainerd:
-				socketPath, err = securejoin.SecureJoin(host.HostRoot, commonFlags.Containerd)
+				socketPath, err = host.GetSocketPath(commonFlags.Containerd)
 				namespace = commonFlags.ContainerdNamespace
 			case types.RuntimeNameCrio:
-				socketPath, err = securejoin.SecureJoin(host.HostRoot, commonFlags.Crio)
+				socketPath, err = host.GetSocketPath(commonFlags.Crio)
 			case types.RuntimeNamePodman:
-				socketPath, err = securejoin.SecureJoin(host.HostRoot, commonFlags.Podman)
+				socketPath, err = host.GetSocketPath(commonFlags.Podman)
 			default:
 				return commonutils.WrapInErrInvalidArg("--runtime / -r",
 					fmt.Errorf("runtime %q is not supported", p))
