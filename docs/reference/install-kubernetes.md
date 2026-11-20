@@ -593,6 +593,66 @@ It is possible to deploy with a narrower, explicitly enumerated set of permissio
 Such a role must hold the union of everything granted by Inspektor Gadget's own ClusterRole and Role, plus create/delete rights on the objects the deployment creates.
 Note that this is not meaningfully less privileged than `cluster-admin` but it merely makes the permission set auditable.
 
+### Security considerations
+
+Inspektor Gadget is a privileged tool: the gadget pod loads eBPF programs on
+every node it runs on. Before deploying it, be aware of the following.
+
+#### Who can run gadgets controls the node
+
+Anyone able to run gadgets can load eBPF programs with the privileges of the
+gadget pod on the node. Even the official gadgets can expose sensitive host
+data, for example:
+
+- `trace_exec` shows command lines, which may contain secrets passed as
+  arguments.
+- `ttysnoop` shows terminal input and output.
+- `tcpdump` captures packet payloads.
+
+Access to Inspektor Gadget should therefore be granted only to users you would
+trust with node-level access. By default, a client talks to the gadget pod
+through `pods/portforward` in the gadget namespace, so restrict who holds this
+permission.
+
+If several teams share the cluster, consider the experimental
+[multi-tenancy mode](../devel/multitenancy.md). It authenticates every request
+and limits each user to the namespaces they are authorized for. Sensitive
+namespaces such as `kube-system` stay out of reach by not granting the
+permission there.
+
+#### Reducing the privileges of the gadget pod
+
+The gadget pod does not need to run with `CAP_SYS_ADMIN` on modern kernels:
+
+- Deploy with [`--drop-cap-sys-admin`](#deploying-without-cap_sys_admin) to
+  replace it with `CAP_BPF` and `CAP_PERFMON`.
+- Confine the pod further with an
+  [AppArmor profile](#deploying-with-an-apparmor-profile) or a
+  [seccomp profile](#deploying-with-a-seccomp-profile).
+
+#### Controlling which gadgets can run
+
+Arbitrary gadgets mean arbitrary eBPF programs. Use the available controls to
+limit what can be run:
+
+- [Verify gadget images](./verify-gadgets.mdx).
+- [Restrict the gadgets that can be run](./restricting-gadgets.mdx).
+- [Disallow pulling gadgets](./disallow-pulling.mdx).
+
+#### Accepted risks
+
+The gadget DaemonSet needs broad RBAC permissions to enrich events with
+Kubernetes metadata (see [Permissions required to deploy](#permissions-required-to-deploy)).
+A compromise of the gadget pod, or a leak of its ServiceAccount token, gives
+access to these permissions. This is an accepted risk of running Inspektor
+Gadget.
+
+#### Tracing limitations
+
+Gadgets are an observability tool, not a tamper-proof security monitor. A
+process controlling its own execution can evade some gadgets. See
+[gadget limitations](../gadgets/gadget_limitations.mdx).
+
 ## Uninstalling from the cluster
 
 Depending on your installation method, use one of the following command to
