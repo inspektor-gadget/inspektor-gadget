@@ -1009,14 +1009,20 @@ func getIndex(ctx context.Context, target oras.ReadOnlyTarget, image string) (*o
 }
 
 func GetContentFromDescriptor(ctx context.Context, target oras.ReadOnlyTarget, desc ocispec.Descriptor) (io.ReadCloser, error) {
+	return getContentFromDescriptor(ctx, target, desc, getOciStorePath)
+}
+
+func getContentFromDescriptor(ctx context.Context, target oras.ReadOnlyTarget, desc ocispec.Descriptor, storePath func() (string, error)) (io.ReadCloser, error) {
+	var fetcher content.Fetcher = target
 	if target == nil {
-		var err error
-		target, err = newLocalOciStore()
+		path, err := storePath()
 		if err != nil {
-			return nil, fmt.Errorf("getting local oci store: %w", err)
+			return nil, fmt.Errorf("getting local oci store path: %w", err)
 		}
+		// This descriptor already identifies a blob, so no tag lookup or index load is needed.
+		fetcher = oci.NewStorageFromFS(os.DirFS(path))
 	}
-	reader, err := target.Fetch(ctx, desc)
+	reader, err := fetcher.Fetch(ctx, desc)
 	if err != nil {
 		return nil, fmt.Errorf("fetching descriptor: %w", err)
 	}

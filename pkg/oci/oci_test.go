@@ -18,6 +18,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
@@ -26,8 +29,33 @@ import (
 	"github.com/stretchr/testify/require"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/oci"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 )
+
+func TestGetContentFromDescriptorWithoutIndex(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	path := t.TempDir()
+	store, err := oci.New(path)
+	require.NoError(t, err)
+
+	data := []byte("gadget configuration")
+	desc := pushBlob(t, ctx, store, ocispec.MediaTypeImageConfig, data)
+	require.NoError(t, os.WriteFile(filepath.Join(path, ocispec.ImageIndexFile), []byte("invalid JSON"), 0o600))
+
+	storePath := func() (string, error) { return path, nil }
+	reader, err := getContentFromDescriptor(ctx, nil, desc, storePath)
+	require.NoError(t, err)
+	defer reader.Close()
+	got, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Equal(t, data, got)
+
+	desc.Digest = digest.FromString("missing gadget configuration")
+	_, err = getContentFromDescriptor(ctx, nil, desc, storePath)
+	require.ErrorIs(t, err, errdef.ErrNotFound)
+}
 
 func TestExtendedCopyPreservesReferrers(t *testing.T) {
 	t.Parallel()
