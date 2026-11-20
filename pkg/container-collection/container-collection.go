@@ -94,7 +94,7 @@ type ContainerCollectionOption func(*ContainerCollection) error
 
 // Initialize initializes a ContainerCollection. It is
 // useful when ContainerCollection is embedded as an anonymous struct because
-// we don't use a contructor in that case.
+// we don't use a constructor in that case.
 func (cc *ContainerCollection) Initialize(options ...ContainerCollectionOption) error {
 	cc.done = make(chan struct{})
 

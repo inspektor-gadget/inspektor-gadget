@@ -207,7 +207,7 @@ func TestRun(t *testing.T) {
 
 				"op1_start",
 
-				// stop and poststop should be called on op1 as it was succesfully started
+				// stop and poststop should be called on op1 as it was successfully started
 				"op1_stop",
 				"op1_poststop",
 

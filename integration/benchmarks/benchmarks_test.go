@@ -156,7 +156,7 @@ func TestBenchmarks(t *testing.T) {
 	err = yaml.Unmarshal(configData, &config)
 	require.NoError(t, err, "failed to parse benchmarks.yaml")
 
-	// validate some things before runnning
+	// validate some things before running
 	// Other runtimes don't check if the workload finished correctly.
 	require.Equal(t, "docker", config.IgRuntime, "only docker runtime is supported for benchmarks")
 

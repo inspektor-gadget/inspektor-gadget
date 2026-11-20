@@ -616,7 +616,7 @@ func TestSelector(t *testing.T) {
 			},
 		},
 		{
-			description: "Exclude multiple container names retuns a result without the excluded container names",
+			description: "Exclude multiple container names returns a result without the excluded container names",
 			match:       true,
 			selector: &ContainerSelector{
 				K8s: K8sSelector{
