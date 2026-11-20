@@ -5,7 +5,7 @@ category: monitoring-logging
 displayName: "trace mount"
 createdAt: "2026-10-05T18:06:50Z"
 digest: "2026-10-05T18:06:50Z"
-description: "trace mount syscalls"
+description: "trace mount, umount, fsopen, fsconfig, fsmount and move_mount syscalls"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""
 homeURL: "https://inspektor-gadget.io/docs/latest/gadgets/trace_mount"

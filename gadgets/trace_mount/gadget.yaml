@@ -1,5 +1,5 @@
 name: trace mount
-description: trace mount syscalls
+description: trace mount, umount, fsopen, fsconfig, fsmount and move_mount syscalls
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_mount
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_mount
@@ -56,3 +56,37 @@ datasources:
         annotations:
           description: Network namespace inode id
           template: ns
+      fd:
+        annotations:
+          description: fd argument of fsconfig, fsmount (fs_fd) and move_mount (from_dfd)
+          columns.hidden: true
+      to_fd:
+        annotations:
+          description: to_dfd argument of move_mount
+          columns.hidden: true
+      cmd:
+        annotations:
+          description: cmd argument of fsconfig
+          columns.hidden: true
+      aux:
+        annotations:
+          description: aux argument of fsconfig
+          columns.hidden: true
+      fsflags:
+        annotations:
+          description: flags argument of fsopen, fsmount and move_mount
+          columns.hidden: true
+      attr_flags:
+        annotations:
+          description: attr_flags argument of fsmount
+          columns.hidden: true
+      key:
+        annotations:
+          description: key argument of fsconfig
+          columns.width: 32
+          columns.hidden: true
+      value:
+        annotations:
+          description: value argument of fsconfig
+          columns.width: 32
+          columns.hidden: true
