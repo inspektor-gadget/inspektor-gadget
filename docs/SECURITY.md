@@ -70,3 +70,30 @@ and [possible
 justifications](https://github.com/openvex/spec/blob/main/OPENVEX-SPEC.md#status-justifications)
 are listed in the [OpenVEX
 Specification](https://github.com/openvex/spec/blob/main/OPENVEX-SPEC.md).
+
+## Security model
+
+Inspektor Gadget is a privileged tool: it loads eBPF programs on the hosts it
+runs on. Keep the following in mind when deploying it:
+
+- **Access to Inspektor Gadget means access to the node.** Anyone able to run
+  gadgets can load eBPF programs with the tool's privileges, and even the
+  official gadgets can expose sensitive host data. This also applies to
+  clients of `ig daemon`, which can trace the whole host with `--host`.
+  See the [security considerations for Kubernetes](./reference/install-kubernetes.md#security-considerations)
+  and [using `ig` as a daemon](./reference/ig.md#using-ig-as-a-daemon).
+- **Reduce privileges where possible.** The gadget pod can run without
+  `CAP_SYS_ADMIN` ([`--drop-cap-sys-admin`](./reference/install-kubernetes.md#deploying-without-cap_sys_admin)),
+  and `ig` can run [rootless](./rootless-ig-run.md).
+- **Control what can run.** Use [image verification](./reference/verify-gadgets.mdx),
+  the [gadget allow-list](./reference/restricting-gadgets.mdx) and
+  [pull restrictions](./reference/disallow-pulling.mdx).
+- **Isolate tenants.** On shared Kubernetes clusters, the experimental
+  [multi-tenancy mode](./devel/multitenancy.md) authenticates every request and
+  restricts users to the namespaces they are authorized for.
+- **Tracing is not tamper-proof.** A process controlling its own execution can
+  evade some gadgets. See the [known gadget limitations](./gadgets/gadget_limitations.mdx)
+  before relying on Inspektor Gadget for security monitoring.
+
+Reports about behavior covered by this model, such as a client with daemon
+access tracing the host, are considered expected and not vulnerabilities.
