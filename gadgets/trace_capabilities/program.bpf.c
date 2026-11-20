@@ -120,10 +120,11 @@ struct {
 struct unique_key {
 	int cap;
 	u64 mntns_id;
+	u64 cgroup_id;
 };
 
 struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__uint(max_entries, 10240);
 	__type(key, struct unique_key);
 	__type(value, u64);
@@ -200,10 +201,11 @@ int BPF_KPROBE(ig_trace_cap_e, const struct cred *cred,
 	}
 
 	if (unique) {
-		struct unique_key key = {
-			.cap = cap,
-			.mntns_id = gadget_get_current_mntns_id(),
-		};
+		struct unique_key key;
+		__builtin_memset(&key, 0, sizeof(key));
+		key.cap = cap;
+		key.mntns_id = gadget_get_current_mntns_id();
+		key.cgroup_id = bpf_get_current_cgroup_id();
 
 		if (bpf_map_lookup_elem(&seen, &key) != NULL) {
 			return 0;

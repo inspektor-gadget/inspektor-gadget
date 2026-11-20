@@ -201,3 +201,36 @@ func TestNonAuditCapabilities(t *testing.T) {
 		}
 	})(t, runner.Info, 0, gadgetRunner.CapturedEvents)
 }
+
+func TestUniqueCapabilityAcrossProcesses(t *testing.T) {
+	gadgettesting.InitUnitTest(t)
+	runner := utils.NewRunnerWithTest(t, &utils.RunnerConfig{})
+	const processes = 20
+	onGadgetRun := func(gadgetCtx operators.GadgetContext) error {
+		utils.RunWithRunner(t, runner, func() error {
+			for i := 0; i < processes; i++ {
+				require.NoError(t, exec.Command("/bin/cat", "/proc/kallsyms").Run())
+			}
+			return nil
+		})
+		return nil
+	}
+	opts := gadgetrunner.GadgetRunnerOpts[ExpectedTraceCapabilitiesEvent]{
+		Image:          "trace_capabilities",
+		Timeout:        5 * time.Second,
+		MntnsFilterMap: utils.CreateMntNsFilterMap(t, runner.Info.MountNsID),
+		ParamValues:    map[string]string{"operator.oci.ebpf.unique": "true"},
+		OnGadgetRun:    onGadgetRun,
+	}
+	gadgetRunner := gadgetrunner.NewGadgetRunner(t, opts)
+
+	gadgetRunner.RunGadget()
+
+	seen := 0
+	for _, event := range gadgetRunner.CapturedEvents {
+		if event.Proc.Comm == "cat" && event.Cap == "CAP_SYSLOG" {
+			seen++
+		}
+	}
+	require.Equal(t, 1, seen, "CAP_SYSLOG events from %d processes in one mount namespace and cgroup with unique=true", processes)
+}
