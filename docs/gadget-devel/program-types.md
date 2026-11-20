@@ -60,12 +60,17 @@ The section name must use `iter/<iter_type>`. ig supports the following `<iter_t
 - `ksym`
 - `task`
 - `task_file`
+- `task_vma`
 - `tcp`
 - `udp`
 - `bpf_map_elem`
 
 `tcp` and `udp` iterators are invoked in different network namespaces matching
 the filter configuration when running the gadget.
+
+`task`, `task_file`, and `task_vma` iterators run in the host PID namespace
+so they can enumerate processes across the node, including when ig runs
+inside a container. `task_vma` iterates over processes' virtual memory areas.
 
 `bpf_map_elem` iterators run over the entries of a BPF map (any map type) and
 are non-destructive — entries remain in the map after iteration. Because the

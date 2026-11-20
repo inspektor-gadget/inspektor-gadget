@@ -199,7 +199,7 @@ func (i *ebpfInstance) runIterators() error {
 						}
 					}
 				case isIteratorKindPerPidNs(l.typ):
-					// Task iterators (task, task_file) must enumerate the host's
+					// Task iterators (task, task_file, task_vma) must enumerate the host's
 					// processes, so when running inside a pod they are read from
 					// the host pid namespace. bpfiterns.Read handles that by
 					// pinning the iterator on the host bpffs when needed.
@@ -289,7 +289,7 @@ func isIteratorKindPerNetNs(kind string) bool {
 // this path, as it pins the iterator on the host bpffs, which is both
 // unnecessary and unreliable when running inside a pod.
 func isIteratorKindPerPidNs(kind string) bool {
-	if kind == "task" || kind == "task_file" {
+	if kind == "task" || kind == "task_file" || kind == "task_vma" {
 		return true
 	}
 	return false
@@ -305,9 +305,6 @@ func isIteratorKindSupported(kind string) bool {
 	// ipv6_route ksym netlink sockmap task task_file task_vma tcp udp unix
 	//
 	// But at the moment, only a subset is supported by Inspektor Gadget.
-	switch kind {
-	case "task", "task_file", "ksym", "tcp", "udp", "bpf_map_elem":
-		return true
-	}
-	return false
+	return isIteratorKindPerPidNs(kind) || isIteratorKindPerNetNs(kind) ||
+		kind == "ksym" || kind == "bpf_map_elem"
 }
