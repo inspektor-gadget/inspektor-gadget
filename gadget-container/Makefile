@@ -1,5 +1,5 @@
 .PHONY: gadget-container-deps
-gadget-container-deps: cleanup ocihookgadget gadgettracermanager nrigadget
+gadget-container-deps: cleanup ocihookgadget gadgettracermanager
 
 
 TARGET_ARCH ?= $(shell go env GOHOSTARCH)
@@ -30,10 +30,3 @@ ocihookgadget:
 	GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=$(TARGET_ARCH) go build \
 		-o bin/ocihookgadget \
 		./hooks/oci/main.go
-
-.PHONY: nrigadget
-nrigadget:
-	mkdir -p bin
-	GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=$(TARGET_ARCH) go build \
-		-o bin/nrigadget \
-		./hooks/nri/main.go

@@ -110,6 +110,10 @@ const (
 	ContainerLabelK8sPodName       = "io.kubernetes.pod.name"
 	ContainerLabelK8sPodNamespace  = "io.kubernetes.pod.namespace"
 	ContainerLabelK8sPodUID        = "io.kubernetes.pod.uid"
+
+	// K8sContainerdNamespace is the containerd namespace used by the CRI
+	// plugin. containerd v2 does not export it.
+	K8sContainerdNamespace = "k8s.io"
 )
 
 // ContainerRuntimeClient defines the interface to communicate with the

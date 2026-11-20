@@ -22,14 +22,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/cio"
-	"github.com/containerd/containerd/namespaces"
-	"github.com/containerd/containerd/oci"
-	"github.com/containerd/containerd/pkg/cri/constants"
-	"github.com/containerd/containerd/snapshots"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/snapshots"
+	"github.com/containerd/containerd/v2/pkg/cio"
+	"github.com/containerd/containerd/v2/pkg/namespaces"
+	"github.com/containerd/containerd/v2/pkg/oci"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/stretchr/testify/require"
+
+	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 )
 
 const (
@@ -67,7 +68,7 @@ func (c *ContainerdContainer) initClientAndCtx() error {
 		return fmt.Errorf("creating a client: %w", err)
 	}
 
-	namespace := constants.K8sContainerdNamespace
+	namespace := runtimeclient.K8sContainerdNamespace
 	if c.options.namespace != "" {
 		namespace = c.options.namespace
 	}

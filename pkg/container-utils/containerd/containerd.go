@@ -19,9 +19,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/namespaces"
-	"github.com/containerd/containerd/pkg/cri/constants"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/pkg/namespaces"
 	"github.com/containerd/errdefs"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -65,7 +64,7 @@ func NewContainerdClient(socketPath string, protocol string, config *containerut
 		return nil, fmt.Errorf("unknown runtime protocol %q", protocol)
 	}
 
-	namespace := constants.K8sContainerdNamespace
+	namespace := runtimeclient.K8sContainerdNamespace
 	if config != nil && config.Namespace != "" {
 		namespace = config.Namespace
 	}
