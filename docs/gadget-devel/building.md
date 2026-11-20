@@ -76,7 +76,9 @@ Successfully built sha256:2f3ccd6254e232e6476f9f015b15f622c44831986f81a82eec17e9
 It is possible to build a gadget using a builder container or by using a local toolchain. By default,
 a container image provided by Inspektor Gadget with all the tools (compiler, libraries,
 header files) needed to compile your gadgets is used. A different container image can be specified with
-`--builder-image`. This option requires docker to be available on the system.
+`--builder-image`. This option requires a container engine, such as Docker or
+Podman, to be available on the system. Rootless engines are supported, so
+gadgets can be built without root privileges.
 
 `--local` can be used to use the tools installed on the local machine. In this case, you'll need to
 have clang, llvm, the gadget headers (see make install-headers) and the [bpf
