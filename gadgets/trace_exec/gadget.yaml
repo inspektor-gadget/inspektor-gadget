@@ -63,6 +63,11 @@ datasources:
           description: The change time of the parent process executable file in nanoseconds since the epoch. Only initialized when the execution succeeded.
           columns.width: 16
           columns.hidden: "true"
+      entry_missed:
+        annotations:
+          description: True when the syscall-enter tracepoint did not run for this exec and the record was built at sched_process_exec; args then hold the committed argv, file holds the path as passed to execve (require --paths flag), and dev and inode are empty
+          columns.width: 5
+          columns.hidden: "true"
       loginuid:
         annotations:
           template: uid
