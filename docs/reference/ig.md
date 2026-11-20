@@ -165,6 +165,16 @@ test-host                3326123    3326093    ls               0   /usr/bin/ls
 
 Events generated from containers have their container field set, while events which are generated from the host do not.
 
+:::warning
+
+`--host` traces every process on the machine, not only containers. Combined
+with gadgets such as `trace_exec`, `ttysnoop` or `tcpdump`, it can expose
+sensitive data from the host: command-line secrets, terminal sessions and
+network payloads. Only use it on hosts where whoever reads the output is
+trusted with this data.
+
+:::
+
 ### Using ig with "kubectl debug node"
 
 The "kubectl debug node" command is documented in
@@ -205,6 +215,20 @@ $ kubectl debug -n ig --profile=sysadmin node/$NODE_NAME --env NODE_NAME=$NODE_N
 
 ### Using ig as a daemon
 
+:::warning
+
+Any client that can connect to the `ig daemon` socket can run any gadget with
+`--host`, and therefore trace the whole host, e.g.
+`gadgetctl run trace_exec --host`. This is by design: access to the daemon is
+equivalent to running `ig` as root on the host.
+
+- Restrict access to the Unix socket to trusted users via `--group`.
+- When listening on TCP, always configure mutual TLS (`--tls-key-file`,
+  `--tls-cert-file`, `--tls-client-ca-file`) rather than `--tls-insecure`, and
+  only issue client certificates to trusted users.
+
+:::
+
 `ig` can also be run as a daemon. You can then use `gadgetctl` to connect to it as an unprivileged user.
 We will be using a new group called `ig` to allow controlling `ig` in this example.
 
@@ -231,6 +255,7 @@ User=root
 Restart=on-failure
 RestartSec=30
 WorkingDirectory=/usr/local/bin
+# --tls-insecure should not be used in production and is only given as example.
 ExecStart=/usr/local/bin/ig daemon --tls-insecure --group ig
 
 [Install]
