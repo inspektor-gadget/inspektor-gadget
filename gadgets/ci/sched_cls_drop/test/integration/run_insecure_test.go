@@ -60,10 +60,10 @@ func TestRunInsecure(t *testing.T) {
 		containers.WithContainerImage(gadgettesting.RegistryImage),
 	}
 
-	// It's a bit difficutl to implement this on Kubernetes as we'd to use port
+	// It's a bit difficult to implement this on Kubernetes as we'd to use port
 	// forwarding to copy the image below.
 	if utils.CurrentTestComponent != utils.IgLocalTestComponent {
-		t.Skip("Test only sopported on ig")
+		t.Skip("Test only supported on ig")
 	}
 
 	if utils.CurrentTestComponent == utils.IgLocalTestComponent && utils.Runtime == "containerd" {

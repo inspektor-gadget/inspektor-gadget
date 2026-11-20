@@ -731,9 +731,9 @@ func SplitIGDomain(name string) (domain, remainder string) {
 
 func normalizeImageName(image string) (reference.Named, error) {
 	// Use the default gadget's registry if no domain is specified.
-	domain, remainer := SplitIGDomain(image)
+	domain, remainder := SplitIGDomain(image)
 
-	name, err := reference.ParseNormalizedNamed(domain + "/" + remainer)
+	name, err := reference.ParseNormalizedNamed(domain + "/" + remainder)
 	if err != nil {
 		return nil, fmt.Errorf("parsing normalized image %q: %w", image, err)
 	}
