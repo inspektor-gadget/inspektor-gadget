@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 package api
 
 import (
-	"errors"
+	"fmt"
 	_ "unsafe"
 )
 
@@ -26,7 +26,7 @@ func releaseHandle(handle uint32) uint32
 func ReleaseHandle[T ~uint32](handle T) error {
 	ret := releaseHandle(uint32(handle))
 	if ret != 0 {
-		return errors.New("error releasing handle")
+		return errors.New("error releasing handle %d", uint32(handle))
 	}
 	return nil
 }
