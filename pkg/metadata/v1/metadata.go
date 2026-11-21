@@ -65,4 +65,7 @@ type GadgetMetadata struct {
 	DataSources map[string]*DataSource `yaml:"datasources,omitempty"`
 	// Params exposed by this gadget. It includes params for different operators
 	Params map[string]map[string]params.ParamDesc `yaml:"params,omitempty"`
+	// Others holds the remaining top-level keys of the metadata file (e.g. operators
+	// configuration), so they aren't lost when the file is updated
+	Others map[string]any `yaml:",inline"`
 }
