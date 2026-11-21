@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,6 +42,11 @@ func (d *dataElement) payload() [][]byte {
 	return d.Payload
 }
 
+// LostSampleCount is not available at the DataElement level
+func (d *dataElement) LostSampleCount() uint64 {
+	return 0
+}
+
 type data api.GadgetData
 
 func (d *data) private() {}
@@ -52,6 +57,14 @@ func (d *data) payload() [][]byte {
 
 func (d *data) SetSeq(seq uint32) {
 	d.Seq = seq
+}
+
+func (d *data) SetLostSampleCount(count uint64) {
+	d.LostSamples = count
+}
+
+func (d *data) LostSampleCount() uint64 {
+	return d.LostSamples
 }
 
 func (d *data) Raw() proto.Message {
@@ -114,6 +127,14 @@ func (d *dataArray) Len() int {
 }
 
 func (d *dataArray) Release(data Data) {
+}
+
+func (d *dataArray) SetLostSampleCount(count uint64) {
+	d.LostSamples = count
+}
+
+func (d *dataArray) LostSampleCount() uint64 {
+	return d.LostSamples
 }
 
 type field api.Field
