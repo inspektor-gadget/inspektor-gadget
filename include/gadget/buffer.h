@@ -11,7 +11,13 @@
 #define GADGET_MAX_EVENT_SIZE 10240
 #endif
 
+#define GADGET_MAP_MAX_ENTRIES(mapname, default_size)              \
+	const volatile __u32 mapname##_max_entries = default_size; \
+	const void *gadget_param_##mapname##_max_entries           \
+		__attribute__((unused));
+
 #define GADGET_TRACER_MAP(name, size)                                 \
+	GADGET_MAP_MAX_ENTRIES(name, size)                            \
 	struct {                                                      \
 		__uint(type, BPF_MAP_TYPE_RINGBUF);                   \
 		__uint(max_entries, size);                            \
