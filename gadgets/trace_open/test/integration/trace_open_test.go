@@ -34,12 +34,13 @@ type traceOpenEvent struct {
 	Timestamp string        `json:"timestamp"`
 	Proc      utils.Process `json:"proc"`
 
-	Fd    uint32 `json:"fd"`
-	Error string `json:"error"`
-	Flags string `json:"flags"`
-	Mode  string `json:"mode"`
-	FName string `json:"fname"`
-	FPath string `json:"fpath"`
+	Fd      uint32 `json:"fd"`
+	Error   string `json:"error"`
+	Flags   string `json:"flags"`
+	Mode    string `json:"mode"`
+	Resolve string `json:"resolve"`
+	FName   string `json:"fname"`
+	FPath   string `json:"fpath"`
 }
 
 func TestTraceOpen(t *testing.T) {
@@ -94,6 +95,7 @@ func TestTraceOpen(t *testing.T) {
 				Error:      "",
 				Flags:      "O_RDONLY",
 				Mode:       "----------",
+				Resolve:    "",
 
 				// Check the existence of the following fields
 				Timestamp: utils.NormalizedStr,

@@ -8,6 +8,7 @@
 
 #include <gadget/buffer.h>
 #include <gadget/common.h>
+#include <gadget/core_fixes.bpf.h>
 #include <gadget/filter.h>
 #include <gadget/macros.h>
 #include <gadget/types.h>
@@ -17,10 +18,24 @@
 #define TASK_RUNNING 0
 #define NAME_MAX 255
 
+/*
+ * Resolve flags for openat2(), taken from:
+ * https://github.com/torvalds/linux/blob/6628e7d4c6b2/include/uapi/linux/openat2.h#L32-L49
+ */
+enum resolve_flags_set : __u64 {
+	RESOLVE_NO_XDEV = 0x01,
+	RESOLVE_NO_MAGICLINKS = 0x02,
+	RESOLVE_NO_SYMLINKS = 0x04,
+	RESOLVE_BENEATH = 0x08,
+	RESOLVE_IN_ROOT = 0x10,
+	RESOLVE_CACHED = 0x20,
+};
+
 struct args_t {
 	const char *fname;
 	int flags;
 	__u16 mode;
+	__u64 resolve;
 };
 
 struct event {
@@ -31,6 +46,7 @@ struct event {
 	__u32 fd;
 	gadget_file_flags flags_raw;
 	gadget_file_mode mode_raw;
+	enum resolve_flags_set resolve_raw;
 	struct gadget_user_stack ustack;
 	char fname[NAME_MAX];
 	char fpath[GADGET_PATH_MAX];
@@ -54,7 +70,7 @@ GADGET_TRACER_MAP(events, 1024 * 256);
 GADGET_TRACER(open, events, event);
 
 static __always_inline int trace_enter(const char *filename, int flags,
-				       __u16 mode)
+				       __u16 mode, __u64 resolve)
 {
 	__u64 pid = bpf_get_current_pid_tgid();
 
@@ -65,6 +81,7 @@ static __always_inline int trace_enter(const char *filename, int flags,
 	args.fname = filename;
 	args.flags = flags;
 	args.mode = mode;
+	args.resolve = resolve;
 	bpf_map_update_elem(&start, &pid, &args, 0);
 
 	return 0;
@@ -75,7 +92,7 @@ SEC("tracepoint/syscalls/sys_enter_open")
 int ig_open_e(struct syscall_trace_enter *ctx)
 {
 	return trace_enter((const char *)ctx->args[0], (int)ctx->args[1],
-			   (__u16)ctx->args[2]);
+			   (__u16)ctx->args[2], 0);
 }
 #endif /* !__TARGET_ARCH_arm64 */
 
@@ -83,7 +100,22 @@ SEC("tracepoint/syscalls/sys_enter_openat")
 int ig_openat_e(struct syscall_trace_enter *ctx)
 {
 	return trace_enter((const char *)ctx->args[1], (int)ctx->args[2],
-			   (__u16)ctx->args[3]);
+			   (__u16)ctx->args[3], 0);
+}
+
+SEC("tracepoint/syscalls/sys_enter_openat2")
+int ig_openat2_e(struct syscall_trace_enter *ctx)
+{
+	if (!has_open_how())
+		return 0;
+
+	struct open_how how = {};
+
+	if (bpf_probe_read_user(&how, sizeof(how), (void *)ctx->args[2]))
+		return 0;
+
+	return trace_enter((const char *)ctx->args[1], how.flags, how.mode,
+			   how.resolve);
 }
 
 static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
@@ -135,6 +167,7 @@ static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 	bpf_probe_read_user_str(&event->fname, sizeof(event->fname), ap->fname);
 	event->flags_raw = ap->flags;
 	event->mode_raw = ap->mode;
+	event->resolve_raw = ap->resolve;
 	event->error_raw = errval;
 	event->fd = fd;
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
@@ -157,6 +190,12 @@ int ig_open_x(struct syscall_trace_exit *ctx)
 
 SEC("tracepoint/syscalls/sys_exit_openat")
 int ig_openat_x(struct syscall_trace_exit *ctx)
+{
+	return trace_exit(ctx);
+}
+
+SEC("tracepoint/syscalls/sys_exit_openat2")
+int ig_openat2_x(struct syscall_trace_exit *ctx)
 {
 	return trace_exit(ctx);
 }
