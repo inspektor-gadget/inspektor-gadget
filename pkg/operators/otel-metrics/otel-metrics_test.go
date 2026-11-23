@@ -570,3 +570,96 @@ func TestMetricsHistogram(t *testing.T) {
 		assert.True(t, found)
 	}
 }
+
+func TestMetricsPrefix(t *testing.T) {
+	o := &otelMetricsOperator{skipListen: true}
+	globalParams := apihelpers.ToParamDescs(o.GlobalParams()).ToParams()
+	globalParams.Set(ParamOtelMetricsListen, "true")
+	globalParams.Set(ParamOtelMetricsPrefix, "ig_")
+	require.NoError(t, o.Init(globalParams))
+
+	var ds datasource.DataSource
+	var ctr datasource.FieldAccessor
+	var gauge datasource.FieldAccessor
+
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
+	defer cancel()
+
+	prepare := func(gadgetCtx operators.GadgetContext) error {
+		var err error
+		ds, err = gadgetCtx.RegisterDataSource(datasource.TypeSingle, "metrics")
+		require.NoError(t, err)
+		ds.AddAnnotation(AnnotationMetricsCollect, "true")
+
+		ctr, err = ds.AddField("ctr", api.Kind_Uint32, datasource.WithAnnotations(map[string]string{
+			AnnotationMetricsType: MetricTypeCounter,
+		}))
+		require.NoError(t, err)
+
+		gauge, err = ds.AddField("gauge", api.Kind_Uint32, datasource.WithAnnotations(map[string]string{
+			AnnotationMetricsType: MetricTypeGauge,
+			AnnotationMetricsName: "renamed_gauge",
+		}))
+		require.NoError(t, err)
+		return nil
+	}
+	produce := func(operators.GadgetContext) error {
+		data, err := ds.NewPacketSingle()
+		require.NoError(t, err)
+		assert.NoError(t, ctr.PutUint32(data, 3))
+		assert.NoError(t, gauge.PutUint32(data, 7))
+		assert.NoError(t, ds.EmitAndRelease(data))
+		cancel()
+		return nil
+	}
+
+	producer := simple.New("producer",
+		simple.WithPriority(Priority-1),
+		simple.OnInit(prepare),
+		simple.OnStart(produce),
+	)
+
+	gadgetCtx := gadgetcontext.New(ctx, "", gadgetcontext.WithDataOperators(o, producer))
+	require.NoError(t, gadgetCtx.Run(api.ParamValues{
+		"operator.otel-metrics.otel-metrics-name": "metrics:metrics",
+	}))
+
+	md := &metricdata.ResourceMetrics{}
+	require.NoError(t, o.exporter.Collect(context.Background(), md))
+
+	var names []string
+	for _, sm := range md.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			names = append(names, m.Name)
+		}
+	}
+	assert.ElementsMatch(t, []string{"ig_ctr", "ig_renamed_gauge"}, names)
+	assert.Equal(t, map[string]int64{"": 3}, intMetricValues(t, md, "ig_ctr"))
+	assert.Equal(t, map[string]int64{"": 7}, intMetricValues(t, md, "ig_renamed_gauge"))
+}
+
+func TestMetricsPrefixValidation(t *testing.T) {
+	for prefix, valid := range map[string]bool{
+		"":                  true,
+		"ig_":               true,
+		"inspektor.gadget.": true,
+		"ig-":               true,
+		"_ig":               false,
+		"1ig_":              false,
+		"ig prefix":         false,
+		"ig:":               false,
+	} {
+		t.Run(prefix, func(t *testing.T) {
+			o := &otelMetricsOperator{skipListen: true}
+			globalParams := apihelpers.ToParamDescs(o.GlobalParams()).ToParams()
+			globalParams.Set(ParamOtelMetricsPrefix, prefix)
+			err := o.Init(globalParams)
+			if valid {
+				assert.NoError(t, err)
+				assert.Equal(t, prefix, o.metricsPrefix)
+			} else {
+				assert.ErrorContains(t, err, ParamOtelMetricsPrefix)
+			}
+		})
+	}
+}

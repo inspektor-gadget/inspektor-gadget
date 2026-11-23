@@ -94,6 +94,9 @@ Once you have enabled the metrics listener and configured the gadgets to export
 metrics, you can query the metrics using Prometheus. By default, the metrics
 will be available at `http://0.0.0.0:2224/metrics`. You can change this address
 by setting the `otel-metrics-listen-address` parameter.
+To give all gadget metrics a common prefix, such as `ig_`, set the
+[`otel-metrics-prefix`](../spec/operators/otel-metrics.md#otel-metrics-prefix)
+parameter.
 
 Metrics will be available under the `metricsname` you specified when enabling
 the metrics export for the gadget. For example, under `blockio-metrics` for the

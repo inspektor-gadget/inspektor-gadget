@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -59,6 +60,7 @@ const (
 	ParamOtelMetricsName            = "otel-metrics-name"
 	ParamOtelMetricsExporter        = "otel-metrics-exporter"
 	ParamOtelMetricsPrintInterval   = "otel-metrics-print-interval"
+	ParamOtelMetricsPrefix          = "otel-metrics-prefix"
 
 	MetricTypeKey       = "key"
 	MetricTypeCounter   = "counter"
@@ -126,6 +128,9 @@ type otelMetricsOperator struct {
 
 	providers map[string]metric.MeterProvider
 
+	// metricsPrefix is prepended to the name of every metric a gadget exports
+	metricsPrefix string
+
 	// if skipListen is set to true, it will not expose the metrics using http
 	// this is used mainly for unit tests (you can still use the meterProvider & exporter)
 	skipListen bool
@@ -138,6 +143,11 @@ func (m *otelMetricsOperator) Name() string {
 func (m *otelMetricsOperator) Init(globalParams *params.Params) error {
 	// Initialize provider map
 	m.providers = map[string]metric.MeterProvider{}
+
+	m.metricsPrefix = globalParams.Get(ParamOtelMetricsPrefix).AsString()
+	if m.metricsPrefix != "" && !metricsPrefixRegex.MatchString(m.metricsPrefix) {
+		return fmt.Errorf("invalid %s %q: it must start with a letter and contain only letters, digits, '_', '.', '-' and '/'", ParamOtelMetricsPrefix, m.metricsPrefix)
+	}
 
 	// Initialize named metric providers
 	mc := make(map[string]*metricsConfig, 0)
@@ -265,6 +275,12 @@ func (m *otelMetricsOperator) GlobalParams() api.Params {
 			TypeHint:     api.TypeBool,
 			Description:  "export Inspektor Gadget internal metrics",
 		},
+		{
+			Key:          ParamOtelMetricsPrefix,
+			DefaultValue: "",
+			TypeHint:     api.TypeString,
+			Description:  "prefix to add to the name of every metric exported by gadgets, e.g. \"ig_\"; internal metrics are not affected",
+		},
 	}
 }
 
@@ -377,6 +393,7 @@ type metricsCollector struct {
 	snapshot            *metricsSnapshot
 	registration        metric.Registration
 	mappedName          string
+	metricsPrefix       string
 	output              bool
 	exporter            *otelprometheus.Exporter
 	meterProvider       *sdkmetric.MeterProvider
@@ -421,15 +438,19 @@ func (mc *metricsCollector) addKeyFunc(f datasource.FieldAccessor) error {
 	return nil
 }
 
-func getMetricName(f datasource.FieldAccessor) string {
+// metricsPrefixRegex follows the OpenTelemetry instrument name syntax, so that
+// a prefixed name is still a valid instrument name
+var metricsPrefixRegex = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_.\-/]*$`)
+
+func getMetricName(f datasource.FieldAccessor, prefix string) string {
 	if nameOverride := f.Annotations()[AnnotationMetricsName]; nameOverride != "" {
-		return nameOverride
+		return prefix + nameOverride
 	}
-	return f.FullName()
+	return prefix + f.FullName()
 }
 
 func (mc *metricsCollector) addValFunc(f datasource.FieldAccessor, metricType string) error {
-	metricName := getMetricName(f)
+	metricName := getMetricName(f, mc.metricsPrefix)
 
 	var options []metric.InstrumentOption
 	if description := f.Annotations()[AnnotationMetricsDescription]; description != "" {
@@ -511,7 +532,7 @@ func (mc *metricsCollector) addValFunc(f datasource.FieldAccessor, metricType st
 }
 
 func (mc *metricsCollector) addSnapshotValFunc(f datasource.FieldAccessor) error {
-	metricName := getMetricName(f)
+	metricName := getMetricName(f, mc.metricsPrefix)
 
 	var options []metric.InstrumentOption
 	if description := f.Annotations()[AnnotationMetricsDescription]; description != "" {
@@ -582,7 +603,7 @@ func listToVals[T int64 | float64](list string, conv func(string) (T, error)) ([
 }
 
 func (mc *metricsCollector) addValHistFunc(ds datasource.DataSource, f datasource.FieldAccessor) error {
-	metricName := getMetricName(f)
+	metricName := getMetricName(f, mc.metricsPrefix)
 
 	options := make([]metric.HistogramOption, 0)
 	if buckets := f.Annotations()[AnnotationMetricsBoundaries]; buckets != "" {
@@ -899,6 +920,7 @@ func (m *otelMetricsOperatorInstance) init(gadgetCtx operators.GadgetContext) er
 		m.collectors[ds] = &metricsCollector{
 			output:            metricsPrint,
 			mappedName:        mappedName,
+			metricsPrefix:     m.op.metricsPrefix,
 			snapshotMode:      snapshot,
 			useGlobalProvider: useGlobal,
 		}
