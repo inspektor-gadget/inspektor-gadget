@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -29,6 +30,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook/gatekeeper"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 func TestPermissionResponseBoundValidation(t *testing.T) {
@@ -72,8 +74,12 @@ func gkTestSetup(t *testing.T) (*gatekeeperProc, string) {
 	return env.g, env.path
 }
 
-func gkTestSetupEnv(t *testing.T) *gkTestEnv {
+func gkTestSetupEnv(t *testing.T, bound ...time.Duration) *gkTestEnv {
 	t.Helper()
+	b := gkTestBound
+	if len(bound) > 0 {
+		b = bound[0]
+	}
 	if os.Getenv(gatekeeperBinEnv) == "" {
 		// Test this binary, not whatever gatekeeper the host has installed.
 		t.Setenv(gatekeeperBinEnv, "/proc/self/exe")
@@ -91,7 +97,7 @@ func gkTestSetupEnv(t *testing.T) *gkTestEnv {
 	path := filepath.Join(t.TempDir(), "watched")
 	require.NoError(t, os.WriteFile(path, []byte("x"), 0o600))
 
-	g, err := startGatekeeper(runtimeNotify.Fd, pidNotify.Fd, -1, 0, gkTestBound, gkTestBound)
+	g, err := startGatekeeper(runtimeNotify.Fd, pidNotify.Fd, -1, 0, b, b)
 	require.NoError(t, err)
 	t.Cleanup(g.close)
 
@@ -196,7 +202,10 @@ func TestGatekeeperAllowsWhenParentDoesNotEvenReceive(t *testing.T) {
 }
 
 func TestGatekeeperCloseAllowsPendingAndExits(t *testing.T) {
-	g, path := gkTestSetup(t)
+	// A bound far above the wait below: the open must be released by close,
+	// not by the deadline.
+	env := gkTestSetupEnv(t, 10*time.Second)
+	g, path := env.g, env.path
 	g.startReceive(nil)
 	go func() {
 		for ev := range g.pidCh {
@@ -209,8 +218,9 @@ func TestGatekeeperCloseAllowsPendingAndExits(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 	g.close()
 	select {
-	case <-opened:
-	case <-time.After(gkTestBound):
+	case d := <-opened:
+		require.Less(t, d, 8*time.Second, "released by the deadline, not by close")
+	case <-time.After(2 * time.Second):
 		t.Fatal("pending event not allowed on close")
 	}
 	select {
@@ -274,9 +284,58 @@ func TestGatekeeperRefusesAnotherProtocolVersion(t *testing.T) {
 	notify, err := initFanotify()
 	require.NoError(t, err)
 	t.Cleanup(func() { notify.File.Close() })
-	t.Setenv(gatekeeperBinEnv, "/bin/true")
+	prev := expectedProtocolVersion
+	expectedProtocolVersion = gatekeeper.ProtocolVersion + 1
+	t.Cleanup(func() { expectedProtocolVersion = prev })
+	t.Setenv(gatekeeperBinEnv, "/proc/self/exe")
 	_, err = startGatekeeper(notify.Fd, notify.Fd, -1, 0, gkTestBound, gkTestBound)
-	require.Error(t, err)
+	require.ErrorContains(t, err, "speaks protocol")
+}
+
+func TestGatekeeperRefusesOneThatExitsEarly(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("needs root for fanotify")
+	}
+	notify, err := initFanotify()
+	require.NoError(t, err)
+	t.Cleanup(func() { notify.File.Close() })
+	t.Setenv(gatekeeperBinEnv, "/bin/true")
+	start := time.Now()
+	_, err = startGatekeeper(notify.Fd, notify.Fd, -1, 0, gkTestBound, gkTestBound)
+	require.ErrorContains(t, err, "exited before it was ready")
+	require.Less(t, time.Since(start), 5*time.Second, "an early exit must not wait for the ready timeout")
+}
+
+// A candidate that starts but never becomes ready is stopped and the next one
+// is tried, instead of falling back to answering in-process.
+func TestGatekeeperTriesTheNextCandidate(t *testing.T) {
+	if _, err := os.Stat(defaultGatekeeperBin); err == nil {
+		t.Skipf("%s is installed and would be tried second", defaultGatekeeperBin)
+	}
+	broken, err := os.ReadFile("/bin/true")
+	require.NoError(t, err)
+	prev := embeddedGatekeeper
+	embeddedGatekeeper = broken
+	t.Cleanup(func() { embeddedGatekeeper = prev })
+	t.Setenv(gatekeeperBinEnv, "")
+
+	g := gkStart(t)
+	require.Equal(t, "/proc/self/exe", g.cmd.Path)
+}
+
+// Termination signals do not kill the gatekeeper: it exits when the socket
+// closes, after allowing what it holds.
+func TestGatekeeperIgnoresTerminationSignals(t *testing.T) {
+	t.Setenv(gatekeeperBinEnv, "/proc/self/exe")
+	g := gkStart(t)
+	for _, sig := range []syscall.Signal{syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP, syscall.SIGQUIT} {
+		require.NoError(t, g.cmd.Process.Signal(sig))
+	}
+	select {
+	case <-g.exited:
+		t.Fatal("gatekeeper died from a termination signal")
+	case <-time.After(500 * time.Millisecond):
+	}
 }
 
 func TestGatekeeperRefusesARecordSizeMismatch(t *testing.T) {
@@ -329,8 +388,15 @@ func TestGatekeeperRunsEmbeddedFromMemfd(t *testing.T) {
 	t.Cleanup(func() { embeddedGatekeeper = prev })
 	t.Setenv(gatekeeperBinEnv, "")
 
+	if _, cleanup, err := memfdExecutable(); err != nil {
+		t.Skipf("memfd not available: %s", err)
+	} else {
+		cleanup()
+	}
 	g := gkStart(t)
-	require.Contains(t, g.cmd.Path, "/proc/self/fd/")
+	if !strings.HasPrefix(g.cmd.Path, "/proc/self/fd/") {
+		t.Skipf("memfd exec refused here (vm.memfd_noexec?); fell back to %s", g.cmd.Path)
+	}
 	comm, err := os.ReadFile(fmt.Sprintf("/proc/%d/comm", g.cmd.Process.Pid))
 	require.NoError(t, err)
 	require.Equal(t, "ig-gatekeeper\n", string(comm))
@@ -343,6 +409,14 @@ func TestGatekeeperForcedCgroupMove(t *testing.T) {
 		t.Skip("needs cgroup v2 at /sys/fs/cgroup")
 	}
 	base := "/sys/fs/cgroup/ig-container-hook-gatekeeper-test"
+	// Leftovers of a killed earlier run.
+	if entries, err := os.ReadDir(base); err == nil {
+		for _, e := range entries {
+			if e.IsDir() {
+				_ = unix.Rmdir(filepath.Join(base, e.Name()))
+			}
+		}
+	}
 	t.Cleanup(func() { unix.Rmdir(base) })
 	t.Setenv(gatekeeperBinEnv, "/proc/self/exe")
 	t.Setenv(gatekeeperCgroupEnv, base)
@@ -361,21 +435,28 @@ func TestGatekeeperForcedCgroupMove(t *testing.T) {
 	require.NoDirExists(t, dir)
 }
 
-// Without a memory limit on the inherited cgroup, nothing is created.
-func TestGatekeeperStaysWhenNotMemoryLimited(t *testing.T) {
+// From a host shell without memory or CPU limits, nothing is created.
+func TestGatekeeperStaysWhenUnconstrained(t *testing.T) {
+	if _, err := os.Stat("/sys/fs/cgroup/cgroup.controllers"); err != nil {
+		t.Skip("needs cgroup v2 at /sys/fs/cgroup")
+	}
+	if filepath.Clean(host.HostRoot) != "/" {
+		t.Skip("containerized: the move is forced")
+	}
 	cg, err := os.ReadFile("/proc/self/cgroup")
 	require.NoError(t, err)
 	path := strings.TrimPrefix(strings.TrimSpace(string(cg)), "0::")
-	if gatekeeper.MemoryLimited("/sys/fs/cgroup", path) {
-		t.Skip("this test process runs under a memory limit")
+	if path == "/" || gatekeeper.Constrained("/sys/fs/cgroup", path) {
+		t.Skip("this test process runs in a constrained (or the root) cgroup")
 	}
-	base := "/sys/fs/cgroup/ig-container-hook-gatekeeper-test-unforced"
 	t.Setenv(gatekeeperBinEnv, "/proc/self/exe")
 	t.Setenv(gatekeeperCgroupEnv, "")
 	g := gkStart(t)
 	require.True(t, g.cgroupNotNeeded)
 	require.Nil(t, g.cgroupDir.Load())
-	require.NoDirExists(t, base)
+	base, forced := gatekeeperCgroup()
+	require.False(t, forced)
+	require.NoDirExists(t, gatekeeper.CgroupDir(base, g.cmd.Process.Pid))
 	own, err := os.ReadFile(fmt.Sprintf("/proc/%d/cgroup", g.cmd.Process.Pid))
 	require.NoError(t, err)
 	require.Equal(t, string(cg), string(own))

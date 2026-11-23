@@ -205,15 +205,18 @@ type gatekeeperProc struct {
 }
 
 // gatekeeperCgroup returns the cgroup v2 base directory for gatekeepers, or "",
-// and whether the move is forced. By default the gatekeeper only leaves our
-// cgroup when that has a memory limit (see gatekeeper.joinCgroup); setting the
-// directory explicitly forces the move.
+// and whether the move is forced (see gatekeeper.joinCgroup). It is forced when
+// the directory is set explicitly, and when we run containerized (HostRoot is
+// not /): a container's cgroup can be frozen, CPU-limited or memory-limited by
+// its runtime at any time. From a host shell the gatekeeper only moves when our
+// cgroup is constrained, so a plain `ig run` creates nothing.
 func gatekeeperCgroup() (string, bool) {
 	switch v := os.Getenv(gatekeeperCgroupEnv); v {
 	case "none":
 		return "", false
 	case "":
-		return filepath.Join(host.HostRoot, "sys/fs/cgroup", defaultGatekeeperCgroup), false
+		return filepath.Join(host.HostRoot, "sys/fs/cgroup", defaultGatekeeperCgroup),
+			filepath.Clean(host.HostRoot) != "/"
 	default:
 		return v, true
 	}
@@ -223,8 +226,12 @@ func gatekeeperCgroup() (string, bool) {
 // package embedded), or nil.
 var embeddedGatekeeper = embedded.Binary
 
+// expectedProtocolVersion is the protocol a gatekeeper must speak; a variable
+// so tests can provoke a mismatch.
+var expectedProtocolVersion uint32 = gatekeeper.ProtocolVersion
+
 // gatekeeperCandidate is one way to run the gatekeeper. Candidates are tried in
-// order until one starts.
+// order until one starts and becomes ready.
 type gatekeeperCandidate struct {
 	name string // for logs
 	path string
@@ -235,18 +242,19 @@ type gatekeeperCandidate struct {
 }
 
 // gatekeeperCandidates returns, in order of preference: the binary named by
-// IG_CONTAINER_HOOK_GATEKEEPER_BIN (only that one, if set), the installed
-// binary, the embedded one, and re-executing this binary.
+// IG_CONTAINER_HOOK_GATEKEEPER_BIN (only that one, if set); the embedded one,
+// which always speaks our protocol; the installed one; and re-executing this
+// binary.
 func gatekeeperCandidates() []gatekeeperCandidate {
 	if p := os.Getenv(gatekeeperBinEnv); p != "" {
 		return []gatekeeperCandidate{{name: p, path: p, reexec: p == "/proc/self/exe"}}
 	}
 	var c []gatekeeperCandidate
-	if st, err := os.Stat(defaultGatekeeperBin); err == nil && st.Mode().IsRegular() && st.Mode()&0o111 != 0 {
-		c = append(c, gatekeeperCandidate{name: defaultGatekeeperBin, path: defaultGatekeeperBin})
-	}
 	if len(embeddedGatekeeper) > 0 {
 		c = append(c, gatekeeperCandidate{name: "embedded", prepare: memfdExecutable})
+	}
+	if st, err := os.Stat(defaultGatekeeperBin); err == nil && st.Mode().IsRegular() && st.Mode()&0o111 != 0 {
+		c = append(c, gatekeeperCandidate{name: defaultGatekeeperBin, path: defaultGatekeeperBin})
 	}
 	return append(c, gatekeeperCandidate{name: "/proc/self/exe", path: "/proc/self/exe", reexec: true})
 }
@@ -254,6 +262,11 @@ func gatekeeperCandidates() []gatekeeperCandidate {
 // mfdExec is MFD_EXEC (Linux 6.3): explicitly executable, needed when the
 // vm.memfd_noexec sysctl makes memfds non-executable by default.
 const mfdExec = 0x10
+
+// memfdHighFd is the lowest fd number the memfd is moved to. exec.Cmd's child
+// dup2()s ExtraFiles onto 3.. and may shuffle fds just above them before
+// execve resolves the path, so a low memfd number could be overwritten.
+const memfdHighFd = 100
 
 // memfdExecutable writes the embedded gatekeeper to a sealed memfd and returns
 // a path to exec it. The memfd is close-on-exec; the path is resolved by
@@ -268,14 +281,19 @@ func memfdExecutable() (string, func(), error) {
 	if err != nil {
 		return "", nil, fmt.Errorf("memfd_create: %w", err)
 	}
-	f := os.NewFile(uintptr(fd), "ig-container-hook-gatekeeper")
+	high, err := unix.FcntlInt(uintptr(fd), unix.F_DUPFD_CLOEXEC, memfdHighFd)
+	unix.Close(fd)
+	if err != nil {
+		return "", nil, fmt.Errorf("moving memfd: %w", err)
+	}
+	f := os.NewFile(uintptr(high), "ig-container-hook-gatekeeper")
 	if _, err := f.Write(embeddedGatekeeper); err != nil {
 		f.Close()
 		return "", nil, fmt.Errorf("writing embedded gatekeeper: %w", err)
 	}
-	_, _ = unix.FcntlInt(uintptr(fd), unix.F_ADD_SEALS,
+	_, _ = unix.FcntlInt(uintptr(high), unix.F_ADD_SEALS,
 		unix.F_SEAL_SEAL|unix.F_SEAL_SHRINK|unix.F_SEAL_GROW|unix.F_SEAL_WRITE)
-	return "/proc/self/fd/" + strconv.Itoa(fd), func() { f.Close() }, nil
+	return "/proc/self/fd/" + strconv.Itoa(high), func() { f.Close() }, nil
 }
 
 // dupCloexec duplicates fd with O_CLOEXEC, so the only copy the gatekeeper
@@ -289,28 +307,22 @@ func dupCloexec(fd int, name string) (*os.File, error) {
 }
 
 // startGatekeeper starts the gatekeeper for the two fanotify groups and waits
-// until it is ready to read them. recordsFd may be -1; otherwise
-// recordsValueSize is the map's value size, which must match the record type.
+// until it is ready to read them, trying each candidate in turn: one that does
+// not start, exits early or speaks another protocol is stopped and the next
+// one is tried. recordsFd may be -1; otherwise recordsValueSize is the map's
+// value size, which must match the record type.
 func startGatekeeper(runtimeFd, pidFd, recordsFd int, recordsValueSize int, runtimeBound, pidFileBound time.Duration) (*gatekeeperProc, error) {
 	if recordsFd >= 0 && recordsValueSize != recordSize {
 		// The gatekeeper reads value_size bytes into a recordSize buffer.
 		return nil, fmt.Errorf("ig_fa_records value size %d differs from the record type (%d)", recordsValueSize, recordSize)
 	}
-	fds, err := unix.Socketpair(unix.AF_UNIX, unix.SOCK_SEQPACKET|unix.SOCK_CLOEXEC, 0)
-	if err != nil {
-		return nil, fmt.Errorf("socketpair: %w", err)
-	}
-	parentSock := fds[0]
-	child := os.NewFile(uintptr(fds[1]), "gatekeeper-sock")
-	defer child.Close()
 
-	// Order must match gatekeeper.Fd*.
-	files := make([]*os.File, 0, 4)
+	// Fds shared by all attempts. Order must match gatekeeper.Fd*; the
+	// socket goes at index 2 per attempt.
+	var shared []*os.File
 	defer func() {
-		for _, f := range files {
-			if f != child {
-				f.Close()
-			}
+		for _, f := range shared {
+			f.Close()
 		}
 	}()
 	for _, src := range []struct {
@@ -319,31 +331,21 @@ func startGatekeeper(runtimeFd, pidFd, recordsFd int, recordsValueSize int, runt
 	}{{runtimeFd, "fanotify-runtime"}, {pidFd, "fanotify-pidfile"}} {
 		f, err := dupCloexec(src.fd, src.name)
 		if err != nil {
-			unix.Close(parentSock)
 			return nil, err
 		}
-		files = append(files, f)
+		shared = append(shared, f)
 	}
-	files = append(files, child)
+	var records *os.File
 	size := 0
 	if recordsFd >= 0 {
 		f, err := dupCloexec(recordsFd, "ig_fa_records")
 		if err != nil {
-			unix.Close(parentSock)
 			return nil, err
 		}
-		files = append(files, f)
+		shared = append(shared, f)
+		records = f
 		size = recordSize
 	}
-
-	// The gatekeeper logs to a pipe of its own, which it writes without
-	// blocking; sharing our stderr could block it on a full log pipe.
-	logR, logW, err := os.Pipe()
-	if err != nil {
-		unix.Close(parentSock)
-		return nil, fmt.Errorf("log pipe: %w", err)
-	}
-	defer logW.Close()
 
 	base, forceCgroup := gatekeeperCgroup()
 	env := append(os.Environ(),
@@ -355,45 +357,68 @@ func startGatekeeper(runtimeFd, pidFd, recordsFd int, recordsValueSize int, runt
 	if forceCgroup {
 		env = append(env, gatekeeper.CgroupForceEnv+"=1")
 	}
-	var cmd *exec.Cmd
-	var startErrs []error
+
+	var errs []error
 	for _, cand := range gatekeeperCandidates() {
-		path, cleanup := cand.path, func() {}
-		if cand.prepare != nil {
-			var err error
-			if path, cleanup, err = cand.prepare(); err != nil {
-				startErrs = append(startErrs, fmt.Errorf("%s: %w", cand.name, err))
-				continue
-			}
+		g, err := launchGatekeeper(cand, shared[0], shared[1], records, env)
+		if err == nil {
+			return g, nil
 		}
-		if cand.reexec {
-			log.Warnf("container-hook: no dedicated gatekeeper binary (install cmd/container-hook-gatekeeper as %s, or build with -tags %s); re-executing this binary, which runs its package initialization in the gatekeeper and charges that memory to this process's cgroup", defaultGatekeeperBin, embedded.BuildTag)
-		}
-		c := exec.Command(path)
-		c.Args[0] = "ig-container-hook-gatekeeper"
-		c.Env = env
-		c.ExtraFiles = files
-		c.Stdout = logW
-		c.Stderr = logW
-		// Own session: terminal job control (Ctrl-Z, Ctrl-C) on an ig run
-		// must not stop the process that answers for it. No Pdeathsig: it
-		// follows the thread that forked, not this process
-		// (golang/go#27505); the gatekeeper exits when the socket closes,
-		// which is what happens when we die.
-		c.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
-		err := c.Start()
-		cleanup()
-		if err != nil {
-			startErrs = append(startErrs, fmt.Errorf("%s: %w", cand.name, err))
-			continue
-		}
-		cmd = c
-		break
+		log.Warnf("container-hook: gatekeeper %s: %s", cand.name, err)
+		errs = append(errs, fmt.Errorf("%s: %w", cand.name, err))
 	}
-	if cmd == nil {
+	return nil, fmt.Errorf("no gatekeeper became ready: %w", errors.Join(errs...))
+}
+
+// launchGatekeeper starts one candidate and waits for its ready message.
+func launchGatekeeper(cand gatekeeperCandidate, runtimeF, pidF, records *os.File, env []string) (*gatekeeperProc, error) {
+	path, cleanup := cand.path, func() {}
+	if cand.prepare != nil {
+		var err error
+		if path, cleanup, err = cand.prepare(); err != nil {
+			return nil, err
+		}
+	}
+	defer cleanup()
+
+	fds, err := unix.Socketpair(unix.AF_UNIX, unix.SOCK_SEQPACKET|unix.SOCK_CLOEXEC, 0)
+	if err != nil {
+		return nil, fmt.Errorf("socketpair: %w", err)
+	}
+	parentSock := fds[0]
+	child := os.NewFile(uintptr(fds[1]), "gatekeeper-sock")
+	defer child.Close()
+	// The gatekeeper logs to a pipe of its own, which it writes without
+	// blocking; sharing our stderr could block it on a full log pipe.
+	logR, logW, err := os.Pipe()
+	if err != nil {
+		unix.Close(parentSock)
+		return nil, fmt.Errorf("log pipe: %w", err)
+	}
+	defer logW.Close()
+
+	files := []*os.File{runtimeF, pidF, child}
+	if records != nil {
+		files = append(files, records)
+	}
+	if cand.reexec {
+		log.Warnf("container-hook: no dedicated gatekeeper binary (install cmd/container-hook-gatekeeper as %s, or build with -tags %s); re-executing this binary, which runs its package initialization in the gatekeeper and charges that memory to this process's cgroup", defaultGatekeeperBin, embedded.BuildTag)
+	}
+	cmd := exec.Command(path)
+	cmd.Args[0] = "ig-container-hook-gatekeeper"
+	cmd.Env = env
+	cmd.ExtraFiles = files
+	cmd.Stdout = logW
+	cmd.Stderr = logW
+	// Own session: terminal job control (Ctrl-Z, Ctrl-C) on an ig run must
+	// not stop the process that answers for it. No Pdeathsig: it follows the
+	// thread that forked, not this process (golang/go#27505); the gatekeeper
+	// exits when the socket closes, which is what happens when we die.
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	if err := cmd.Start(); err != nil {
 		unix.Close(parentSock)
 		logR.Close()
-		return nil, fmt.Errorf("starting gatekeeper: %w", errors.Join(startErrs...))
+		return nil, err
 	}
 	// Only the gatekeeper keeps the child ends: if it exits early, waitReady
 	// sees EOF instead of waiting for the timeout.
@@ -444,24 +469,29 @@ func (g *gatekeeperProc) waitReady() error {
 			return fmt.Errorf("waiting for the gatekeeper to be ready: %w", err)
 		}
 		if n == 0 {
-			return errors.New("gatekeeper exited before it was ready")
+			return errors.New("exited before it was ready")
 		}
 		if n < gatekeeper.HeaderLen || buf[4] != gatekeeper.GroupReady {
-			return errors.New("gatekeeper did not start with a ready message")
-		}
-		if v := binary.NativeEndian.Uint32(buf[0:]); v != gatekeeper.ProtocolVersion {
-			return fmt.Errorf("gatekeeper %s speaks protocol %d, want %d", g.cmd.Path, v, gatekeeper.ProtocolVersion)
+			return errors.New("did not start with a ready message")
 		}
 		info := string(buf[gatekeeper.HeaderLen:n])
-		switch {
-		case buf[5]&gatekeeper.FlagCgroupMoved != 0:
+		moved := buf[5]&gatekeeper.FlagCgroupMoved != 0
+		if moved {
+			// Recorded first, so a refused gatekeeper's cgroup is removed
+			// too once it exited.
 			g.cgroupDir.Store(&info)
+		}
+		if v := binary.NativeEndian.Uint32(buf[0:]); v != expectedProtocolVersion {
+			return fmt.Errorf("speaks protocol %d, want %d", v, expectedProtocolVersion)
+		}
+		switch {
+		case moved:
 			log.Infof("container-hook: gatekeeper runs in cgroup %s", info)
 		case buf[5]&gatekeeper.FlagCgroupNotNeeded != 0:
 			g.cgroupNotNeeded = true
 			log.Debugf("container-hook: gatekeeper stays in this process's cgroup: %s", info)
 		case info != "":
-			log.Warnf("container-hook: gatekeeper could not leave this process's cgroup, so memory pressure here can still stall it: %s", info)
+			log.Warnf("container-hook: gatekeeper could not leave this process's cgroup, so memory or CPU pressure here can still stall it: %s", info)
 		}
 		return nil
 	}
@@ -470,6 +500,7 @@ func (g *gatekeeperProc) waitReady() error {
 func relayGatekeeperLog(r *os.File) {
 	defer r.Close()
 	sc := bufio.NewScanner(r)
+	sc.Buffer(make([]byte, 4096), 1<<20)
 	for sc.Scan() {
 		log.Info(sc.Text())
 	}
@@ -494,6 +525,9 @@ func (g *gatekeeperProc) receive() {
 	defer close(g.recvDone)
 	defer close(g.runtimeCh)
 	defer close(g.pidCh)
+	// However receive ends, make the gatekeeper allow everything and exit:
+	// with nobody listening, it would hold every event for the full bound.
+	defer g.shutdown()
 
 	buf := make([]byte, gatekeeper.HeaderLen+recordSize)
 	oob := make([]byte, unix.CmsgSpace(4*4))
@@ -597,7 +631,19 @@ func (g *gatekeeperProc) done(seq uint32) {
 	g.sendMu.Lock()
 	defer g.sendMu.Unlock()
 	if !g.sockClosed {
-		_, _ = unix.Write(g.sock, b[:])
+		// MSG_NOSIGNAL: no SIGPIPE once the gatekeeper is gone.
+		_ = unix.Sendmsg(g.sock, b[:], nil, nil, unix.MSG_NOSIGNAL)
+	}
+}
+
+// shutdown shuts the socket down unless it is already closed (its number may
+// have been reused). The gatekeeper then allows everything and exits, and
+// receive returns.
+func (g *gatekeeperProc) shutdown() {
+	g.sendMu.Lock()
+	defer g.sendMu.Unlock()
+	if !g.sockClosed {
+		_ = unix.Shutdown(g.sock, unix.SHUT_RDWR)
 	}
 }
 
@@ -605,7 +651,7 @@ func (g *gatekeeperProc) done(seq uint32) {
 // receive return. Idempotent.
 func (g *gatekeeperProc) close() {
 	g.closeOnce.Do(func() {
-		_ = unix.Shutdown(g.sock, unix.SHUT_RDWR)
+		g.shutdown()
 		g.waitExit()
 		g.closeSock()
 	})

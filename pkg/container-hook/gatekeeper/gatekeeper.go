@@ -25,10 +25,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 	"unsafe"
 
@@ -213,23 +215,45 @@ func raiseNofile() {
 	}
 }
 
-// CgroupDir is the cgroup a gatekeeper with the given pid runs in under base.
+// CgroupDir is the cgroup a gatekeeper with the given pid would first try to
+// create under base. See ownCgroupName for the names it uses.
 func CgroupDir(base string, pid int) string {
 	return filepath.Join(base, strconv.Itoa(pid))
 }
 
-// errCgroupNotNeeded: the inherited cgroup has no memory limit, so memcg
-// throttling cannot stall the gatekeeper there.
-var errCgroupNotNeeded = errors.New("inherited cgroup has no memory limit")
+// ownCgroupName reports whether name is one joinCgroup creates: "<pid>" or
+// "<pid>-<n>". Only those are ever removed, so an overridden base shared with
+// other cgroups is safe.
+func ownCgroupName(name string) bool {
+	pid, n, found := strings.Cut(name, "-")
+	if _, err := strconv.ParseUint(pid, 10, 32); err != nil {
+		return false
+	}
+	if found {
+		if _, err := strconv.ParseUint(n, 10, 8); err != nil {
+			return false
+		}
+	}
+	return true
+}
 
-// MemoryLimited reports whether the cgroup at path (as in /proc/self/cgroup,
-// relative to the cgroup v2 mount at root) or one of its ancestors has a
-// memory.max or memory.high limit. The root cgroup has neither file.
-func MemoryLimited(root, path string) bool {
+// errCgroupNotNeeded: the inherited cgroup has no memory or CPU limit.
+var errCgroupNotNeeded = errors.New("inherited cgroup has no memory or CPU limit")
+
+// Constrained reports whether the cgroup at path (as in /proc/self/cgroup in
+// the host cgroup namespace, relative to the cgroup v2 mount at root) or one of
+// its ancestors has a memory.max, memory.high or cpu.max limit. Any of them can
+// stall a process inside: memcg reclaim and throttling, or CPU throttling. The
+// root cgroup has none of these files.
+func Constrained(root, path string) bool {
 	for p := filepath.Clean("/" + path); p != "/"; p = filepath.Dir(p) {
-		for _, f := range []string{"memory.max", "memory.high"} {
+		for _, f := range []string{"memory.max", "memory.high", "cpu.max"} {
 			b, err := os.ReadFile(filepath.Join(root, p, f))
-			if err == nil && strings.TrimSpace(string(b)) != "max" {
+			if err != nil {
+				continue
+			}
+			// cpu.max is "<quota> <period>"; the others a single value.
+			if v, _, _ := strings.Cut(strings.TrimSpace(string(b)), " "); v != "max" {
 				return true
 			}
 		}
@@ -237,38 +261,67 @@ func MemoryLimited(root, path string) bool {
 	return false
 }
 
-// joinCgroup moves this process into base/<pid>, out of the parent's cgroup,
-// when the parent's cgroup has a memory limit (or force is set).
+// cgroupRoot returns the root of the cgroup v2 mount dir is in: the first
+// ancestor without cgroup.type, which every cgroup but the root has.
+func cgroupRoot(dir string) (string, error) {
+	for p := filepath.Clean(dir); ; p = filepath.Dir(p) {
+		if _, err := os.Stat(filepath.Join(p, "cgroup.controllers")); err == nil {
+			if _, err := os.Stat(filepath.Join(p, "cgroup.type")); os.IsNotExist(err) {
+				return p, nil
+			}
+		}
+		if p == "/" || p == "." {
+			return "", fmt.Errorf("%s is not in a cgroup v2 hierarchy", dir)
+		}
+	}
+}
+
+// ownCgroupPath returns this thread's cgroup v2 path from
+// /proc/thread-self/cgroup.
+func ownCgroupPath() (string, error) {
+	b, err := os.ReadFile("/proc/thread-self/cgroup")
+	if err != nil {
+		return "", fmt.Errorf("reading own cgroup: %w", err)
+	}
+	for _, line := range strings.Split(strings.TrimSpace(string(b)), "\n") {
+		if p, ok := strings.CutPrefix(line, "0::"); ok {
+			return p, nil
+		}
+	}
+	return "", errors.New("no cgroup v2 entry in /proc/thread-self/cgroup")
+}
+
+// joinCgroup moves this process into a child of base of its own, out of the
+// parent's cgroup. Unless force is set, it only does so when the parent's
+// cgroup is constrained (see Constrained), or when that cannot be confirmed.
+//
 // Answering an event charges kernel memory (the event's struct file) to the
 // reader's memcg, so a gatekeeper left in the parent's memcg is throttled in
-// mem_cgroup_handle_over_high exactly when the parent is, and stops answering.
-// Each gatekeeper gets its own child so instances (a rolling update, several
-// embedders on one node) never share limits; stale children of gatekeepers
-// that are gone are removed. The parent usually runs in a private cgroup
+// mem_cgroup_handle_over_high exactly when the parent is, and stops answering;
+// a CPU quota or a cgroup freeze stalls it the same way. Each gatekeeper gets
+// its own child, so instances (a rolling update, several embedders on one
+// node) never share limits. The parent usually runs in a private cgroup
 // namespace, which forbids migrating outside it, so the move happens from a
 // thread that first joins the host cgroup namespace (/proc/1 is the host init
-// with hostPID). That thread is locked and discarded afterwards.
+// with hostPID).
 func joinCgroup(base string, force bool) (string, error) {
-	root := filepath.Dir(base)
-	if _, err := os.Stat(filepath.Join(root, "cgroup.controllers")); err != nil {
-		return "", fmt.Errorf("not a cgroup v2 hierarchy: %w", err)
+	root, err := cgroupRoot(base)
+	if err != nil {
+		return "", err
 	}
-	dir := CgroupDir(base, os.Getpid())
-	return dir, inHostCgroupNS(func() error {
+	var dir string
+	err = inHostCgroupNS(func() error {
 		if !force {
-			// In the host cgroup namespace, /proc/self/cgroup is relative
-			// to the host root, which is where root points.
-			b, err := os.ReadFile("/proc/thread-self/cgroup")
+			// In the host cgroup namespace this path is relative to the
+			// host's cgroup root, which root is. "/" (or a path that does
+			// not exist under root) means we could not get there, e.g.
+			// without hostPID: assume constrained and try, so a failure is
+			// reported instead of silently staying.
+			path, err := ownCgroupPath()
 			if err != nil {
-				return fmt.Errorf("reading own cgroup: %w", err)
+				return err
 			}
-			path := ""
-			for _, line := range strings.Split(strings.TrimSpace(string(b)), "\n") {
-				if p, ok := strings.CutPrefix(line, "0::"); ok {
-					path = p
-				}
-			}
-			if !MemoryLimited(root, path) {
+			if _, statErr := os.Stat(filepath.Join(root, path)); path != "/" && statErr == nil && !Constrained(root, path) {
 				return errCgroupNotNeeded
 			}
 		}
@@ -276,36 +329,73 @@ func joinCgroup(base string, force bool) (string, error) {
 			return fmt.Errorf("creating %s: %w", base, err)
 		}
 		// Children need the controllers delegated to set their limits.
-		// Best effort: the base holds no processes, so this is allowed.
-		_ = os.WriteFile(filepath.Join(base, "cgroup.subtree_control"), []byte("+memory +pids +cpu"), 0o644)
-		// Remove children left by gatekeepers that are gone; rmdir fails
-		// on a cgroup that still has processes, which is what we want.
+		// One at a time: a single write fails as a whole if any of them is
+		// not available. The base holds no processes, so this is allowed.
+		for _, c := range []string{"+memory", "+pids", "+cpu"} {
+			_ = os.WriteFile(filepath.Join(base, "cgroup.subtree_control"), []byte(c), 0o644)
+		}
+		for attempt := 0; ; attempt++ {
+			d, err := mkdirOwnCgroup(base)
+			if err != nil {
+				return err
+			}
+			for _, l := range cgroupLimits {
+				if err := os.WriteFile(filepath.Join(d, l.file), []byte(l.value), 0o644); err != nil {
+					logf("setting %s: %s", l.file, err)
+				}
+			}
+			// "0" is the writing process; cgroup.procs moves all its
+			// threads. ENOENT: another gatekeeper's sweep removed the
+			// empty directory in between; make a new one.
+			err = os.WriteFile(filepath.Join(d, "cgroup.procs"), []byte("0"), 0o644)
+			if err == nil {
+				dir = d
+				break
+			}
+			_ = unix.Rmdir(d)
+			if !errors.Is(err, unix.ENOENT) || attempt == 2 {
+				return fmt.Errorf("moving into %s: %w", d, err)
+			}
+		}
+		// Only now, populated, is our directory safe from other sweeps.
+		// Remove our own kind of children left by gatekeepers that are
+		// gone; rmdir fails on a cgroup with processes, which is what we
+		// want.
 		if entries, err := os.ReadDir(base); err == nil {
 			for _, e := range entries {
-				if e.IsDir() {
+				if e.IsDir() && ownCgroupName(e.Name()) && filepath.Join(base, e.Name()) != dir {
 					_ = unix.Rmdir(filepath.Join(base, e.Name()))
 				}
 			}
 		}
-		if err := os.Mkdir(dir, 0o755); err != nil && !os.IsExist(err) {
-			return fmt.Errorf("creating %s: %w", dir, err)
-		}
-		for _, l := range cgroupLimits {
-			if err := os.WriteFile(filepath.Join(dir, l.file), []byte(l.value), 0o644); err != nil {
-				logf("setting %s: %s", l.file, err)
-			}
-		}
-		// "0" is the writing process; cgroup.procs moves all its threads.
-		if err := os.WriteFile(filepath.Join(dir, "cgroup.procs"), []byte("0"), 0o644); err != nil {
-			_ = unix.Rmdir(dir)
-			return fmt.Errorf("moving into %s: %w", dir, err)
-		}
 		return nil
 	})
+	return dir, err
+}
+
+// mkdirOwnCgroup creates a new child of base named after our pid. Pids can
+// repeat across pid namespaces, so a name in use gets a suffix.
+func mkdirOwnCgroup(base string) (string, error) {
+	name := strconv.Itoa(os.Getpid())
+	for i := 0; i < 100; i++ {
+		d := filepath.Join(base, name)
+		if i > 0 {
+			d = fmt.Sprintf("%s-%d", d, i)
+		}
+		err := os.Mkdir(d, 0o755)
+		if err == nil {
+			return d, nil
+		}
+		if !os.IsExist(err) {
+			return "", fmt.Errorf("creating %s: %w", d, err)
+		}
+	}
+	return "", fmt.Errorf("no free cgroup name for pid %s under %s", name, base)
 }
 
 // inHostCgroupNS runs fn on a locked thread that joined the host cgroup
-// namespace (see joinCgroup). The thread is discarded afterwards.
+// namespace, if it can. The thread is discarded afterwards. Callers must not
+// assume the switch happened; see joinCgroup.
 func inHostCgroupNS(fn func() error) error {
 	errc := make(chan error, 1)
 	go func() {
@@ -338,8 +428,11 @@ func inHostCgroupNS(fn func() error) error {
 // first, which accepts processes. A gatekeeper that is killed leaves its
 // directory to the next one's sweep.
 func leaveCgroup(dir string) {
-	root := filepath.Dir(filepath.Dir(dir))
 	err := inHostCgroupNS(func() error {
+		root, err := cgroupRoot(dir)
+		if err != nil {
+			return err
+		}
 		if err := os.WriteFile(filepath.Join(root, "cgroup.procs"), []byte("0"), 0o644); err != nil {
 			return err
 		}
@@ -350,12 +443,33 @@ func leaveCgroup(dir string) {
 	}
 }
 
+// lockMemory keeps our pages resident. The embedded binary's pages live in a
+// memfd charged to the parent's memcg; with swap there, faulting them back in
+// would happen under the parent's memory pressure, the stall we moved away
+// from. ONFAULT locks pages only once touched: the Go runtime reserves far
+// more address space than it uses.
+func lockMemory() {
+	err := unix.Mlockall(unix.MCL_CURRENT | unix.MCL_FUTURE | unix.MCL_ONFAULT)
+	if errors.Is(err, unix.EINVAL) {
+		// Kernel before 4.4: no MCL_ONFAULT. Lock what is mapped now.
+		err = unix.Mlockall(unix.MCL_CURRENT)
+	}
+	if err != nil {
+		logf("mlockall: %s", err)
+	}
+}
+
 // Run is the gatekeeper process main loop. It returns the exit code.
 func Run() int {
 	// Keep this process small and independent of the parent's runtime
 	// settings.
 	runtime.GOMAXPROCS(1)
 	_ = unix.SetNonblock(2, true)
+	// We exit when the parent's socket closes, after allowing everything we
+	// hold. A termination signal (pkill ig also matches ig-gatekeeper, an
+	// admin, a service stop) would kill us without that, leaving held events
+	// to a parent that may be stuck.
+	signal.Ignore(syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP, syscall.SIGQUIT)
 	// Started from a memfd, the process would be named after its fd number.
 	if name, err := unix.BytePtrFromString("ig-gatekeeper"); err == nil {
 		_ = unix.Prctl(unix.PR_SET_NAME, uintptr(unsafe.Pointer(name)), 0, 0, 0)
@@ -415,6 +529,7 @@ func Run() int {
 			movedTo = dir
 		}
 	}
+	lockMemory()
 	if !s.sendReady(readyFlags, readyInfo) {
 		return 1
 	}

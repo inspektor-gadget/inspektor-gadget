@@ -20,7 +20,7 @@ import (
 	"testing"
 )
 
-func TestMemoryLimited(t *testing.T) {
+func TestConstrained(t *testing.T) {
 	root := t.TempDir()
 	write := func(path, file, value string) {
 		t.Helper()
@@ -41,6 +41,8 @@ func TestMemoryLimited(t *testing.T) {
 	write("kubepods/pod", "memory.max", "838860800")
 	write("kubepods/pod/ctr", "memory.max", "max")
 	write("other", "memory.high", "104857600")
+	write("cpu", "cpu.max", "max 100000")
+	write("cpu/quota", "cpu.max", "20000 100000")
 
 	for _, tc := range []struct {
 		path string
@@ -52,10 +54,52 @@ func TestMemoryLimited(t *testing.T) {
 		{"/kubepods/pod", true},
 		{"/kubepods", false},
 		{"/other", true}, // memory.high counts
+		{"/cpu", false},  // cpu.max without a quota
+		{"/cpu/quota", true},
 		{"/missing/dir", false},
 	} {
-		if got := MemoryLimited(root, tc.path); got != tc.want {
-			t.Errorf("MemoryLimited(%q) = %v, want %v", tc.path, got, tc.want)
+		if got := Constrained(root, tc.path); got != tc.want {
+			t.Errorf("Constrained(%q) = %v, want %v", tc.path, got, tc.want)
 		}
+	}
+}
+
+func TestOwnCgroupName(t *testing.T) {
+	for name, want := range map[string]bool{
+		"1234":           true,
+		"1234-1":         true,
+		"1234-99":        true,
+		"system.slice":   false,
+		"kubepods":       false,
+		"1234-x":         false,
+		"x-1":            false,
+		"1234-1-2":       false,
+		"":               false,
+		"99999999999999": false,
+	} {
+		if got := ownCgroupName(name); got != want {
+			t.Errorf("ownCgroupName(%q) = %v, want %v", name, got, want)
+		}
+	}
+}
+
+func TestCgroupRoot(t *testing.T) {
+	root := t.TempDir()
+	for _, d := range []string{"a", "a/b"} {
+		if err := os.MkdirAll(filepath.Join(root, d), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, f := range []string{"cgroup.controllers", "a/cgroup.controllers", "a/cgroup.type", "a/b/cgroup.controllers", "a/b/cgroup.type"} {
+		if err := os.WriteFile(filepath.Join(root, f), nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := cgroupRoot(filepath.Join(root, "a/b/new"))
+	if err != nil || got != root {
+		t.Fatalf("cgroupRoot = %q, %v; want %q", got, err, root)
+	}
+	if _, err := cgroupRoot(t.TempDir()); err == nil {
+		t.Fatal("want an error outside a cgroup hierarchy")
 	}
 }

@@ -46,13 +46,15 @@ runs.
 
 ## Process and cgroup
 
-- Binary, first that starts:
+- Binary, first that starts and sends a valid ready message (one that fails
+  to start, exits early or speaks another protocol version is stopped and the
+  next one is tried):
   1. `IG_CONTAINER_HOOK_GATEKEEPER_BIN`, if set (and nothing else);
-  2. `/usr/bin/ig-container-hook-gatekeeper` (`cmd/container-hook-gatekeeper`,
-     ~1.7 MB, ~2 MB RSS), as shipped in the gadget image;
-  3. the copy embedded with `-tags gatekeeper_embed`, run from a sealed memfd
+  2. the copy embedded with `-tags gatekeeper_embed`, run from a sealed memfd
      (`make ig` and the `ig` image embed it, so the `ig` CLI needs no install
-     step);
+     step); it always speaks the library's protocol;
+  3. `/usr/bin/ig-container-hook-gatekeeper` (`cmd/container-hook-gatekeeper`,
+     ~1.7 MB, ~2 MB RSS), as shipped in the gadget image;
   4. this binary, re-executed: an `init()` in `pkg/container-hook` runs the
      gatekeeper before `main`. That works for any library user, but the
      process pays for its package initialization, charged to the caller's
@@ -60,11 +62,13 @@ runs.
 - Session: the gatekeeper runs in a session of its own, so terminal job
   control on an `ig run` (Ctrl-Z, Ctrl-C) never stops or kills it. Ctrl-Z on
   `ig run` was the easiest way to freeze a host before.
-- Cgroup: when the caller's cgroup, or one of its ancestors, has a
-  `memory.max` or `memory.high` limit, the gatekeeper moves itself into its own
-  child, `<host root>/sys/fs/cgroup/ig-container-hook-gatekeeper/<pid>`, with
-  generous limits (`memory.max` 256Mi, `pids.max` 512, `cpu.max` 1 CPU) that
-  only bound a misbehaving one. Reading an event charges its `struct file` to
+- Cgroup: the gatekeeper moves itself into its own child,
+  `<host root>/sys/fs/cgroup/ig-container-hook-gatekeeper/<pid>`, always when
+  the caller runs containerized (`HOST_ROOT` is not `/`: its cgroup can be
+  frozen or limited by the runtime at any time), and from a host shell only
+  when the caller's cgroup or an ancestor has a `memory.max`, `memory.high` or
+  `cpu.max` limit. The child gets generous limits (`memory.max` 256Mi,
+  `pids.max` 512, `cpu.max` 1 CPU) that only bound a misbehaving one. Reading an event charges its `struct file` to
   the reader's memcg, so a gatekeeper left in the hook's memcg is throttled
   with it. The limits stay far above what it uses because the kernel answers
   `FAN_DENY` when it cannot create a permission event's fd for the reader.
@@ -77,17 +81,27 @@ runs.
   - On a normal exit the gatekeeper moves to the root cgroup and removes its
     child (the hook may have exited without waiting for it, as a CLI does on
     Ctrl-C); the hook also removes it once the gatekeeper exited. A
-    gatekeeper that was killed leaves its child to the next one, which
-    removes children of gatekeepers that are gone when it starts. The
-    empty `ig-container-hook-gatekeeper` directory stays on the host after
+    gatekeeper that was killed leaves its child to the next one, which, once
+    it moved, removes the empty children of gatekeepers that are gone. Only
+    names it creates (`<pid>` or `<pid>-<n>`) are ever removed, so an
+    overridden base shared with other cgroups is safe. The empty
+    `ig-container-hook-gatekeeper` directory stays on the host after
     uninstall.
-  - Without a memory limit (`ig` from a host shell), memcg throttling cannot
-    stall it, so nothing is created and it stays in the caller's cgroup.
+  - From an unconstrained host shell nothing is created and it stays in the
+    caller's cgroup. If it cannot confirm where it is (no hostPID, so the host
+    cgroup namespace is out of reach), it assumes constrained and tries; the
+    failure is logged as a warning by the hook.
   - `IG_CONTAINER_HOOK_GATEKEEPER_CGROUP_DIR` sets the base directory and
     forces the move even without a limit; `none` disables the move.
 - The gatekeeper closes any other fanotify group fd it inherited, so it never
   keeps a group alive that the hook closed, and raises its `RLIMIT_NOFILE` soft
   limit for the up to 4096 pending event fds it holds.
+- It ignores SIGTERM, SIGINT, SIGHUP and SIGQUIT (`pkill ig` also matches
+  `ig-gatekeeper`): it exits when the hook's socket closes, after allowing
+  everything it holds.
+- It locks its memory (`mlockall`, on fault): the embedded binary's pages live
+  in a memfd charged to the caller's memcg and must not be faulted back in
+  under the caller's memory pressure.
 
 ## Failure behavior
 

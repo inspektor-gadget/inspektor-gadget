@@ -596,7 +596,7 @@ func (n *ContainerNotifier) onGatekeeperLost(err error) {
 		n.pidClose()
 		// Unblocks receive, which closes the event channels and so stops
 		// the watchers.
-		_ = unix.Shutdown(n.gk.sock, unix.SHUT_RDWR)
+		n.gk.shutdown()
 	})
 }
 
