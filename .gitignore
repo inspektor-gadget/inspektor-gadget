@@ -48,3 +48,6 @@ pkg/btfgen/btfs/arm64/*
 
 !gadgets/*.o
 !testdata/*.o
+
+# Container-hook gatekeeper embedded at build time (make ig)
+/pkg/container-hook/gatekeeper/embedded/gatekeeper.bin
