@@ -147,7 +147,7 @@ for i in $(seq 1 120); do
   sleep 1
 done
 
-# Similar to https://github.com/Azure/AKS/issues/1771 SPO webhook reconcilation doesn't work
+# Similar to https://github.com/Azure/AKS/issues/1771 SPO webhook reconciliation doesn't work
 # on AKS because of an additional selector. So we patch the SPO-daemon config to respect this selector
 # using https://github.com/kubernetes-sigs/security-profiles-operator/blob/main/installation-usage.md#configuring-webhooks.
 # SPO issue: https://github.com/kubernetes-sigs/security-profiles-operator/issues/1187

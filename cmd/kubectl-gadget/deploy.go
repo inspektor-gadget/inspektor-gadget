@@ -178,7 +178,7 @@ func init() {
 		&quiet,
 		"quiet", "q",
 		false,
-		"supress information messages")
+		"suppress information messages")
 	deployCmd.PersistentFlags().BoolVarP(
 		&debug,
 		"debug", "d",
