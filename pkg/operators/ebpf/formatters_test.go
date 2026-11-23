@@ -15,12 +15,14 @@
 package ebpfoperator
 
 import (
+	"context"
 	"testing"
 
 	"github.com/cilium/ebpf/btf"
 	"github.com/stretchr/testify/require"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
+	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
@@ -369,4 +371,40 @@ func constructNValuedEnum(keys []string, memberName string, isBitField bool) *en
 		},
 		memberName: memberName,
 	}
+}
+
+func TestInitEnumFormatterUsesSharedKernelBTFCache(t *testing.T) {
+	operator := &ebpfOperator{btfCache: btf.NewCache()}
+	var used []*btf.Cache
+	orig := kernelSpecFromCache
+	kernelSpecFromCache = func(c *btf.Cache) (*btf.Spec, error) {
+		used = append(used, c)
+		return nil, btf.ErrNotFound
+	}
+	t.Cleanup(func() { kernelSpecFromCache = orig })
+
+	newInstance := func(enums []*enum) *ebpfInstance {
+		return &ebpfInstance{
+			bpfOperator: operator,
+			logger:      logger.DefaultLogger(),
+			enums:       enums,
+			formatters:  make(map[datasource.DataSource][]func(datasource.DataSource, datasource.Data) error),
+		}
+	}
+
+	ctx := gadgetcontext.New(context.Background(), "test:latest")
+	t.Cleanup(ctx.Cancel)
+	ds, err := ctx.RegisterDataSource(datasource.TypeSingle, "events")
+	require.NoError(t, err)
+	in, err := ds.AddField("field1", api.Kind_Uint32)
+	require.NoError(t, err)
+	in.AddAnnotation(enumTargetNameAnnotation, "field1_str")
+
+	require.NoError(t, newInstance(nil).initEnumFormatter(ctx))
+	require.Empty(t, used, "a gadget without enum fields must not read the kernel BTF")
+
+	withEnum := newInstance([]*enum{constructNValuedEnum([]string{"A", "B"}, "field1", false)})
+	require.NoError(t, withEnum.initEnumFormatter(ctx))
+	require.Equal(t, []*btf.Cache{operator.btfCache}, used, "enum formatting must read the kernel BTF from the operator's shared cache")
+	require.Len(t, withEnum.formatters[ds], 1, "the gadget's own enum is still formatted without kernel BTF")
 }
