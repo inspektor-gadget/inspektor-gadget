@@ -1,0 +1,228 @@
+---
+title: chaos_packet_drop
+sidebar_position: 20
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# chaos_packet_drop
+
+This gadget is used to simulate random packet drops on the network based on the independent (Bernoulli) probability model. 
+The program runs at the tc hook point and can be configured to run at ingress/egress and for TCP/UDP packets 
+and the drop probability percentage can also be configured. We can also drop packets of a specific IP/port number 
+(We always check based on the target ip filter. So in case of egress, our ip filter drops packets going to that IP 
+and in case of ingress, we filter packets coming from that IP address)
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/chaos_packet_drop:%IG_TAG% [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/chaos_packet_drop:%IG_TAG% [flags]
+        ```
+    </TabItem>
+</Tabs>
+
+## Flags
+
+### `--filter_ip`
+
+This parameter defines for which IP address the gadget randomly drops packets. By default, the value is 0.0.0.0, which means all packets to all IPv4
+addresses will be dropped based on the loss_percentage parameter.
+
+Default value: `0.0.0.0` -> corresponding to 0
+
+(e.g., ipaddr_v4_filter = "127.0.0.1")
+
+
+(e.g., ipaddr_v6_filter = "2081:d8::1")
+
+
+### `--filter_port`
+
+This parameter defines for which port numbers the gadget randomly drops packets. By default, the value is 0, which means all packets to all ports
+will be dropped based on the loss_percentage parameter.
+
+
+Default value: `0`
+
+(e.g., 443)
+
+### `--egress`
+
+Indicates whether the gadget should consider egress packets.
+
+Default value: `true`
+
+### `--ingress`
+
+Indicates whether the gadget should consider ingress packets.
+
+Default value: `false`
+
+### `--filter-tcp`
+
+Decide whether TCP packets should be filtered
+
+Default value: `true`
+
+### `--filter-udp`
+
+Decide whether UDP packets should be filtered
+
+Default value: `true`
+
+
+### `--loss_percentage`
+
+The percentage of packets to be dropped (e.g., 100)
+
+Default value: `100`
+
+
+## Guide
+
+This gadget as mentioned before is used to drop a specified percentage of TCP or UDP packets.
+Let's create a test container to do some testing. We will be using a busybox container for that.
+
+
+```bash
+$ docker run -it --name test busybox
+```
+This will take you inside the busybox container.
+
+Meanwhile we can open another terminal and run the `chaos_packet_drop` gadget 
+```bash
+$ sudo ig run chaos_packet_drop:latest --containername test --verify-image=false
+```
+
+Now once the gadget is running, we can go back to the terminal where we are 
+inside the busybox container where we can try the following command:
+```bash 
+/ # cd home
+/home # wget http://80.249.99.148/1GB.zip
+```
+Here we are trying to download a 1GB file (from ipv4.download.thinkbroadband.com whose IP can be found by nslookup)
+
+We see the following in the test container
+
+```
+Connecting to 80.249.99.148 (80.249.99.148:80)
+saving to '1GB.zip'
+1GB.zip                0% |                                                           | 15580  - stalled -
+```
+
+On the gadget output we see 
+
+```
+WARN[0001] image signature verification is disabled due to using corresponding option 
+WARN[0001] image signature verification is disabled due to using corresponding option 
+INFO[0002] handling IP param: "filter_ip"               
+IP: {v6:[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] version:4 pad:[0 0 0]}
+RUNTIME.CONTAINERNAME         DST                                     SRC                                    DROP_CNT   INGR… EGRE… COMM                   PID DST.PROTO       SRC.PROTO      
+test                          80.249.99.148:58892                     172.17.0.2:58892                       1          false true                           0 TCP             TCP            
+RUNTIME.CONTAINERNAME         DST                                     SRC                                    DROP_CNT   INGR… EGRE… COMM                   PID DST.PROTO       SRC.PROTO      
+test                          80.249.99.148:58892                     172.17.0.2:58892                       1          false true  wget                554729 TCP             TCP            
+RUNTIME.CONTAINERNAME         DST                                     SRC                                    DROP_CNT   INGR… EGRE… COMM                   PID DST.PROTO       SRC.PROTO      
+test                          80.249.99.148:58892                     172.17.0.2:58892                       1          false true                  4294941426 TCP             TCP            
+RUNTIME.CONTAINERNAME         DST                                     SRC                                    DROP_CNT   INGR… EGRE… COMM                   PID DST.PROTO       SRC.PROTO      
+test                          80.249.99.148:58892                     172.17.0.2:58892                       1          false true                  4294941426 TCP             TCP            
+RUNTIME.CONTAINERNAME         DST                                     SRC                                    DROP_CNT   INGR… EGRE… COMM                   PID DST.PROTO       SRC.PROTO      
+test                          80.249.99.148:58892                     172.17.0.2:58892                       1          false true                  4294941425 TCP             TCP            
+RUNTIME.CONTAINERNAME         DST                                     SRC                                    DROP_CNT   INGR… EGRE… COMM                   PID DST.PROTO       SRC.PROTO      
+test                          80.249.99.148:58892                     172.17.0.2:58892                       1          false true                  4294967295 TCP             TCP            
+RUNTIME.CONTAINERNAME         DST                                     SRC                                    DROP_CNT   INGR… EGRE… COMM                   PID DST.PROTO       SRC.PROTO      
+RUNTIME.CONTAINERNAME         DST                                     SRC                                    DROP_CNT   INGR… EGRE… COMM                   PID DST.PROTO       SRC.PROTO      
+test                          80.249.99.148:58892                     172.17.0.2:58892                       1          false true                  4294941425 TCP             TCP            
+RUNTIME.CONTAINERNAME         DST                                     SRC                                    DROP_CNT   INGR… EGRE… COMM                   PID DST.PROTO       SRC.PROTO      
+RUNTIME.CONTAINERNAME         DST                                     SRC                                    DROP_CNT   INGR… EGRE… COMM                   PID DST.PROTO       SRC.PROTO      
+RUNTIME.CONTAINERNAME         DST                                     SRC                                    DROP_CNT   INGR… EGRE… COMM                   PID DST.PROTO       SRC.PROTO      
+RUNTIME.CONTAINERNAME         DST                                     SRC                                    DROP_CNT   INGR… EGRE… COMM                   PID DST.PROTO       SRC.PROTO      
+test                          80.249.99.148:58892                     172.17.0.2:58892                       1          false true                  4294941425 TCP             TCP            
+RUNTIME.CONTAINERNAME         DST                                     SRC                                    DROP_CNT   INGR… EGRE… COMM                   PID DST.PROTO       SRC.PROTO      
+RUNTIME.CONTAINERNAME         DST                                     SRC                                    DROP_CNT   INGR… EGRE… COMM                   PID DST.PROTO       SRC.PROTO      
+RUNTIME.CONTAINERNAME         DST                                     SRC                                    DROP_CNT   INGR… EGRE… COMM                   PID DST.PROTO       SRC.PROTO      
+RUNTIME.CONTAINERNAME         DST                                     SRC                                    DROP_CNT   INGR… EGRE… COMM                   PID DST.PROTO       SRC.PROTO      
+RUNTIME.CONTAINERNAME         DST                                     SRC                                    DROP_CNT   INGR… EGRE… COMM                   PID DST.PROTO       SRC.PROTO      
+test                          80.249.99.148:58892                     172.17.0.2:58892                       1          false true                           0 TCP             TCP            
+RUNTIME.CONTAINERNAME         DST                                     SRC                                    DROP_CNT   INGR… EGRE… COMM                   PID DST.PROTO       SRC.PROTO      
+test                          80.249.99.148:58892                     172.17.0.2:58892                       1          false true  wget                554729 TCP             TCP            
+RUNTIME.CONTAINERNAME         DST                                     SRC                                    DROP_CNT   INGR… EGRE… COMM                   PID DST.PROTO       SRC.PROTO      
+test                          80.249.99.148:58892                     172.17.0.2:58892                       1          false true                  4294941426 TCP             TCP            
+RUNTIME.CONTAINERNAME         DST                                     SRC                                    DROP_CNT   INGR… EGRE… COMM                   PID DST.PROTO       SRC.PROTO      
+test                          80.249.99.148:58892                     172.17.0.2:58892                       1          false true                  4294941426 TCP             TCP            
+RUNTIME.CONTAINERNAME         DST                                     SRC                                    DROP_CNT   INGR… EGRE… COMM                   PID DST.PROTO       SRC.PROTO      
+test                          80.249.99.148:58892                     172.17.0.2:58892                       1          false true                  4294941425 TCP             TCP            
+```
+Here we can see that initially the packets are dropped from command `wget` and since this is a TCP based connection, we can also sort of see how the pakcets are being sent after
+a certain backoff period. Here since `loss_percentage` is 100% all the packets are dropped and hence we couldn't download the file.
+
+Let's try the same with `loss_percentage` as 50% and check the results
+
+On the gadget terminal run
+```bash
+$ sudo ig run chaos_packet_drop:latest --containername test --verify-image=false --loss_percentage=50
+```
+and in the test container run the `# wget http://80.249.99.148/1GB.zip` command
+
+here we see that the download happens now unlike later but slower than usual
+```
+1GB.zip                8% |************                                                                                                  | 88.7M  0:01:56 ETA
+```
+On the gadget terminal, the output is as follows
+
+```
+WARN[0001] image signature verification is disabled due to using corresponding option 
+WARN[0001] image signature verification is disabled due to using corresponding option 
+RUNTIME.CONTAINERNAME         DST                                     SRC                                    DROP_CNT   INGR… EGRE… COMM                   PID DST.PROTO       SRC.PROTO      
+INFO[0002] handling IP param: "filter_ip"               
+IP: {v6:[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] version:4 pad:[0 0 0]}
+RUNTIME.CONTAINERNAME         DST                                     SRC                                    DROP_CNT   INGR… EGRE… COMM                   PID DST.PROTO       SRC.PROTO      
+test                          80.249.99.148:53556                     172.17.0.2:53556                       1          false true                  4294967295 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       1          false true                  4294967295 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       1          false true                           0 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       1          false true                           0 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       7          false true                  4294944429 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       1          false true                  4294967295 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       2          false true                  4294967295 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       1          false true                  4294967295 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       1          false true                  4294967295 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       1          false true                  4294967295 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       2          false true                           0 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       1          false true                           0 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       1          false true                  1133284927 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       2          false true                           0 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       1          false true                           0 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       3          false true                           0 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       1          false true                  4294967295 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       1          false true                           0 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       1          false true                  4294967295 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       1          false true                  4294967295 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       6          false true                  4294967295 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       1          false true                           0 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       1          false true                  4294967295 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       4          false true                           0 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       9          false true  wget                554884 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       2          false true                  4294967295 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       2          false true                  4294967295 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       1          false true                  4294967295 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       1          false true                  4294967295 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       2          false true                  4294967295 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       1          false true                  4294967295 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       1          false true                           0 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       1          false true                           0 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       1          false true                  4294967295 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       2          false true                           0 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       1          false true                  4294967295 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       2          false true                  4294941426 TCP             TCP            
+test                          80.249.99.148:53556                     172.17.0.2:53556                       3          false true                  4294967295 TCP             TCP            
+```
