@@ -74,6 +74,16 @@ static __always_inline int exit_tcp_connect(struct pt_regs *ctx, int ret,
 
 	sk = *skpp;
 
+	/*
+	 * An AF_INET6 socket connecting to an IPv4-mapped address makes
+	 * tcp_v6_connect() call tcp_v4_connect(), so both kretprobes run for
+	 * the same socket. tcp_set_state() builds the key from the socket's own
+	 * family, so only the entry of the outer call is ever looked up and
+	 * deleted. Skip the nested call to avoid leaking its entry.
+	 */
+	if (BPF_CORE_READ(sk, __sk_common.skc_family) != family)
+		return 0;
+
 	if (!fill_tuple(&tuple, sk, family))
 		return 0;
 
