@@ -539,3 +539,102 @@ func TestValidateIP(t *testing.T) {
 		ValidateIP,
 	)
 }
+
+func TestValidateIntRange(t *testing.T) {
+	t.Parallel()
+
+	type rangeTest struct {
+		name          string
+		value         string
+		min           int64
+		max           int64
+		expectedError bool
+	}
+
+	tests := []rangeTest{
+		{
+			name:          "value_within_range",
+			value:         "5",
+			min:           0,
+			max:           10,
+			expectedError: false,
+		},
+		{
+			name:          "value_at_min_boundary",
+			value:         "0",
+			min:           0,
+			max:           10,
+			expectedError: false,
+		},
+		{
+			name:          "value_at_max_boundary",
+			value:         "10",
+			min:           0,
+			max:           10,
+			expectedError: false,
+		},
+		{
+			name:          "value_below_min",
+			value:         "-1",
+			min:           0,
+			max:           10,
+			expectedError: true,
+		},
+		{
+			name:          "value_above_max",
+			value:         "11",
+			min:           0,
+			max:           10,
+			expectedError: true,
+		},
+		{
+			name:          "non_numeric_value",
+			value:         "abc",
+			min:           0,
+			max:           10,
+			expectedError: true,
+		},
+		{
+			name:          "negative_range_within",
+			value:         "-5",
+			min:           -10,
+			max:            -1,
+			expectedError: false,
+		},
+		{
+			name:          "empty_value_is_not_numeric",
+			value:         "",
+			min:           0,
+			max:           10,
+			expectedError: true,
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			err := ValidateIntRange(test.min, test.max)(test.value)
+			if test.expectedError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+// TestValidateIntRange_ParseErrorIsWrapped verifies that a non-numeric input
+// returns an error that wraps the underlying *strconv.NumError so callers can
+// inspect it via errors.As. This was not the case before the fix.
+func TestValidateIntRange_ParseErrorIsWrapped(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateIntRange(0, 100)("not-a-number")
+	require.Error(t, err)
+
+	var numErr *strconv.NumError
+	require.True(t, errors.As(err, &numErr),
+		"expected the underlying *strconv.NumError to be accessible via errors.As, got: %v", err)
+}
+
