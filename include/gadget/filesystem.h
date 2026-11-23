@@ -151,7 +151,10 @@ static __always_inline void *get_path_str(struct path *path)
 		// memfd files have no path in the filesystem -> extract their name
 		buf_off = 0;
 		d_name = get_d_name_from_dentry(dentry);
-		bpf_probe_read_str(&(string_p->buf[0]), PATH_MAX, (void *) d_name.name);
+		sz = bpf_probe_read_str(&(string_p->buf[0]), PATH_MAX, (void *) d_name.name);
+		// A failed or empty read must not surface as a valid path.
+		if (sz <= 1)
+			return NULL;
 	} else {
 		// Add leading slash
 		buf_off -= 1;
@@ -203,6 +206,58 @@ static __always_inline long read_full_path_of_open_file_fd(int fd_num, char *buf
 		return -1;
 	}
 	return bpf_probe_read_kernel_str(buf, buf_len, c_path);
+}
+
+#ifndef AT_FDCWD
+#define AT_FDCWD -100
+#endif
+
+// Resolve the absolute path for a relative filename opened against a dirfd
+// (or AT_FDCWD, i.e. the task's current working directory). buf is always
+// GADGET_PATH_MAX bytes: the verifier needs a compile-time bound for the
+// masked writes below, so the size is not a runtime parameter.
+static __always_inline long read_full_path_of_dfd_rel(int dfd, const char *user_fname,
+						      char *buf)
+{
+	struct path base;
+
+	if (dfd == AT_FDCWD) {
+		struct task_struct *task = (struct task_struct *) bpf_get_current_task();
+		if (!task)
+			return -1;
+		base = BPF_CORE_READ(task, fs, pwd);
+	} else {
+		struct file *f = get_struct_file_for_fd(dfd);
+		if (!f)
+			return -1;
+		base = BPF_CORE_READ(f, f_path);
+	}
+
+	char *bstr = get_path_str(&base);
+	if (!bstr)
+		return -1;
+
+	long n = bpf_probe_read_kernel_str(buf, GADGET_PATH_MAX, bstr);
+	if (n <= 1)
+		return -1;
+
+	u32 off = (u32) (n - 1);
+#define REL_NAME_MAX 256
+	// Base too long to append the name within GADGET_PATH_MAX: fail closed
+	// rather than truncate the base into a plausible but wrong absolute path.
+	if (off >= GADGET_PATH_MAX - REL_NAME_MAX)
+		return -1;
+	// Redundant given the check above, but the verifier needs the constant
+	// mask to prove the REL_NAME_MAX write below stays in bounds.
+	off &= (GADGET_PATH_MAX - REL_NAME_MAX - 1);
+	buf[off & (GADGET_PATH_MAX - 1)] = '/';
+	long m = bpf_probe_read_user_str(&buf[(off + 1) & (GADGET_PATH_MAX - 1)],
+					 REL_NAME_MAX - 1, user_fname);
+	if (m <= 1) {
+		buf[off & (GADGET_PATH_MAX - 1)] = '\0';
+		return -1;
+	}
+	return off + m;
 }
 
 #endif
