@@ -27,7 +27,11 @@ RUN \
         -extldflags '-static'" \
         -tags "netgo" \
         -o ig-${TARGETOS}-${TARGETARCH} \
-        github.com/inspektor-gadget/inspektor-gadget/cmd/ig
+        github.com/inspektor-gadget/inspektor-gadget/cmd/ig && \
+      CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
+        -ldflags "-s -w -extldflags '-static'" \
+        -o container-hook-gatekeeper-${TARGETOS}-${TARGETARCH} \
+        github.com/inspektor-gadget/inspektor-gadget/cmd/container-hook-gatekeeper
 
 FROM ${BASE_IMAGE}
 
@@ -41,5 +45,6 @@ LABEL org.opencontainers.image.documentation="https://inspektor-gadget.io/docs"
 LABEL org.opencontainers.image.licenses=Apache-2.0
 
 COPY --from=builder /go/src/github.com/inspektor-gadget/inspektor-gadget/ig-${TARGETOS}-${TARGETARCH} /usr/bin/ig
+COPY --from=builder /go/src/github.com/inspektor-gadget/inspektor-gadget/container-hook-gatekeeper-${TARGETOS}-${TARGETARCH} /usr/bin/ig-container-hook-gatekeeper
 ENV HOST_ROOT=/host
 ENTRYPOINT ["/usr/bin/ig"]

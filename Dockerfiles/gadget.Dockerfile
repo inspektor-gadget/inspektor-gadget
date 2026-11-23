@@ -39,6 +39,8 @@ COPY --from=builder /gadget/gadget-container/bin/cleanup /
 
 COPY --from=builder /gadget/gadget-container/bin/gadgettracermanager /bin/
 
+COPY --from=builder /gadget/gadget-container/bin/container-hook-gatekeeper /usr/bin/ig-container-hook-gatekeeper
+
 ## Hooks Begins
 
 # OCI
