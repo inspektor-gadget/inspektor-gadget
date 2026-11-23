@@ -15,8 +15,11 @@
 package containerhook
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -24,6 +27,8 @@ import (
 	"github.com/s3rj1k/go-fanotify/fanotify"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/unix"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook/gatekeeper"
 )
 
 func TestPermissionResponseBoundValidation(t *testing.T) {
@@ -277,4 +282,101 @@ func TestGatekeeperRefusesAnotherProtocolVersion(t *testing.T) {
 func TestGatekeeperRefusesARecordSizeMismatch(t *testing.T) {
 	_, err := startGatekeeper(-1, -1, 0, recordSize+8, gkTestBound, gkTestBound)
 	require.ErrorContains(t, err, "value size")
+}
+
+// gkStart starts a gatekeeper for an unmarked pair of groups; the caller sets
+// the environment (binary, cgroup) first.
+func gkStart(t *testing.T) *gatekeeperProc {
+	t.Helper()
+	if os.Geteuid() != 0 {
+		t.Skip("needs root for fanotify")
+	}
+	runtimeNotify, err := initFanotify()
+	require.NoError(t, err)
+	t.Cleanup(func() { runtimeNotify.File.Close() })
+	pidNotify, err := initFanotify()
+	require.NoError(t, err)
+	t.Cleanup(func() { pidNotify.File.Close() })
+	g, err := startGatekeeper(runtimeNotify.Fd, pidNotify.Fd, -1, 0, gkTestBound, gkTestBound)
+	require.NoError(t, err)
+	t.Cleanup(g.close)
+	return g
+}
+
+// Terminal job control on the parent (Ctrl-Z, Ctrl-C) must not reach the
+// gatekeeper: it runs in its own session.
+func TestGatekeeperRunsInItsOwnSession(t *testing.T) {
+	t.Setenv(gatekeeperBinEnv, "/proc/self/exe")
+	g := gkStart(t)
+	sid, err := unix.Getsid(g.cmd.Process.Pid)
+	require.NoError(t, err)
+	require.Equal(t, g.cmd.Process.Pid, sid)
+	own, err := unix.Getsid(0)
+	require.NoError(t, err)
+	require.NotEqual(t, own, sid)
+}
+
+// The embedded binary runs from a memfd. This test binary stands in for it:
+// its init() diverts into the gatekeeper like the real one's main does.
+func TestGatekeeperRunsEmbeddedFromMemfd(t *testing.T) {
+	if _, err := os.Stat(defaultGatekeeperBin); err == nil {
+		t.Skipf("%s is installed and would be preferred", defaultGatekeeperBin)
+	}
+	self, err := os.ReadFile("/proc/self/exe")
+	require.NoError(t, err)
+	prev := embeddedGatekeeper
+	embeddedGatekeeper = self
+	t.Cleanup(func() { embeddedGatekeeper = prev })
+	t.Setenv(gatekeeperBinEnv, "")
+
+	g := gkStart(t)
+	require.Contains(t, g.cmd.Path, "/proc/self/fd/")
+	comm, err := os.ReadFile(fmt.Sprintf("/proc/%d/comm", g.cmd.Process.Pid))
+	require.NoError(t, err)
+	require.Equal(t, "ig-gatekeeper\n", string(comm))
+}
+
+// With an explicit directory the gatekeeper always moves into <dir>/<pid>,
+// and the hook removes that child once the gatekeeper exited.
+func TestGatekeeperForcedCgroupMove(t *testing.T) {
+	if _, err := os.Stat("/sys/fs/cgroup/cgroup.controllers"); err != nil {
+		t.Skip("needs cgroup v2 at /sys/fs/cgroup")
+	}
+	base := "/sys/fs/cgroup/ig-container-hook-gatekeeper-test"
+	t.Cleanup(func() { unix.Rmdir(base) })
+	t.Setenv(gatekeeperBinEnv, "/proc/self/exe")
+	t.Setenv(gatekeeperCgroupEnv, base)
+
+	g := gkStart(t)
+	pid := g.cmd.Process.Pid
+	dir := gatekeeper.CgroupDir(base, pid)
+	cg, err := os.ReadFile(fmt.Sprintf("/proc/%d/cgroup", pid))
+	require.NoError(t, err)
+	require.Contains(t, string(cg), "/ig-container-hook-gatekeeper-test/"+strconv.Itoa(pid))
+	max, err := os.ReadFile(filepath.Join(dir, "memory.max"))
+	require.NoError(t, err)
+	require.Equal(t, strconv.Itoa(256<<20)+"\n", string(max))
+
+	g.close()
+	require.NoDirExists(t, dir)
+}
+
+// Without a memory limit on the inherited cgroup, nothing is created.
+func TestGatekeeperStaysWhenNotMemoryLimited(t *testing.T) {
+	cg, err := os.ReadFile("/proc/self/cgroup")
+	require.NoError(t, err)
+	path := strings.TrimPrefix(strings.TrimSpace(string(cg)), "0::")
+	if gatekeeper.MemoryLimited("/sys/fs/cgroup", path) {
+		t.Skip("this test process runs under a memory limit")
+	}
+	base := "/sys/fs/cgroup/ig-container-hook-gatekeeper-test-unforced"
+	t.Setenv(gatekeeperBinEnv, "/proc/self/exe")
+	t.Setenv(gatekeeperCgroupEnv, "")
+	g := gkStart(t)
+	require.True(t, g.cgroupNotNeeded)
+	require.Nil(t, g.cgroupDir.Load())
+	require.NoDirExists(t, base)
+	own, err := os.ReadFile(fmt.Sprintf("/proc/%d/cgroup", g.cmd.Process.Pid))
+	require.NoError(t, err)
+	require.Equal(t, string(cg), string(own))
 }

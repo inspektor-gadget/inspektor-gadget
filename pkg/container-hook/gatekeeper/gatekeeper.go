@@ -22,11 +22,13 @@ package gatekeeper
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 	"unsafe"
 
@@ -49,9 +51,12 @@ const (
 	// record queue.
 	RecordSizeEnv = "IG_CONTAINER_HOOK_GATEKEEPER_RECORD_SIZE"
 	// CgroupEnv is the cgroup v2 directory under which the gatekeeper creates
-	// its own child and moves itself into it (see joinCgroup). Empty: stay in
-	// the inherited cgroup.
+	// its own child and moves itself into it, if the inherited cgroup has a
+	// memory limit (see joinCgroup). Empty: stay in the inherited cgroup.
 	CgroupEnv = "IG_CONTAINER_HOOK_GATEKEEPER_CGROUP"
+	// CgroupForceEnv set to "1" moves the gatekeeper even when the inherited
+	// cgroup has no memory limit.
+	CgroupForceEnv = "IG_CONTAINER_HOOK_GATEKEEPER_CGROUP_FORCE"
 
 	// File descriptors in the gatekeeper (exec.Cmd ExtraFiles start at 3).
 	// Stdout and stderr (1, 2) are a pipe of their own, drained by the
@@ -64,14 +69,16 @@ const (
 	GroupRuntime uint8 = 0
 	GroupPidFile uint8 = 1
 	// GroupReady marks the ready message, the first one the gatekeeper
-	// sends: seq carries ProtocolVersion, flags FlagCgroupMoved, and the
-	// payload the cgroup directory or why it was not used.
+	// sends: seq carries ProtocolVersion, flags FlagCgroupMoved or
+	// FlagCgroupNotNeeded, and the payload the cgroup directory or why it was
+	// not used.
 	GroupReady uint8 = 0xff
 
-	FlagHasFd       uint8 = 1 << 0
-	FlagRecordOK    uint8 = 1 << 1
-	FlagHasRecord   uint8 = 1 << 2
-	FlagCgroupMoved uint8 = 1 << 3
+	FlagHasFd           uint8 = 1 << 0
+	FlagRecordOK        uint8 = 1 << 1
+	FlagHasRecord       uint8 = 1 << 2
+	FlagCgroupMoved     uint8 = 1 << 3
+	FlagCgroupNotNeeded uint8 = 1 << 4
 
 	// HeaderLen is the header of a gatekeeper→parent message, followed by
 	// the eBPF record for runtime events (native byte order):
@@ -211,7 +218,27 @@ func CgroupDir(base string, pid int) string {
 	return filepath.Join(base, strconv.Itoa(pid))
 }
 
-// joinCgroup moves this process into base/<pid>, out of the parent's cgroup.
+// errCgroupNotNeeded: the inherited cgroup has no memory limit, so memcg
+// throttling cannot stall the gatekeeper there.
+var errCgroupNotNeeded = errors.New("inherited cgroup has no memory limit")
+
+// MemoryLimited reports whether the cgroup at path (as in /proc/self/cgroup,
+// relative to the cgroup v2 mount at root) or one of its ancestors has a
+// memory.max or memory.high limit. The root cgroup has neither file.
+func MemoryLimited(root, path string) bool {
+	for p := filepath.Clean("/" + path); p != "/"; p = filepath.Dir(p) {
+		for _, f := range []string{"memory.max", "memory.high"} {
+			b, err := os.ReadFile(filepath.Join(root, p, f))
+			if err == nil && strings.TrimSpace(string(b)) != "max" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// joinCgroup moves this process into base/<pid>, out of the parent's cgroup,
+// when the parent's cgroup has a memory limit (or force is set).
 // Answering an event charges kernel memory (the event's struct file) to the
 // reader's memcg, so a gatekeeper left in the parent's memcg is throttled in
 // mem_cgroup_handle_over_high exactly when the parent is, and stops answering.
@@ -221,11 +248,65 @@ func CgroupDir(base string, pid int) string {
 // namespace, which forbids migrating outside it, so the move happens from a
 // thread that first joins the host cgroup namespace (/proc/1 is the host init
 // with hostPID). That thread is locked and discarded afterwards.
-func joinCgroup(base string) (string, error) {
-	if _, err := os.Stat(filepath.Join(filepath.Dir(base), "cgroup.controllers")); err != nil {
+func joinCgroup(base string, force bool) (string, error) {
+	root := filepath.Dir(base)
+	if _, err := os.Stat(filepath.Join(root, "cgroup.controllers")); err != nil {
 		return "", fmt.Errorf("not a cgroup v2 hierarchy: %w", err)
 	}
 	dir := CgroupDir(base, os.Getpid())
+	return dir, inHostCgroupNS(func() error {
+		if !force {
+			// In the host cgroup namespace, /proc/self/cgroup is relative
+			// to the host root, which is where root points.
+			b, err := os.ReadFile("/proc/thread-self/cgroup")
+			if err != nil {
+				return fmt.Errorf("reading own cgroup: %w", err)
+			}
+			path := ""
+			for _, line := range strings.Split(strings.TrimSpace(string(b)), "\n") {
+				if p, ok := strings.CutPrefix(line, "0::"); ok {
+					path = p
+				}
+			}
+			if !MemoryLimited(root, path) {
+				return errCgroupNotNeeded
+			}
+		}
+		if err := os.Mkdir(base, 0o755); err != nil && !os.IsExist(err) {
+			return fmt.Errorf("creating %s: %w", base, err)
+		}
+		// Children need the controllers delegated to set their limits.
+		// Best effort: the base holds no processes, so this is allowed.
+		_ = os.WriteFile(filepath.Join(base, "cgroup.subtree_control"), []byte("+memory +pids +cpu"), 0o644)
+		// Remove children left by gatekeepers that are gone; rmdir fails
+		// on a cgroup that still has processes, which is what we want.
+		if entries, err := os.ReadDir(base); err == nil {
+			for _, e := range entries {
+				if e.IsDir() {
+					_ = unix.Rmdir(filepath.Join(base, e.Name()))
+				}
+			}
+		}
+		if err := os.Mkdir(dir, 0o755); err != nil && !os.IsExist(err) {
+			return fmt.Errorf("creating %s: %w", dir, err)
+		}
+		for _, l := range cgroupLimits {
+			if err := os.WriteFile(filepath.Join(dir, l.file), []byte(l.value), 0o644); err != nil {
+				logf("setting %s: %s", l.file, err)
+			}
+		}
+		// "0" is the writing process; cgroup.procs moves all its threads.
+		if err := os.WriteFile(filepath.Join(dir, "cgroup.procs"), []byte("0"), 0o644); err != nil {
+			_ = unix.Rmdir(dir)
+			return fmt.Errorf("moving into %s: %w", dir, err)
+		}
+		return nil
+	})
+}
+
+// inHostCgroupNS runs fn on a locked thread that joined the host cgroup
+// namespace (see joinCgroup). The thread is discarded afterwards.
+func inHostCgroupNS(fn func() error) error {
 	errc := make(chan error, 1)
 	go func() {
 		// No UnlockOSThread: the runtime discards this thread, and its
@@ -246,40 +327,27 @@ func joinCgroup(base string) (string, error) {
 				return
 			}
 		}
-		if err := os.Mkdir(base, 0o755); err != nil && !os.IsExist(err) {
-			errc <- fmt.Errorf("creating %s: %w", base, err)
-			return
-		}
-		// Children need the controllers delegated to set their limits.
-		// Best effort: the base holds no processes, so this is allowed.
-		_ = os.WriteFile(filepath.Join(base, "cgroup.subtree_control"), []byte("+memory +pids +cpu"), 0o644)
-		// Remove children left by gatekeepers that are gone; rmdir fails
-		// on a cgroup that still has processes, which is what we want.
-		if entries, err := os.ReadDir(base); err == nil {
-			for _, e := range entries {
-				if e.IsDir() {
-					_ = unix.Rmdir(filepath.Join(base, e.Name()))
-				}
-			}
-		}
-		if err := os.Mkdir(dir, 0o755); err != nil && !os.IsExist(err) {
-			errc <- fmt.Errorf("creating %s: %w", dir, err)
-			return
-		}
-		for _, l := range cgroupLimits {
-			if err := os.WriteFile(filepath.Join(dir, l.file), []byte(l.value), 0o644); err != nil {
-				logf("setting %s: %s", l.file, err)
-			}
-		}
-		// "0" is the writing process; cgroup.procs moves all its threads.
-		if err := os.WriteFile(filepath.Join(dir, "cgroup.procs"), []byte("0"), 0o644); err != nil {
-			_ = unix.Rmdir(dir)
-			errc <- fmt.Errorf("moving into %s: %w", dir, err)
-			return
-		}
-		errc <- nil
+		errc <- fn()
 	}()
-	return dir, <-errc
+	return <-errc
+}
+
+// leaveCgroup removes our own cgroup on a normal exit: the parent may exit
+// without waiting for us (a CLI on Ctrl-C), so nobody else would. A cgroup
+// cannot be removed while it holds a process, so move to the root cgroup
+// first, which accepts processes. A gatekeeper that is killed leaves its
+// directory to the next one's sweep.
+func leaveCgroup(dir string) {
+	root := filepath.Dir(filepath.Dir(dir))
+	err := inHostCgroupNS(func() error {
+		if err := os.WriteFile(filepath.Join(root, "cgroup.procs"), []byte("0"), 0o644); err != nil {
+			return err
+		}
+		return unix.Rmdir(dir)
+	})
+	if err != nil {
+		logf("removing %s: %s", dir, err)
+	}
 }
 
 // Run is the gatekeeper process main loop. It returns the exit code.
@@ -288,6 +356,10 @@ func Run() int {
 	// settings.
 	runtime.GOMAXPROCS(1)
 	_ = unix.SetNonblock(2, true)
+	// Started from a memfd, the process would be named after its fd number.
+	if name, err := unix.BytePtrFromString("ig-gatekeeper"); err == nil {
+		_ = unix.Prctl(unix.PR_SET_NAME, uintptr(unsafe.Pointer(name)), 0, 0, 0)
+	}
 
 	var bounds [2]int64
 	for group, env := range [2]string{BoundRuntimeEnv, BoundPidFileEnv} {
@@ -329,13 +401,18 @@ func Run() int {
 
 	readyFlags := uint8(0)
 	readyInfo := ""
+	movedTo := ""
 	if base := os.Getenv(CgroupEnv); base != "" {
-		dir, err := joinCgroup(base)
-		if err != nil {
+		dir, err := joinCgroup(base, os.Getenv(CgroupForceEnv) == "1")
+		if errors.Is(err, errCgroupNotNeeded) {
+			readyFlags |= FlagCgroupNotNeeded
+			readyInfo = err.Error()
+		} else if err != nil {
 			readyInfo = err.Error()
 		} else {
 			readyFlags |= FlagCgroupMoved
 			readyInfo = dir
+			movedTo = dir
 		}
 	}
 	if !s.sendReady(readyFlags, readyInfo) {
@@ -351,6 +428,9 @@ func Run() int {
 	s.loop()
 	s.allowAll()
 	s.report(true)
+	if movedTo != "" {
+		leaveCgroup(movedTo)
+	}
 	runtime.KeepAlive(s)
 	return 0
 }

@@ -58,6 +58,7 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 	"unsafe"
 
@@ -66,6 +67,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook/gatekeeper"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook/gatekeeper/embedded"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
@@ -189,6 +191,9 @@ type gatekeeperProc struct {
 	// cgroupDir is the gatekeeper's own cgroup, set by waitReady and removed
 	// once the process exited.
 	cgroupDir atomic.Pointer[string]
+	// cgroupNotNeeded: the gatekeeper stayed because our cgroup has no
+	// memory limit. Set by waitReady, before startGatekeeper returns.
+	cgroupNotNeeded bool
 
 	runtimeCh chan *gkEvent
 	pidCh     chan *gkEvent
@@ -199,27 +204,78 @@ type gatekeeperProc struct {
 	exited    chan struct{}
 }
 
-// gatekeeperCgroup returns the cgroup v2 base directory for gatekeepers, or "".
-// It must not be our own memcg: see gatekeeper.joinCgroup.
-func gatekeeperCgroup() string {
+// gatekeeperCgroup returns the cgroup v2 base directory for gatekeepers, or "",
+// and whether the move is forced. By default the gatekeeper only leaves our
+// cgroup when that has a memory limit (see gatekeeper.joinCgroup); setting the
+// directory explicitly forces the move.
+func gatekeeperCgroup() (string, bool) {
 	switch v := os.Getenv(gatekeeperCgroupEnv); v {
 	case "none":
-		return ""
+		return "", false
 	case "":
-		return filepath.Join(host.HostRoot, "sys/fs/cgroup", defaultGatekeeperCgroup)
+		return filepath.Join(host.HostRoot, "sys/fs/cgroup", defaultGatekeeperCgroup), false
 	default:
-		return v
+		return v, true
 	}
 }
 
-func gatekeeperBinary() string {
+// embeddedGatekeeper is the gatekeeper binary built into this one (see
+// package embedded), or nil.
+var embeddedGatekeeper = embedded.Binary
+
+// gatekeeperCandidate is one way to run the gatekeeper. Candidates are tried in
+// order until one starts.
+type gatekeeperCandidate struct {
+	name string // for logs
+	path string
+	// prepare, if set, makes path usable and returns a cleanup to run once
+	// the process started (or failed to).
+	prepare func() (path string, cleanup func(), err error)
+	reexec  bool
+}
+
+// gatekeeperCandidates returns, in order of preference: the binary named by
+// IG_CONTAINER_HOOK_GATEKEEPER_BIN (only that one, if set), the installed
+// binary, the embedded one, and re-executing this binary.
+func gatekeeperCandidates() []gatekeeperCandidate {
 	if p := os.Getenv(gatekeeperBinEnv); p != "" {
-		return p
+		return []gatekeeperCandidate{{name: p, path: p, reexec: p == "/proc/self/exe"}}
 	}
+	var c []gatekeeperCandidate
 	if st, err := os.Stat(defaultGatekeeperBin); err == nil && st.Mode().IsRegular() && st.Mode()&0o111 != 0 {
-		return defaultGatekeeperBin
+		c = append(c, gatekeeperCandidate{name: defaultGatekeeperBin, path: defaultGatekeeperBin})
 	}
-	return "/proc/self/exe"
+	if len(embeddedGatekeeper) > 0 {
+		c = append(c, gatekeeperCandidate{name: "embedded", prepare: memfdExecutable})
+	}
+	return append(c, gatekeeperCandidate{name: "/proc/self/exe", path: "/proc/self/exe", reexec: true})
+}
+
+// mfdExec is MFD_EXEC (Linux 6.3): explicitly executable, needed when the
+// vm.memfd_noexec sysctl makes memfds non-executable by default.
+const mfdExec = 0x10
+
+// memfdExecutable writes the embedded gatekeeper to a sealed memfd and returns
+// a path to exec it. The memfd is close-on-exec; the path is resolved by
+// execve before that happens.
+func memfdExecutable() (string, func(), error) {
+	flags := unix.MFD_CLOEXEC | unix.MFD_ALLOW_SEALING
+	fd, err := unix.MemfdCreate("ig-container-hook-gatekeeper", flags|mfdExec)
+	if errors.Is(err, unix.EINVAL) {
+		// Kernel older than 6.3: no MFD_EXEC, memfds are executable.
+		fd, err = unix.MemfdCreate("ig-container-hook-gatekeeper", flags)
+	}
+	if err != nil {
+		return "", nil, fmt.Errorf("memfd_create: %w", err)
+	}
+	f := os.NewFile(uintptr(fd), "ig-container-hook-gatekeeper")
+	if _, err := f.Write(embeddedGatekeeper); err != nil {
+		f.Close()
+		return "", nil, fmt.Errorf("writing embedded gatekeeper: %w", err)
+	}
+	_, _ = unix.FcntlInt(uintptr(fd), unix.F_ADD_SEALS,
+		unix.F_SEAL_SEAL|unix.F_SEAL_SHRINK|unix.F_SEAL_GROW|unix.F_SEAL_WRITE)
+	return "/proc/self/fd/" + strconv.Itoa(fd), func() { f.Close() }, nil
 }
 
 // dupCloexec duplicates fd with O_CLOEXEC, so the only copy the gatekeeper
@@ -289,28 +345,55 @@ func startGatekeeper(runtimeFd, pidFd, recordsFd int, recordsValueSize int, runt
 	}
 	defer logW.Close()
 
-	bin := gatekeeperBinary()
-	if bin == "/proc/self/exe" {
-		log.Warnf("container-hook: %s not found; the gatekeeper re-executes this binary, which runs its package initialization in the gatekeeper and charges that memory to this process's cgroup. Ship cmd/container-hook-gatekeeper as %s", defaultGatekeeperBin, defaultGatekeeperBin)
-	}
-	base := gatekeeperCgroup()
-	cmd := exec.Command(bin)
-	cmd.Env = append(os.Environ(),
+	base, forceCgroup := gatekeeperCgroup()
+	env := append(os.Environ(),
 		gatekeeper.Env+"=1",
 		gatekeeper.BoundRuntimeEnv+"="+strconv.FormatInt(int64(runtimeBound), 10),
 		gatekeeper.BoundPidFileEnv+"="+strconv.FormatInt(int64(pidFileBound), 10),
 		gatekeeper.RecordSizeEnv+"="+strconv.Itoa(size),
 		gatekeeper.CgroupEnv+"="+base)
-	cmd.ExtraFiles = files
-	cmd.Stdout = logW
-	cmd.Stderr = logW
-	// No Pdeathsig: it follows the thread that forked, not this process
-	// (golang/go#27505). The gatekeeper exits when the socket closes, which
-	// is what happens when we die.
-	if err := cmd.Start(); err != nil {
+	if forceCgroup {
+		env = append(env, gatekeeper.CgroupForceEnv+"=1")
+	}
+	var cmd *exec.Cmd
+	var startErrs []error
+	for _, cand := range gatekeeperCandidates() {
+		path, cleanup := cand.path, func() {}
+		if cand.prepare != nil {
+			var err error
+			if path, cleanup, err = cand.prepare(); err != nil {
+				startErrs = append(startErrs, fmt.Errorf("%s: %w", cand.name, err))
+				continue
+			}
+		}
+		if cand.reexec {
+			log.Warnf("container-hook: no dedicated gatekeeper binary (install cmd/container-hook-gatekeeper as %s, or build with -tags %s); re-executing this binary, which runs its package initialization in the gatekeeper and charges that memory to this process's cgroup", defaultGatekeeperBin, embedded.BuildTag)
+		}
+		c := exec.Command(path)
+		c.Args[0] = "ig-container-hook-gatekeeper"
+		c.Env = env
+		c.ExtraFiles = files
+		c.Stdout = logW
+		c.Stderr = logW
+		// Own session: terminal job control (Ctrl-Z, Ctrl-C) on an ig run
+		// must not stop the process that answers for it. No Pdeathsig: it
+		// follows the thread that forked, not this process
+		// (golang/go#27505); the gatekeeper exits when the socket closes,
+		// which is what happens when we die.
+		c.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+		err := c.Start()
+		cleanup()
+		if err != nil {
+			startErrs = append(startErrs, fmt.Errorf("%s: %w", cand.name, err))
+			continue
+		}
+		cmd = c
+		break
+	}
+	if cmd == nil {
 		unix.Close(parentSock)
 		logR.Close()
-		return nil, fmt.Errorf("starting gatekeeper %s: %w", cmd.Path, err)
+		return nil, fmt.Errorf("starting gatekeeper: %w", errors.Join(startErrs...))
 	}
 	// Only the gatekeeper keeps the child ends: if it exits early, waitReady
 	// sees EOF instead of waiting for the timeout.
@@ -370,10 +453,14 @@ func (g *gatekeeperProc) waitReady() error {
 			return fmt.Errorf("gatekeeper %s speaks protocol %d, want %d", g.cmd.Path, v, gatekeeper.ProtocolVersion)
 		}
 		info := string(buf[gatekeeper.HeaderLen:n])
-		if buf[5]&gatekeeper.FlagCgroupMoved != 0 {
+		switch {
+		case buf[5]&gatekeeper.FlagCgroupMoved != 0:
 			g.cgroupDir.Store(&info)
 			log.Infof("container-hook: gatekeeper runs in cgroup %s", info)
-		} else if info != "" {
+		case buf[5]&gatekeeper.FlagCgroupNotNeeded != 0:
+			g.cgroupNotNeeded = true
+			log.Debugf("container-hook: gatekeeper stays in this process's cgroup: %s", info)
+		case info != "":
 			log.Warnf("container-hook: gatekeeper could not leave this process's cgroup, so memory pressure here can still stall it: %s", info)
 		}
 		return nil

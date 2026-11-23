@@ -46,15 +46,23 @@ runs.
 
 ## Process and cgroup
 
-- Binary: `/usr/bin/ig-container-hook-gatekeeper` (`cmd/container-hook-gatekeeper`,
-  ~1.6 MB, ~2 MB RSS), or `IG_CONTAINER_HOOK_GATEKEEPER_BIN`. Without it, the
-  hook re-executes its own binary and an `init()` in `pkg/container-hook` runs
-  the gatekeeper before `main`. That works for any embedder, but the process
-  pays for the embedder's package initialization (over 100 MB for a large
-  embedder), and that memory stays charged to the embedder's cgroup, so
-  images should ship the binary. The `ig` and gadget images do.
-- Cgroup: each gatekeeper moves itself into its own child,
-  `<host root>/sys/fs/cgroup/ig-container-hook-gatekeeper/<pid>`, with
+- Binary, first that starts:
+  1. `IG_CONTAINER_HOOK_GATEKEEPER_BIN`, if set (and nothing else);
+  2. `/usr/bin/ig-container-hook-gatekeeper` (`cmd/container-hook-gatekeeper`,
+     ~1.7 MB, ~2 MB RSS), as shipped in the gadget image;
+  3. the copy embedded with `-tags gatekeeper_embed`, run from a sealed memfd
+     (`make ig` and the `ig` image embed it, so the `ig` CLI needs no install
+     step);
+  4. this binary, re-executed: an `init()` in `pkg/container-hook` runs the
+     gatekeeper before `main`. That works for any library user, but the
+     process pays for its package initialization, charged to the caller's
+     cgroup, so the hook logs a warning.
+- Session: the gatekeeper runs in a session of its own, so terminal job
+  control on an `ig run` (Ctrl-Z, Ctrl-C) never stops or kills it. Ctrl-Z on
+  `ig run` was the easiest way to freeze a host before.
+- Cgroup: when the caller's cgroup, or one of its ancestors, has a
+  `memory.max` or `memory.high` limit, the gatekeeper moves itself into its own
+  child, `<host root>/sys/fs/cgroup/ig-container-hook-gatekeeper/<pid>`, with
   generous limits (`memory.max` 256Mi, `pids.max` 512, `cpu.max` 1 CPU) that
   only bound a misbehaving one. Reading an event charges its `struct file` to
   the reader's memcg, so a gatekeeper left in the hook's memcg is throttled
@@ -66,12 +74,17 @@ runs.
     hostPID).
   - If the move fails (cgroup v1, no hostPID), the gatekeeper stays and the
     hook logs a warning from the ready message.
-  - The hook removes the child after the gatekeeper exits; a gatekeeper
-    removes children left by gatekeepers that are gone when it starts. The
+  - On a normal exit the gatekeeper moves to the root cgroup and removes its
+    child (the hook may have exited without waiting for it, as a CLI does on
+    Ctrl-C); the hook also removes it once the gatekeeper exited. A
+    gatekeeper that was killed leaves its child to the next one, which
+    removes children of gatekeepers that are gone when it starts. The
     empty `ig-container-hook-gatekeeper` directory stays on the host after
     uninstall.
-  - `IG_CONTAINER_HOOK_GATEKEEPER_CGROUP_DIR` overrides the base directory;
-    `none` disables the move.
+  - Without a memory limit (`ig` from a host shell), memcg throttling cannot
+    stall it, so nothing is created and it stays in the caller's cgroup.
+  - `IG_CONTAINER_HOOK_GATEKEEPER_CGROUP_DIR` sets the base directory and
+    forces the move even without a limit; `none` disables the move.
 - The gatekeeper closes any other fanotify group fd it inherited, so it never
   keeps a group alive that the hook closed, and raises its `RLIMIT_NOFILE` soft
   limit for the up to 4096 pending event fds it holds.
