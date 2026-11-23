@@ -1,0 +1,32 @@
+# Artifact Hub package metadata file
+version: 0.58.0
+name: "trace gpu starvation"
+category: monitoring-logging
+displayName: "trace gpu starvation"
+createdAt: "2026-11-04T14:51:02Z"
+digest: "2026-11-04T14:51:02Z"
+description: "Detect GPU starvation and identify the CPU threads and call stacks responsible, using metrics from the gpu-ebpf-bridge daemon"
+logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
+license: ""
+homeURL: "https://inspektor-gadget.io/docs/latest/gadgets/trace_gpu_starvation"
+containersImages:
+    - name: gadget
+      image: "ghcr.io/inspektor-gadget/gadget/trace_gpu_starvation:latest"
+      platforms:
+        - linux/amd64
+        - linux/arm64
+keywords:
+    - gadget
+    - gpu
+    - nvidia
+    - starvation
+links:
+    - name: source
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_gpu_starvation"
+install: |
+    # Run
+    ```bash
+    sudo ig run ghcr.io/inspektor-gadget/gadget/trace_gpu_starvation:latest
+    ```
+provider:
+    name: Inspektor Gadget

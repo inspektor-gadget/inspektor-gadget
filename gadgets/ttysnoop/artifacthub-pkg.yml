@@ -1,0 +1,29 @@
+# Artifact Hub package metadata file
+version: 0.58.0
+name: "ttysnoop"
+category: monitoring-logging
+displayName: "ttysnoop"
+createdAt: "2026-11-04T14:51:02Z"
+digest: "2026-11-04T14:51:02Z"
+description: "Watch the output from a tty or pts device"
+logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
+license: ""
+homeURL: "https://inspektor-gadget.io/docs/latest/gadgets/ttysnoop"
+containersImages:
+    - name: gadget
+      image: "ghcr.io/inspektor-gadget/gadget/ttysnoop:latest"
+      platforms:
+        - linux/amd64
+        - linux/arm64
+keywords:
+    - gadget
+links:
+    - name: source
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/ttysnoop"
+install: |
+    # Run
+    ```bash
+    sudo ig run ghcr.io/inspektor-gadget/gadget/ttysnoop:latest
+    ```
+provider:
+    name: Inspektor Gadget
