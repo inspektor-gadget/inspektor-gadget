@@ -30,7 +30,7 @@ import (
 	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager/hook-service/api"
 )
 
-// TODO: Understand why using github.com/containerd/pkg/cri/annonations
+// TODO: Understand why using github.com/containerd/pkg/cri/annotations
 // creates a hell dependency problem with k8s.io packages.
 const (
 	// SandboxNamespace is the name of the namespace of the sandbox (pod)
