@@ -52,9 +52,10 @@ The building process is controlled by the `build.yaml` file. The following param
 
 - `ebpfsource`: eBPF source code file. It defaults to `program.bpf.c`.
 - `metadata`: File containing metadata about the gadget. It defaults to `gadget.yaml`.
-- `wasm`: Wasm module. It is unset by default. This field supports two kind of files:
+- `wasm`: Wasm module. It is unset by default. This field supports three kinds of files:
     - `*.wasm`: prebuilt Wasm module
     - `*.go`: automatically built
+    - `*.rs`: automatically built with cargo, using the `Cargo.toml` in the parent directory
 - `cflags`: The C flags used to compile the eBPF program. It is unset by default.
 
 By default, the build command looks for `build.yaml` in PATH. It can be changed with the `--file` flag:
@@ -88,6 +89,20 @@ In this case it's possible to control some of the tools used by setting some env
 ```bash
 $ sudo CLANG=clang-15 LLVM_STRIP=llvm-strip-15 ig image build . -f mybuild.yaml --local
 ```
+
+## Building untrusted gadgets
+
+Only build gadgets from sources you trust.
+
+When the `wasm` field points to Rust source code (`*.rs`), the build runs
+`cargo`, which executes code provided by the gadget sources and their
+dependencies, such as build scripts (`build.rs`) and procedural macros. This
+also applies when building in the builder container.
+
+When `--local` is used, all the build tools run directly on the host, with
+the permissions of the user running `ig` (root when using `sudo`). Any code
+run by the build, or files embedded by it, can access the whole host. Use
+`--local` only with trusted sources.
 
 ## Reproducible builds
 
