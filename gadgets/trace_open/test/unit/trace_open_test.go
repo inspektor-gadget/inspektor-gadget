@@ -15,6 +15,7 @@
 package tests
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -33,11 +34,12 @@ import (
 type ExpectedTraceOpenEvent struct {
 	Proc utils.Process `json:"proc"`
 
-	Fd       uint32 `json:"fd"`
-	FName    string `json:"fname"`
-	FlagsRaw int    `json:"flags_raw"`
-	ModeRaw  int    `json:"mode_raw"`
-	ErrRaw   int    `json:"error_raw"`
+	Fd         uint32 `json:"fd"`
+	FName      string `json:"fname"`
+	FlagsRaw   int    `json:"flags_raw"`
+	ModeRaw    int    `json:"mode_raw"`
+	ResolveRaw uint64 `json:"resolve_raw"`
+	ErrRaw     int    `json:"error_raw"`
 }
 
 type testDef struct {
@@ -113,6 +115,53 @@ func TestTraceOpenGadget(t *testing.T) {
 				require.Len(t, events, 1, "expected one event")
 				require.Equal(t, events[0].ModeRaw, unix.S_IRWXU|unix.S_IRGRP|unix.S_IWGRP|unix.S_IXOTH, "mode")
 				require.Equal(t, events[0].FlagsRaw, unix.O_CREAT|unix.O_RDWR, "flags")
+			},
+		},
+		"test_openat": {
+			runnerConfig: &utils.RunnerConfig{},
+			mntnsFilterMap: func(info *utils.RunnerInfo) *ebpf.Map {
+				return utils.CreateMntNsFilterMap(t, info.MountNsID)
+			},
+			generateEvent: func() (int, error) {
+				filename := "/tmp/test_openat"
+				fd, err := unix.Openat(0, filename, unix.O_CREAT|unix.O_RDWR, 0)
+				if err != nil {
+					return 0, err
+				}
+				defer os.Remove(filename)
+				unix.Close(fd)
+
+				return fd, nil
+			},
+			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) {
+				require.Len(t, events, 1, "expected one event")
+				require.Equal(t, events[0].FName, "/tmp/test_openat", "filename")
+				require.Equal(t, uint64(0), events[0].ResolveRaw, "resolve")
+			},
+		},
+		"test_openat2": {
+			runnerConfig: &utils.RunnerConfig{},
+			mntnsFilterMap: func(info *utils.RunnerInfo) *ebpf.Map {
+				return utils.CreateMntNsFilterMap(t, info.MountNsID)
+			},
+			generateEvent: func() (int, error) {
+				filename := "/tmp/test_openat2"
+				fd, err := unix.Openat2(0, filename, &unix.OpenHow{
+					Flags:   unix.O_CREAT | unix.O_RDWR,
+					Resolve: unix.RESOLVE_NO_SYMLINKS,
+				})
+				if err != nil {
+					return 0, err
+				}
+				defer os.Remove(filename)
+				unix.Close(fd)
+
+				return fd, nil
+			},
+			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) {
+				require.Len(t, events, 1, "expected one event")
+				require.Equal(t, events[0].FName, "/tmp/test_openat2", "filename")
+				require.Equal(t, uint64(unix.RESOLVE_NO_SYMLINKS), events[0].ResolveRaw, "resolve")
 			},
 		},
 		"test_symbolic_links": {
@@ -228,6 +277,20 @@ func TestTraceOpenGadget(t *testing.T) {
 	for name, testCase := range testCases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+
+			if name == "test_openat2" {
+				filename := "/tmp/test_openat2_exists"
+				// openat2() exists only on 5.6 kernel and younger.
+				fd, err := unix.Openat2(0, filename, &unix.OpenHow{Flags: unix.O_CREAT | unix.O_RDWR})
+				if errors.Is(err, unix.ENOSYS) {
+					t.Skipf("Skipping %s, openat2() not implemented on this kernel", name)
+				}
+				if err == nil {
+					unix.Close(fd)
+					os.Remove(filename)
+				}
+			}
+
 			var fd int
 			runner := utils.NewRunnerWithTest(t, testCase.runnerConfig)
 			var mntnsFilterMap *ebpf.Map

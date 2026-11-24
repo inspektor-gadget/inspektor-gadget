@@ -15,9 +15,12 @@
 package image
 
 import (
+	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
@@ -109,7 +112,7 @@ func newGoBuildStep(opts buildOptions) buildStep {
 			// -buildmode=c-shared to build the wasm as a reactor module, see:
 			// https://github.com/WebAssembly/WASI/blob/main/legacy/application-abi.md#current-unstable-abi
 			"-buildmode=c-shared",
-			"-ldflags", "-w -s",
+			"-ldflags", "-w -s", "--",
 			filepath.Base(goBuildStep.opts.wasmSourcePath),
 		}
 		env := []string{
@@ -135,10 +138,11 @@ func newCargoBuildStep(opts buildOptions) buildStep {
 		if cargoBuildStep.opts.forceColorsFlag {
 			cmd = append(cmd, "--color", "always")
 		}
+		manifestPath := filepath.Join(filepath.Dir(cargoBuildStep.opts.wasmSourcePath), "..", "Cargo.toml")
 		cmd = append(cmd,
 			"build",
 			"--target", "wasm32-wasip1", "--release",
-			"--manifest-path", filepath.Join(filepath.Dir(cargoBuildStep.opts.wasmSourcePath), "..", "Cargo.toml"),
+			"--manifest-path="+manifestPath,
 		)
 		env := []string{fmt.Sprintf("CARGO_TARGET_DIR=%s", cargoBuildStep.opts.outputDir)}
 
@@ -146,18 +150,23 @@ func newCargoBuildStep(opts buildOptions) buildStep {
 			return fmt.Errorf("cargo build: %w", err)
 		}
 
-		cargoTomlPath := filepath.Join(filepath.Dir(cargoBuildStep.opts.wasmSourcePath), "..", "Cargo.toml")
-		awkOut, _, err := runner.run([]string{
-			"awk", "-F", `"`, `/^name *=/ { print $2; exit }`, cargoTomlPath,
+		metadataOut, _, err := runner.run([]string{
+			"cargo", "metadata", "--format-version=1", "--no-deps",
+			"--manifest-path=" + manifestPath,
 		}, nil)
 		if err != nil {
-			return fmt.Errorf("reading package name from Cargo.toml: %w", err)
+			return fmt.Errorf("cargo metadata: %w", err)
 		}
-		packageName := strings.TrimSpace(awkOut)
 
-		src := filepath.Join(cargoBuildStep.opts.outputDir, "wasm32-wasip1", "release", packageName+".wasm")
+		targetName, err := cargoWasmTargetName(metadataOut)
+		if err != nil {
+			return err
+		}
+
+		// cargo replaces "-" by "_" in the output file name.
+		src := filepath.Join(cargoBuildStep.opts.outputDir, "wasm32-wasip1", "release", strings.ReplaceAll(targetName, "-", "_")+".wasm")
 		dst := filepath.Join(cargoBuildStep.opts.outputDir, "program.wasm")
-		if _, _, err := runner.run([]string{"cp", src, dst}, nil); err != nil {
+		if _, _, err := runner.run([]string{"cp", "--", src, dst}, nil); err != nil {
 			return fmt.Errorf("copying wasm output: %w", err)
 		}
 
@@ -165,6 +174,47 @@ func newCargoBuildStep(opts buildOptions) buildStep {
 	}
 
 	return cargoBuildStep
+}
+
+type cargoMetadata struct {
+	Packages []struct {
+		Targets []struct {
+			Name string   `json:"name"`
+			Kind []string `json:"kind"`
+		} `json:"targets"`
+	} `json:"packages"`
+}
+
+var cargoTargetNameRe = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
+
+// cargoWasmTargetName returns the name of the cdylib target from the output
+// of "cargo metadata --format-version=1 --no-deps".
+func cargoWasmTargetName(metadataOut string) (string, error) {
+	var metadata cargoMetadata
+	if err := json.Unmarshal([]byte(metadataOut), &metadata); err != nil {
+		return "", fmt.Errorf("parsing cargo metadata output (if using --local, try building in container): %w", err)
+	}
+
+	if len(metadata.Packages) != 1 {
+		return "", fmt.Errorf("expected exactly one cargo package, got %d (cargo workspaces are not supported)", len(metadata.Packages))
+	}
+
+	var names []string
+	for _, target := range metadata.Packages[0].Targets {
+		if slices.Contains(target.Kind, "cdylib") {
+			names = append(names, target.Name)
+		}
+	}
+
+	if len(names) != 1 {
+		return "", fmt.Errorf("expected exactly one cdylib target, got %d", len(names))
+	}
+
+	if !cargoTargetNameRe.MatchString(names[0]) {
+		return "", fmt.Errorf("invalid cdylib target name: %q", names[0])
+	}
+
+	return names[0], nil
 }
 
 func newBtfgenStep(targetArch string, opts buildOptions) buildStep {
