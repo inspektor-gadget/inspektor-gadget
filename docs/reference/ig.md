@@ -107,6 +107,12 @@ RUNTIME.RUNTIMENAME RUNTIME.CONTAINERID                                         
 docker              b72558e589cb95e835c4840de19f0306d4081091c34045246d62b6efed3549f4 myContainer
 ```
 
+When running directly on the host (`HOST_ROOT=/`, the default), runtime socket
+paths can be short symlinks to sockets in deeply nested directories. Inspektor
+Gadget preserves the alias so the path passed to the runtime client stays within
+the Unix socket pathname limit. With a mounted `HOST_ROOT`, symlinks are still
+resolved inside that host filesystem.
+
 ### Common features
 
 Notice that most of the commands support the following features even if, for

@@ -25,7 +25,6 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/rlimit"
 	"github.com/containerd/containerd/pkg/cri/constants"
-	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/google/uuid"
 	"github.com/moby/sys/capability"
 	log "github.com/sirupsen/logrus"
@@ -203,7 +202,7 @@ func (l *localManager) Init(operatorParams *params.Params) error {
 		socketPath := socketPathParam.AsString()
 		socketPathIsSet := socketPathParam.IsSet()
 
-		cleanSocketPath, err := securejoin.SecureJoin(host.HostRoot, socketPath)
+		cleanSocketPath, err := host.GetSocketPath(socketPath)
 		if err != nil {
 			log.Debugf("securejoin failed: %s", err)
 			continue
