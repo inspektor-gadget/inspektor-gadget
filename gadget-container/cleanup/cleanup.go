@@ -53,7 +53,7 @@ func removeNRIHooks() {
 		return
 	}
 
-	var configList nriv1.ConfigList
+	var configList nriv1.ConfigList //nolint:staticcheck // legacy NRI v0.1.0 hook
 	err = json.Unmarshal(content, &configList)
 	if err != nil {
 		return

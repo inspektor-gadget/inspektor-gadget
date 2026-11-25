@@ -137,14 +137,14 @@ func installNRIHooks() error {
 	hostConfigPath := filepath.Join(host.HostRoot, "etc/nri/conf.json")
 	content, err := os.ReadFile(hostConfigPath)
 	if err == nil {
-		var configList nriv1.ConfigList
+		var configList nriv1.ConfigList //nolint:staticcheck // legacy NRI v0.1.0 hook
 
 		err := json.Unmarshal(content, &configList)
 		if err != nil {
 			return fmt.Errorf("unmarshalling JSON %s: %w", hostConfigPath, err)
 		}
 
-		configList.Plugins = append(configList.Plugins, &nriv1.Plugin{Type: "nrigadget"})
+		configList.Plugins = append(configList.Plugins, &nriv1.Plugin{Type: "nrigadget"}) //nolint:staticcheck // legacy NRI v0.1.0 hook
 
 		content, err = json.Marshal(configList)
 		if err != nil {
