@@ -17,7 +17,7 @@ require (
 	github.com/docker/go-connections v0.8.2 // indirect
 	github.com/docker/go-units v0.5.0
 	github.com/dustin/go-humanize v1.1.0
-	github.com/expr-lang/expr v1.17.8
+	github.com/expr-lang/expr v1.18.0
 	github.com/florianl/go-tc v0.4.8
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/godbus/dbus/v5 v5.2.4
