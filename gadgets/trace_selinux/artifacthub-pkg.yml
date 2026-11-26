@@ -1,10 +1,10 @@
 # Artifact Hub package metadata file
-version: 0.53.2
+version: 0.58.1
 name: "trace selinux"
 category: security
 displayName: "trace selinux"
-createdAt: "2026-06-25T08:46:52Z"
-digest: "2026-06-25T08:46:52Z"
+createdAt: "2026-11-26T10:52:20Z"
+digest: "2026-11-26T10:52:20Z"
 description: "trace SELinux AVC audit events (denials)"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""

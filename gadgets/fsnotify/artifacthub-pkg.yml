@@ -1,10 +1,10 @@
 # Artifact Hub package metadata file
-version: 0.57.0
+version: 0.58.1
 name: "fsnotify"
 category: monitoring-logging
 displayName: "fsnotify"
-createdAt: "2026-10-05T18:06:50Z"
-digest: "2026-10-05T18:06:50Z"
+createdAt: "2026-11-26T10:52:20Z"
+digest: "2026-11-26T10:52:20Z"
 description: "enrich inotify or fanotify events"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""
