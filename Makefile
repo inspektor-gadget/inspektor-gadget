@@ -119,13 +119,22 @@ list-ig-targets:
 .PHONY: ig-all
 ig-all: $(IG_TARGETS) ig
 
+# The container-hook gatekeeper (cmd/container-hook-gatekeeper), built for the
+# target architecture and embedded into ig (-tags gatekeeper_embed), so ig runs
+# it without an install step. See docs/devel/container-hook-gatekeeper.md.
+GATEKEEPER_EMBED = pkg/container-hook/gatekeeper/embedded/gatekeeper.bin
+
+.PHONY: container-hook-gatekeeper-embed
+container-hook-gatekeeper-embed:
+	CGO_ENABLED=0 go build -ldflags "-s -w" -o $(GATEKEEPER_EMBED) ./cmd/container-hook-gatekeeper
+
 .PHONY: ig
-ig:
+ig: container-hook-gatekeeper-embed
 	CGO_ENABLED=0 go build \
         -ldflags "-X github.com/inspektor-gadget/inspektor-gadget/internal/version.version=${VERSION} \
         -X github.com/inspektor-gadget/inspektor-gadget/cmd/common/image.builderImage=${GADGET_BUILDER} \
         -extldflags '-static'" \
-        -tags "netgo" \
+        -tags "netgo gatekeeper_embed" \
         ./cmd/ig
 
 ig-on-docker: ig-$(GOHOSTOS)-$(GOHOSTARCH)

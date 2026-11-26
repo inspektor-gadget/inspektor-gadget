@@ -22,10 +22,14 @@ RUN \
       --mount=type=cache,target=/root/.cache/go-build \
       --mount=type=cache,target=/go/pkg \
       CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
+        -ldflags "-s -w" \
+        -o pkg/container-hook/gatekeeper/embedded/gatekeeper.bin \
+        github.com/inspektor-gadget/inspektor-gadget/cmd/container-hook-gatekeeper && \
+      CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
         -ldflags "-X github.com/inspektor-gadget/inspektor-gadget/internal/version.version=${VERSION} \
         -X github.com/inspektor-gadget/inspektor-gadget/cmd/common/image.builderImage=${GADGET_BUILDER} \
         -extldflags '-static'" \
-        -tags "netgo" \
+        -tags "netgo gatekeeper_embed" \
         -o ig-${TARGETOS}-${TARGETARCH} \
         github.com/inspektor-gadget/inspektor-gadget/cmd/ig
 
