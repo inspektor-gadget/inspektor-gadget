@@ -348,10 +348,15 @@ func (se *SocketEnricher) start() error {
 
 		_, err = bpfiterns.Read(socketsIter)
 		if err != nil {
-			return fmt.Errorf("read BPF iterator: %w", err)
+			log.Warnf("Socket enricher: initial socket population failed, pre-existing sockets won't be enriched: %v", err)
+			disableBPFIterators = true
 		}
+	}
 
-		// Schedule socket cleanup
+	// Schedule socket cleanup
+
+	// ← separate block, re-evaluates the flag , so cleanup goroutine wont start
+	if !disableBPFIterators {
 		cleanupIter, err := link.AttachIter(link.IterOptions{
 			Program: se.objsIter.IgSkCleanup,
 			Map:     se.objsIter.GadgetSockets,
