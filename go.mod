@@ -45,7 +45,7 @@ require (
 	github.com/tklauser/numcpus v0.12.0
 	github.com/vishvananda/netlink v1.3.1
 	github.com/vishvananda/netns v0.0.5
-	go.opentelemetry.io/collector/pdata/pprofile v0.165.0
+	go.opentelemetry.io/collector/pdata/pprofile v0.166.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.72.0
 	go.opentelemetry.io/ebpf-profiler v0.0.202633
 	go.opentelemetry.io/otel v1.47.0
@@ -227,8 +227,8 @@ require (
 	github.com/zeebo/xxh3 v1.1.0 // indirect
 	go.opentelemetry.io/collector/consumer v1.70.0 // indirect
 	go.opentelemetry.io/collector/consumer/xconsumer v0.164.0 // indirect
-	go.opentelemetry.io/collector/featuregate v1.71.0 // indirect
-	go.opentelemetry.io/collector/pdata v1.71.0 // indirect
+	go.opentelemetry.io/collector/featuregate v1.72.0 // indirect
+	go.opentelemetry.io/collector/pdata v1.72.0 // indirect
 	go.opentelemetry.io/proto/otlp/processcontext/v1development v0.4.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/arch v0.32.0 // indirect
