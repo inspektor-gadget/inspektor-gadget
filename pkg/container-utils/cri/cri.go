@@ -39,6 +39,9 @@ var podLabelFilter = map[string]struct{}{
 	runtimeclient.ContainerLabelK8sPodName:       {},
 	runtimeclient.ContainerLabelK8sPodNamespace:  {},
 	runtimeclient.ContainerLabelK8sPodUID:        {},
+	// Added by containerd to the pod sandbox labels it exposes via NRI.
+	"io.cri-containerd.kind": {},
+	"oci_runtime_type":       {},
 }
 
 // CRIClient implements the ContainerRuntimeClient interface using the CRI
@@ -414,8 +417,14 @@ func digestFromRef(imageRef string) string {
 }
 
 func getFilteredPodLabels(podSandbox *runtime.PodSandbox) map[string]string {
+	return FilterPodLabels(podSandbox.GetLabels())
+}
+
+// FilterPodLabels returns the pod sandbox labels without the labels added by
+// the kubelet or the container runtime, i.e. the K8s labels of the pod.
+func FilterPodLabels(podLabels map[string]string) map[string]string {
 	labels := map[string]string{}
-	for k, v := range podSandbox.GetLabels() {
+	for k, v := range podLabels {
 		if _, ok := podLabelFilter[k]; !ok {
 			labels[k] = v
 		}

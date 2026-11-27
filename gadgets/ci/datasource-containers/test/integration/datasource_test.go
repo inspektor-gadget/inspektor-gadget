@@ -122,6 +122,13 @@ func TestDatasourceContainersPreCreate(t *testing.T) {
 	gadgettesting.RequireEnvironmentVariables(t)
 	utils.InitTest(t)
 
+	// Only the fanotify container hook emits PRECREATE events. kubectl-gadget
+	// uses NRI on containerd and CRI-O, and PRECREATE is going to be removed.
+	if utils.CurrentTestComponent == utils.KubectlGadgetTestComponent &&
+		(utils.ContainerRuntime == "containerd" || utils.ContainerRuntime == "cri-o") {
+		t.Skip("PRECREATE events are not emitted with NRI")
+	}
+
 	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
 	require.NoError(t, err, "new container factory")
 	containerName := "test-datasource-containers-precreate"
