@@ -503,14 +503,18 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 		})
 
 		o.buildIDMap = sync.OnceValue(func() *ebpf.Map {
-			// buildIDMap is optional. Older gadgets won't have it.
-			var buildIDMap *ebpf.Map
+			// buildIDMap is optional: older gadgets won't have it, and gadgets
+			// that include <gadget/user_stack_map.h> only create it when the
+			// collect_build_id param is set (it is gated with GADGET_MAP_ONLY_IF).
+			// A missing map is therefore normal and must not be treated as an
+			// error.
 			buildIDMapAny, ok := gadgetCtx.GetVar(operators.MapPrefix + ebpftypes.BuildIdMapName)
-			if ok {
-				buildIDMap, ok = buildIDMapAny.(*ebpf.Map)
-				if !ok {
-					return nil
-				}
+			if !ok || buildIDMapAny == nil {
+				return nil
+			}
+			buildIDMap, ok := buildIDMapAny.(*ebpf.Map)
+			if !ok {
+				return nil
 			}
 			err := checkBuildIDMap(buildIDMap)
 			if err != nil {

@@ -53,7 +53,7 @@ struct gadget_file {
 GADGET_PARAM(file_type_mask);
 GADGET_PARAM(paths);
 
-GADGET_SNAPSHOTTER(files, gadget_file, ig_snap_file);
+GADGET_ITER(files, gadget_file);
 
 static __always_inline u32 classify_file_type(struct file *file)
 {
@@ -107,6 +107,7 @@ static __always_inline int copy_dentry_name(struct path *path, char *buf,
    * BPF iterator program: one invocation per (task, file)  
    */
 SEC("iter/task_file")
+GADGET_ITER_MEMBER(files)
 int ig_snap_file(struct bpf_iter__task_file *ctx)
 {
 	struct seq_file *seq = ctx->meta->seq;

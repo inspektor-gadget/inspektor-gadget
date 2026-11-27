@@ -124,6 +124,96 @@ if (gadget_should_discard_mntns_id(mntns_id))
 	return 0;
 ```
 
+## Declarative gating and configuration
+
+Gadgets can gate maps and programs, validate preconditions, and declare reusable
+values **declaratively**, using `btf_decl_tag` attributes emitted by macros in
+[gadget/macros.h](https://github.com/inspektor-gadget/inspektor-gadget/blob/%IG_BRANCH%/include/gadget/macros.h).
+Each tag carries an [expr-lang](https://expr-lang.org/) expression that Inspektor
+Gadget compiles at analyze time (so typos fail early) and evaluates **once**,
+after parameters are resolved and before the eBPF object is loaded.
+
+### Expr environment
+
+The expressions read from a namespaced environment:
+
+| Reference             | Type     | Meaning                                                                 |
+|-----------------------|----------|-------------------------------------------------------------------------|
+| `params.<name>`       | any      | Resolved [`GADGET_PARAM`](./parameters.md) value (user overrides applied)|
+| `kallsyms.exists(s)`  | bool     | Whether kernel symbol `s` is present in `/proc/kallsyms`                 |
+| `kallsyms.first(...)` | string   | The first of the given symbols that exists; errors if none exist        |
+| `program.disabled`    | sentinel | Return value for `attach_to` meaning "skip this program"                |
+| `<define>`            | any      | A value declared earlier with `GADGET_EXPR_DEFINE` (see below)           |
+
+### `GADGET_MAP_ONLY_IF(expr)`
+
+Placed on a map definition, it creates the map only when `expr` is true;
+otherwise the map is not created and every instruction referencing it is poisoned.
+Those references **must** therefore be dead code, guarded in C by (a superset of)
+the same condition.
+
+`expr` must return a bool and must be a function of the same `const volatile`
+param(s) that guard the map's C users. Do **not** gate a map on `kallsyms.*`
+(directly or through a define) — the C guard is a param, so a kallsyms-derived
+gate cannot stay in sync and the load would fail with a confusing verifier error.
+Put symbol preconditions in `GADGET_ASSERT` instead.
+
+```C
+const volatile bool collect_ustack = false;
+GADGET_PARAM(collect_ustack);
+
+struct {
+	__uint(type, BPF_MAP_TYPE_STACK_TRACE);
+	// ...
+} ig_ustack SEC(".maps") GADGET_MAP_ONLY_IF("params.collect_ustack");
+```
+
+### `GADGET_PROG_ATTACH_TO(expr)`
+
+Placed on a program (function) definition, immediately before the return type, it
+selects the program's attach target at load time. `expr` must return a string: a
+kernel symbol to attach to, or `program.disabled` to skip the program entirely.
+
+```C
+SEC("kprobe/inotify_handle_inode_event")
+GADGET_PROG_ATTACH_TO(
+	"kallsyms.exists('inotify_handle_inode_event') ? 'inotify_handle_inode_event' : program.disabled")
+int BPF_KPROBE(ig_fsnotify_e /* ... */) { /* ... */ }
+```
+
+`attach_to` is also useful to pick between kernel versions that renamed a symbol:
+
+```C
+GADGET_PROG_ATTACH_TO("kallsyms.first('finish_task_switch.isra.0', 'finish_task_switch')")
+```
+
+### `GADGET_ASSERT(name, expr)`
+
+Declares a standalone load-time precondition at file scope. `expr` (over
+`params.*`, `kallsyms.*` and defines) is evaluated once after parameters are
+resolved; if it is false, the gadget fails to load with an error naming `name`
+and quoting `expr`. `name` is only a diagnostic label. Use it, for example, to
+validate a parameter or require a kernel symbol.
+
+```C
+GADGET_ASSERT(has_hook, "kallsyms.exists('inotify_handle_inode_event')");
+```
+
+### `GADGET_EXPR_DEFINE(name, expr)`
+
+Declares a gadget-scoped named value added to the expr environment, so every
+expression declared **after** it can reference `name`. `expr` is evaluated once,
+in source order.
+
+```C
+GADGET_EXPR_DEFINE(fsnotify_hook,
+	"kallsyms.first('inotify_handle_inode_event', 'fsnotify_move')");
+
+SEC("kprobe/dummy")
+GADGET_PROG_ATTACH_TO("fsnotify_hook")
+int BPF_KPROBE(ig_fsnotify_e /* ... */) { /* ... */ }
+```
+
 ## Socket enrichment
 
 To make use of socket enrichment, gadgets must include

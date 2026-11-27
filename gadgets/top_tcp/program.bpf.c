@@ -17,6 +17,11 @@
 const volatile int target_family = -1;
 GADGET_PARAM(target_family);
 
+// target_family is an enum {-1 (any), 4 (IPv4), 6 (IPv6)}. Any other value
+// matches neither filter branch and silently shows all families instead of
+// erroring. Reject out-of-set values early.
+GADGET_ASSERT(family_valid, "params.target_family in [-1, 4, 6]");
+
 struct ip_key_t {
 	gadget_mntns_id mntns_id;
 	gadget_pid pid;

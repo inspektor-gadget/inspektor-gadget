@@ -6,10 +6,14 @@
 #define PACKETFILTER_H
 
 // GADGET_PF is used to define a new packet filter with a given name. The name is optional.
+// The function keeps its gadget_pf_<name> name (the filter is dispatched by
+// symbol name); an ig:packetfilter:<name> decl tag is added so packet filters
+// can be discovered declaratively from BTF.
 #define GADGET_PF(name)                                                      \
-	static __noinline bool gadget_pf_##name(void *_skb, void *__skb,     \
-						void *___skb, void *data,    \
-						void *data_end)              \
+	__attribute__((btf_decl_tag(                                         \
+		"ig:packetfilter:" #name))) static __noinline bool           \
+		gadget_pf_##name(void *_skb, void *__skb, void *___skb,      \
+				 void *data, void *data_end)                 \
 	{                                                                    \
 		return data != data_end && _skb == __skb && __skb == ___skb; \
 	}
