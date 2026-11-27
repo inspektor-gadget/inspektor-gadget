@@ -49,6 +49,7 @@ struct event {
 	bool upper_layer;
 	bool fupper_layer;
 	bool pupper_layer;
+	bool entry_missed;
 	unsigned int args_size;
 	char cwd[GADGET_PATH_MAX];
 	char file[GADGET_PATH_MAX];
@@ -143,6 +144,30 @@ static __always_inline void read_tty(struct event *event,
 	event->tty_minor = BPF_CORE_READ(driver, minor_start) + event->tty;
 }
 
+static __always_inline void fill_task_fields(struct event *event,
+					     struct task_struct *task)
+{
+	event->timestamp_raw = bpf_ktime_get_boot_ns();
+
+	// loginuid is only available when CONFIG_AUDIT is set
+	if (bpf_core_field_exists(task->loginuid))
+		event->loginuid = BPF_CORE_READ(task, loginuid.val);
+	else
+		event->loginuid = 4294967295; // -1 or "no user id"
+
+	// sessionid is only available when CONFIG_AUDIT is set
+	if (bpf_core_field_exists(task->sessionid))
+		event->sessionid = BPF_CORE_READ(task, sessionid);
+
+	read_tty(event, task);
+
+	if (paths) {
+		struct fs_struct *fs = BPF_CORE_READ(task, fs);
+		char *cwd = get_path_str(&fs->pwd);
+		bpf_probe_read_kernel_str(event->cwd, sizeof(event->cwd), cwd);
+	}
+}
+
 static __always_inline int enter_execve(const char **args)
 {
 	u64 id;
@@ -163,26 +188,8 @@ static __always_inline int enter_execve(const char **args)
 	if (!event)
 		return 0;
 
-	event->timestamp_raw = bpf_ktime_get_boot_ns();
 	task = (struct task_struct *)bpf_get_current_task();
-
-	// loginuid is only available when CONFIG_AUDIT is set
-	if (bpf_core_field_exists(task->loginuid))
-		event->loginuid = BPF_CORE_READ(task, loginuid.val);
-	else
-		event->loginuid = 4294967295; // -1 or "no user id"
-
-	// sessionid is only available when CONFIG_AUDIT is set
-	if (bpf_core_field_exists(task->sessionid))
-		event->sessionid = BPF_CORE_READ(task, sessionid);
-
-	read_tty(event, task);
-
-	if (paths) {
-		struct fs_struct *fs = BPF_CORE_READ(task, fs);
-		char *cwd = get_path_str(&fs->pwd);
-		bpf_probe_read_kernel_str(event->cwd, sizeof(event->cwd), cwd);
-	}
+	fill_task_fields(event, task);
 
 	// Save the argv pointer; the arguments are parsed later (see
 	// read_committed_args for successful execs and read_args_from_user for
@@ -285,8 +292,23 @@ int ig_sched_exec(struct trace_event_raw_sched_process_exec *ctx)
 	struct task_struct *parent = BPF_CORE_READ(task, real_parent);
 
 	event = bpf_map_lookup_elem(&execs, &pre_sched_pid);
-	if (!event)
-		return 0;
+	if (!event) {
+		if (gadget_should_discard_data_current())
+			return 0;
+		if (bpf_map_update_elem(&execs, &pre_sched_pid, &empty_event,
+					BPF_NOEXIST))
+			return 0;
+		event = bpf_map_lookup_elem(&execs, &pre_sched_pid);
+		if (!event)
+			return 0;
+		fill_task_fields(event, task);
+		event->entry_missed = true;
+		if (paths)
+			bpf_probe_read_kernel_str(
+				event->file, sizeof(event->file),
+				(char *)ctx +
+					(ctx->__data_loc_filename & 0xffff));
+	}
 
 	struct inode *inode = BPF_CORE_READ(task, mm, exe_file, f_inode);
 	if (inode) {
