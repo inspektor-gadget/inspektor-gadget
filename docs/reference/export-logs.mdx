@@ -55,7 +55,7 @@ datasources:
     annotations:
       logs.name: my-gadget
       logs.severity: 13 # equals WARN severity and will be set for every event
-      logs.body: "file " + fname + " was opened by " + comm + " (PID " + string(pid) + ")"
+      logs.body: '"file " + fname + " was opened by " + comm + " (PID " + string(pid) + ")"'
     fields:
       timestamp:
         logs.name: timestamp # this expects the field to contain the time in unix microseconds
