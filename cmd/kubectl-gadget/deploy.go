@@ -624,6 +624,11 @@ func flagToConfigKey(flagName string) (string, bool) {
 		key = gadgettracermanagerconfig.DisallowPulling
 	case "verify-gadgets":
 		key = gadgettracermanagerconfig.VerifyImage
+	case "verify-image":
+		// --verify-image controls the verification of the Inspektor Gadget
+		// container image, not of the gadget images. It must not reach the
+		// daemon config.
+		return "", false
 	}
 	if !gadgettracermanagerconfig.IsValidKey(key) {
 		return "", false

@@ -121,6 +121,31 @@ func TestApplyConfigToConfgMap(t *testing.T) {
 			wantContains:  []string{"disallow-pulling: false", "verify-image: \"true\"", "insecure-registries: registry.example.com"},
 		},
 		{
+			name: "verify-image flag does not affect gadget verification",
+			cm:   makeCM("operator:\n  oci:\n    verify-image: true\n"),
+			flagSetup: func(fs *pflag.FlagSet) {
+				fs.Set("verify-image", "false")
+			},
+			wantContains: []string{"verify-image: true"},
+		},
+		{
+			name: "verify-gadgets flag overrides gadget verification",
+			cm:   makeCM("operator:\n  oci:\n    verify-image: true\n"),
+			flagSetup: func(fs *pflag.FlagSet) {
+				fs.Set("verify-gadgets", "false")
+			},
+			wantContains: []string{"verify-image: false"},
+		},
+		{
+			name: "verify-gadgets wins over verify-image",
+			cm:   makeCM("operator:\n  oci:\n    verify-image: true\n"),
+			flagSetup: func(fs *pflag.FlagSet) {
+				fs.Set("verify-image", "true")
+				fs.Set("verify-gadgets", "false")
+			},
+			wantContains: []string{"verify-image: false"},
+		},
+		{
 			name:      "invalid set-config format",
 			cm:        makeCM("operator:\n  oci:\n    disallow-pulling: false\n"),
 			setConfig: []string{"badformat"},
@@ -139,6 +164,8 @@ func TestApplyConfigToConfgMap(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fs := pflag.NewFlagSet("test", pflag.ContinueOnError)
 			fs.Bool("disallow-gadgets-pulling", false, "")
+			fs.Bool("verify-image", true, "")
+			fs.Bool("verify-gadgets", true, "")
 
 			if tt.flagSetup != nil {
 				tt.flagSetup(fs)
