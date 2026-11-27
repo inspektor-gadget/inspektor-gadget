@@ -40,9 +40,8 @@ flowchart LR
 
 Operators are enabled automatically based on the gadget that's being run,
 according to the layers present on the OCI image, the types used by the eBPF
-programs, etc. It's currently [not
-possible](https://github.com/inspektor-gadget/inspektor-gadget/issues/1992) to
-explicitly disable an operator. Also, all operators are currently built-in, [we
+programs, etc. Users can explicitly disable specific operators using the
+`--disable-operators` / `-d` CLI flag (for example, `--disable-operators=kubeipresolver,kubenameresolver`). Also, all operators are currently built-in, [we
 however plan](https://github.com/inspektor-gadget/inspektor-gadget/issues/2497)
 to support third-party operators in the future.
 

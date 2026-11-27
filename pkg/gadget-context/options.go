@@ -98,3 +98,9 @@ func WithName(name string) Option {
 		gadgetCtx.name = name
 	}
 }
+
+func WithDisabledDataOperators(disabledOps ...string) Option {
+	return func(gadgetCtx *GadgetContext) {
+		gadgetCtx.disabledDataOperators = slices.Clone(disabledOps)
+	}
+}
