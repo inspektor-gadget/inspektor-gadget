@@ -72,6 +72,7 @@ func (i *ebpfInstance) fixTracerMap(t btf.Type, varName string) error {
 		bufMap.Type = ebpf.PerfEventArray
 		bufMap.KeySize = 4
 		bufMap.ValueSize = 4
+		bufMap.MaxEntries = 0
 	}
 
 	return nil

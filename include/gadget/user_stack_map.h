@@ -32,7 +32,7 @@ GADGET_PARAM(collect_build_id);
 const volatile bool collect_otel_stack = false;
 GADGET_PARAM(collect_otel_stack);
 
-const volatile int ig_build_id_max_entries = 1024;
+const volatile __u32 ig_build_id_max_entries = 1024;
 GADGET_PARAM(ig_build_id_max_entries);
 
 struct {
