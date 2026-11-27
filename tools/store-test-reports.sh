@@ -27,7 +27,7 @@ function retry {
 
 function store-reports {
   local dir=$(mktemp -d -p . --suffix -ig-test-reports)
-  local repo="https://${TEST_REPORTS_TOKEN}@github.com/inspektor-gadget/ig-test-reports.git"
+  local repo="https://github.com/inspektor-gadget/ig-test-reports.git"
 
   git clone $repo $dir
   pushd $dir || exit 1
@@ -60,6 +60,16 @@ function store-reports {
   fi
   popd || exit 1
 }
+
+# Pass the token in a header rather than in the URL: since the curl security
+# updates in the 20261018 runner images, git drops the credentials of the URL
+# ("warning: redirecting to ...") and the push fails with "could not read
+# Username".
+auth=$(printf 'x-access-token:%s' "$TEST_REPORTS_TOKEN" | base64 -w0)
+echo "::add-mask::$auth"
+export GIT_CONFIG_COUNT=1
+export GIT_CONFIG_KEY_0="http.https://github.com/.extraheader"
+export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $auth"
 
 retry store-reports
 rc=$?
