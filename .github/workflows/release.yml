@@ -21,6 +21,30 @@ jobs:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         persist-credentials: false
+    - name: Prepend user survey to release notes
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+        RELEASE_ID: ${{ github.event.release.id }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        endpoint="repos/$GH_REPO/releases/$RELEASE_ID"
+        current="$RUNNER_TEMP/release-current.json"
+        payload="$RUNNER_TEMP/release-update.json"
+        survey="https://forms.gle/LpqdmkJ9cDWkBo7g9"
+
+        gh api "$endpoint" > "$current"
+        if jq -e --arg url "$survey" '(.body // "") | contains($url)' "$current" > /dev/null; then
+          exit 0
+        fi
+
+        jq --arg url "$survey" '
+          {body: ("## Help shape Inspektor Gadget\n\n" +
+            "[Take our user survey](" + $url + ") and tell us what we can improve.\n\n" +
+            (.body // ""))}
+        ' "$current" > "$payload"
+        gh api --method PATCH "$endpoint" --input "$payload" --silent
     - name: Update new version in krew-index
       if: github.repository == 'inspektor-gadget/inspektor-gadget'
       uses: rajatjindal/krew-release-bot@c970b8a8f6dbc2f2285a26e3ae160903b87002c3 # v0.0.51
