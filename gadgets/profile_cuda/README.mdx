@@ -39,4 +39,103 @@ Running the gadget:
 
 ## Guide
 
-TODO
+This example shows how to use `profile_cuda` to identify which code paths in a
+CUDA workload are responsible for the most memory allocations.
+
+:::note
+
+`profile_cuda` requires a node with an NVIDIA GPU and the CUDA Driver (`libcuda.so`)
+installed. The gadget attaches uprobes to `libcuda.so`, so it must be present in the
+container or on the host at trace time.
+
+:::
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        First, deploy a pod that runs a CUDA workload. The following example uses
+        the official CUDA samples image to run the `vectorAdd` sample, which performs
+        repeated device memory allocations:
+
+        ```bash
+        $ kubectl run --restart=Never \
+            --image=nvcr.io/nvidia/cuda:12.4.0-base-ubuntu22.04 \
+            cuda-alloc -- \
+            bash -c 'apt-get install -y --no-install-recommends cuda-samples-12-4 2>/dev/null; \
+                     while true; do /usr/local/cuda/samples/bin/x86_64/linux/release/vectorAdd; sleep 1; done'
+        pod/cuda-alloc created
+        ```
+
+        In a second terminal, run the `profile_cuda` gadget filtering for that pod.
+        Stop it with Ctrl-C after a few seconds:
+
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/profile_cuda:%IG_TAG% \
+            --podname cuda-alloc
+        K8S.NODE           K8S.NAMESPACE K8S.PODNAME  K8S.CONTAINERNAME COMM       PID     COUNT   SIZE    USTACK
+        gpu-node-01        default       cuda-alloc   cuda-alloc         vectorAdd  42801   128     16384   [0]cuMemAlloc_v2; [1]main; [2]__libc_start_main
+        gpu-node-01        default       cuda-alloc   cuda-alloc         vectorAdd  42801   128     16384   [0]cuMemAlloc_v2; [1]main; [2]__libc_start_main
+        gpu-node-01        default       cuda-alloc   cuda-alloc         vectorAdd  42801   64      65536   [0]cuMemAllocHost_v2; [1]main; [2]__libc_start_main
+        ^C
+        ```
+
+        Each row shows:
+        - **COUNT** – number of allocation calls aggregated into this stack trace.
+        - **SIZE** – total bytes allocated by those calls.
+        - **USTACK** – the user-space call stack that triggered the allocation.
+
+        The output reveals that `main` calls `cuMemAlloc_v2` to allocate 16 KiB of
+        device memory and `cuMemAllocHost_v2` to allocate 64 KiB of pinned host memory
+        during each `vectorAdd` run.
+
+        Clean up when you are done:
+
+        ```bash
+        $ kubectl delete pod cuda-alloc
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        Start a Docker container running a CUDA workload:
+
+        ```bash
+        $ docker run -d --name cuda-alloc --gpus all \
+            nvcr.io/nvidia/cuda:12.4.0-base-ubuntu22.04 \
+            bash -c 'apt-get install -y --no-install-recommends cuda-samples-12-4 2>/dev/null; \
+                     while true; do /usr/local/cuda/samples/bin/x86_64/linux/release/vectorAdd; sleep 1; done'
+        ```
+
+        In a second terminal, run the gadget:
+
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/profile_cuda:%IG_TAG% \
+            --containername cuda-alloc
+        RUNTIME.CONTAINERNAME  COMM       PID     COUNT   SIZE    USTACK
+        cuda-alloc             vectorAdd  12345   128     16384   [0]cuMemAlloc_v2; [1]main; [2]__libc_start_main
+        cuda-alloc             vectorAdd  12345   128     16384   [0]cuMemAlloc_v2; [1]main; [2]__libc_start_main
+        cuda-alloc             vectorAdd  12345   64      65536   [0]cuMemAllocHost_v2; [1]main; [2]__libc_start_main
+        ^C
+        ```
+
+        Stop and remove the container when you are done:
+
+        ```bash
+        $ docker stop cuda-alloc && docker rm cuda-alloc
+        ```
+    </TabItem>
+</Tabs>
+
+### Interpreting the output
+
+The gadget groups allocations by their user-space stack trace and reports:
+
+| Field  | Description |
+|--------|-------------|
+| `COMM` | Process name that triggered the allocation. |
+| `PID`  | Process ID of the allocating process. |
+| `COUNT` | Number of allocation calls collapsed into this stack. |
+| `SIZE` | Total bytes allocated across all calls in this stack. |
+| `USTACK` | Symbolized user stack trace (innermost frame first). |
+
+A stack trace showing `cuMemAlloc_v2` indicates device (GPU) memory; one showing
+`cuMemAllocHost_v2` indicates page-locked host memory accessible by the GPU.
+Stacks with high `SIZE` are the best candidates for optimization.
