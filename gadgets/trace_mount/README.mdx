@@ -9,6 +9,9 @@ import TabItem from '@theme/TabItem';
 # trace_mount
 
 The trace_mount gadget emits events when mount and unmount system calls are made.
+It supports `mount(2)`, `umount(2)` as well as the new mount API syscalls
+`fsopen(2)`, `fsconfig(2)`, `fsmount(2)` and `move_mount(2)`, whose arguments
+are shown in the `call` column.
 
 ## Requirements
 
