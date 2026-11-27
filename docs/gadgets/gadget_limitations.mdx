@@ -18,3 +18,9 @@ Gadgets that trace I/O operations, such as `trace_open`, rely on hooking
 individual syscalls (e.g., `open()`). These gadgets cannot observe operations
 submitted via `io_uring`, because `io_uring` bypasses the normal syscall entry
 path and dispatches requests directly within the kernel.
+
+### Packet truncation in `tcpdump`
+
+`tcpdump` captures at most `--snaplen` bytes per packet (1500 by default).
+Larger packets, such as jumbo frames, are truncated. The original size is still
+reported in `packet_size`. Increase `--snaplen` to capture them fully.

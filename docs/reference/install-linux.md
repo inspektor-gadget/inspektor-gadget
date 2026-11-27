@@ -41,6 +41,14 @@ $ make ig
 $ sudo cp ig /usr/local/bin/
 ```
 
+## Running without root
+
+`ig` does not need to run as root. It can run as a normal user with only
+`CAP_BPF`, `CAP_PERFMON` and `CAP_SYS_PTRACE`, tracing containers started by
+rootless Podman. This limits the impact if `ig` itself is compromised. See
+[Running `ig` rootless](../rootless-ig-run.md) for the setup and its
+limitations.
+
 ## Experimental features
 
 Inspektor Gadget has some experimental features disabled by default. Users can enable those
