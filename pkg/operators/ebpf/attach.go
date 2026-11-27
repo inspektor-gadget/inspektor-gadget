@@ -95,12 +95,11 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 		switch {
 		case strings.HasPrefix(p.SectionName, iterPrefix):
 			i.logger.Debugf("Attaching iter %q to %q", p.Name, attachTo)
-			switch attachTo {
-			case "task", "task_file", "tcp", "udp", "ksym":
-				return link.AttachIter(link.IterOptions{
-					Program: prog,
-				})
-			case "bpf_map_elem":
+			if !isIteratorKindSupported(attachTo) {
+				return nil, fmt.Errorf("unsupported iter type %q", attachTo)
+			}
+			opts := link.IterOptions{Program: prog}
+			if attachTo == "bpf_map_elem" {
 				mapName, ok := i.iterTargetMaps[p.Name]
 				if !ok {
 					return nil, fmt.Errorf("iter/bpf_map_elem program %q has no target map; declare GADGET_ITER_TARGET_MAP(%s, <map_name>) in the BPF source",
@@ -113,12 +112,9 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 				}
 				i.logger.Debugf("Attaching iter/bpf_map_elem %q to map %q (fd=%d)",
 					p.Name, mapName, targetMap.FD())
-				return link.AttachIter(link.IterOptions{
-					Program: prog,
-					Map:     targetMap,
-				})
+				opts.Map = targetMap
 			}
-			return nil, fmt.Errorf("unsupported iter type %q", attachTo)
+			return link.AttachIter(opts)
 		case strings.HasPrefix(p.SectionName, fentryPrefix):
 			i.logger.Debugf("Attaching fentry %q to %q", p.Name, attachTo)
 			return link.AttachTracing(link.TracingOptions{
