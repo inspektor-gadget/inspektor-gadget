@@ -961,7 +961,7 @@ func (m *otelMetricsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext
 			if implicitCounterDescription := ds.Annotations()[AnnotationImplicitCounterDescription]; implicitCounterDescription != "" {
 				tOptions = append(tOptions, metric.WithDescription(implicitCounterDescription))
 			}
-			ctr, err := collector.meter.Int64Counter(implicitCounter, tOptions...)
+			ctr, err := collector.meter.Int64Counter(collector.metricsPrefix+implicitCounter, tOptions...)
 			if err != nil {
 				return fmt.Errorf("adding implicit counter %q: %w", implicitCounter, err)
 			}

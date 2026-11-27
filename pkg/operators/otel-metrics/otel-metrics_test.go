@@ -590,6 +590,7 @@ func TestMetricsPrefix(t *testing.T) {
 		ds, err = gadgetCtx.RegisterDataSource(datasource.TypeSingle, "metrics")
 		require.NoError(t, err)
 		ds.AddAnnotation(AnnotationMetricsCollect, "true")
+		ds.AddAnnotation(AnnotationImplicitCounterName, "eventctr")
 
 		ctr, err = ds.AddField("ctr", api.Kind_Uint32, datasource.WithAnnotations(map[string]string{
 			AnnotationMetricsType: MetricTypeCounter,
@@ -633,9 +634,10 @@ func TestMetricsPrefix(t *testing.T) {
 			names = append(names, m.Name)
 		}
 	}
-	assert.ElementsMatch(t, []string{"ig_ctr", "ig_renamed_gauge"}, names)
+	assert.ElementsMatch(t, []string{"ig_ctr", "ig_renamed_gauge", "ig_eventctr"}, names)
 	assert.Equal(t, map[string]int64{"": 3}, intMetricValues(t, md, "ig_ctr"))
 	assert.Equal(t, map[string]int64{"": 7}, intMetricValues(t, md, "ig_renamed_gauge"))
+	assert.Equal(t, map[string]int64{"": 1}, intMetricValues(t, md, "ig_eventctr"))
 }
 
 func TestMetricsPrefixValidation(t *testing.T) {

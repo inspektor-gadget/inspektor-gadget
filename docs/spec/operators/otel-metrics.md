@@ -43,7 +43,7 @@ Default: `false`
 Prefix added to the name of every metric exported by gadgets, for example `ig_`
 to turn `latency` into `ig_latency`. This makes it easier to find Inspektor
 Gadget metrics in a Prometheus that scrapes many sources. It also applies to
-names set with the `metrics.name` annotation, and to all exporters, not only
+names set with the `metrics.name` annotation, to implicit counters and to all exporters, not only
 the Prometheus listener. Internal metrics enabled by
 `otel-metrics-export-internals` are not prefixed.
 
